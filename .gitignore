@@ -17,6 +17,7 @@ conf/
 
 # Grahpify 知识图谱缓存（自动生成的 AST 分析缓存）
 graphify-out/
+AGENTS.md
 
 # 构建过程生成的资源副本
 src/main/resources/
