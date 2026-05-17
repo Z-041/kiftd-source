@@ -5,7 +5,7 @@ import kohgylw.kiftd.server.model.*;
 import kohgylw.kiftd.server.pojo.*;
 import java.util.*;
 
-import javax.annotation.Resource;
+import jakarta.annotation.Resource;
 
 import java.io.*;
 
@@ -20,8 +20,8 @@ public class AudioInfoUtil {
 	private TxtCharsetGetter tcg;
 
 	private static final String ERROR_ARTIST = "\u7fa4\u661f";
-	private static final String DEFAULT_LRC = "css/audio_default.lrc";
-	private static final String DEFAULT_COVER = "css/audio_default.png";
+	private static final String DEFAULT_LRC = "css/src/audio_default.lrc";
+	private static final String DEFAULT_COVER = "css/img/audio_default.png";
 
 	public AudioInfoUtil() {
 	}

@@ -1,7 +1,7 @@
 package kohgylw.kiftd.server.service;
 
 import org.springframework.web.multipart.*;
-import javax.servlet.http.*;
+import jakarta.servlet.http.*;
 
 public interface FileService {
 	String checkUploadFile(final HttpServletRequest request, final HttpServletResponse response);

@@ -33,7 +33,7 @@ public class RSADecryptUtil {
 		RSADecryptUtil.decoder = Base64.getDecoder();
 		try {
 			RSADecryptUtil.kf = KeyFactory.getInstance("RSA");
-			RSADecryptUtil.c = Cipher.getInstance("RSA");
+			RSADecryptUtil.c = Cipher.getInstance("RSA/ECB/PKCS1Padding");
 		} catch (NoSuchAlgorithmException e) {
 			e.printStackTrace();
 		} catch (NoSuchPaddingException e2) {

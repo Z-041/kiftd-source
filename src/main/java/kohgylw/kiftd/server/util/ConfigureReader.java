@@ -753,7 +753,7 @@ public class ConfigureReader {
 				dbURL = dbURL + "&serverTimezone=" + timeZone;
 			}
 			try {
-				Class.forName(dbDriver).newInstance();
+				Class.forName(dbDriver).getDeclaredConstructor().newInstance();
 				Connection testConn = DriverManager.getConnection(dbURL, dbUser, dbPwd);
 				testConn.close();
 			} catch (Exception e) {

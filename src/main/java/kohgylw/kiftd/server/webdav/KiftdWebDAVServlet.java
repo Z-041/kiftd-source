@@ -27,13 +27,13 @@ import java.util.TimeZone;
 import java.util.UUID;
 import java.util.Vector;
 
-import javax.servlet.RequestDispatcher;
-import javax.servlet.ServletConfig;
-import javax.servlet.ServletException;
-import javax.servlet.ServletInputStream;
-import javax.servlet.http.HttpServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.RequestDispatcher;
+import jakarta.servlet.ServletConfig;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.ServletInputStream;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
@@ -42,8 +42,9 @@ import org.apache.catalina.WebResource;
 import org.apache.catalina.connector.RequestFacade;
 import org.apache.catalina.util.XMLWriter;
 import org.apache.tomcat.util.http.RequestUtil;
-import org.apache.tomcat.util.security.ConcurrentMessageDigest;
-import org.apache.tomcat.util.security.MD5Encoder;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
 import org.springframework.context.ApplicationContext;
 import org.springframework.web.context.support.WebApplicationContextUtils;
 import org.w3c.dom.Document;
@@ -2122,8 +2123,14 @@ public class KiftdWebDAVServlet extends HttpServlet {
 			String lockTokenStr = req.getServletPath() + "-" + lock.type + "-" + lock.scope + "-" + account + "-"
 					+ lock.depth + "-" + lock.owner + "-" + lock.tokens + "-" + lock.expiresAt + "-"
 					+ System.currentTimeMillis() + "-" + secret;
-			String lockToken = MD5Encoder
-					.encode(ConcurrentMessageDigest.digestMD5(lockTokenStr.getBytes(StandardCharsets.ISO_8859_1)));
+			String lockToken = null;
+			try {
+				lockToken = HexFormat.of().formatHex(
+						MessageDigest.getInstance("MD5").digest(lockTokenStr.getBytes(StandardCharsets.ISO_8859_1)));
+			} catch (NoSuchAlgorithmException e) {
+				resp.setStatus(WebdavStatus.SC_INTERNAL_SERVER_ERROR);
+				return;
+			}
 			if (resource.isDirectory() && lock.depth == maxDepth) {
 				// 对文件夹及其子文件夹进行锁定，先检查是否有子文件夹已经被锁定了
 				Vector<String> lockPaths = new Vector<>();

@@ -50,7 +50,7 @@ public class FileNodeUtil {
 		Printer.instance.print("初始化文件节点...");
 		try {
 			if (conn == null) {
-				Class.forName(ConfigureReader.instance().getFileNodePathDriver()).newInstance();
+				Class.forName(ConfigureReader.instance().getFileNodePathDriver()).getDeclaredConstructor().newInstance();
 			}
 			String newUrl = ConfigureReader.instance().getFileNodePathURL();
 			// 判断当前位置是否初始化文件节点

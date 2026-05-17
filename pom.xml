@@ -4,22 +4,25 @@
 	<modelVersion>4.0.0</modelVersion>
 
 	<groupId>kohgylw</groupId>
-	<artifactId>kiftd</artifactId>
-	<version>1.2.3-SNAPSHOT</version>
+	<artifactId>Cloudflow</artifactId>
+	<version>1.3.0</version>
 	<packaging>jar</packaging>
 
-	<name>kiftd</name>
-	<url>https://kohgylw.gitee.io</url>
+	<name>Cloudflow</name>
+	<url></url>
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<java.version>21</java.version>
+		<maven.compiler.source>21</maven.compiler.source>
+		<maven.compiler.target>21</maven.compiler.target>
 	</properties>
 
 	<!-- Spring Boot 版本组设置 -->
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>2.7.0</version>
+		<version>3.4.3</version>
 	</parent>
 	<!-- end SpringBoot版本组 -->
 
@@ -40,17 +43,10 @@
 		<!-- end Gson -->
 
 		<!-- file 操作资源 -->
-		<!--
-		https://mvnrepository.com/artifact/commons-fileupload/commons-fileupload -->
-		<dependency>
-			<groupId>commons-fileupload</groupId>
-			<artifactId>commons-fileupload</artifactId>
-			<version>1.3.3</version>
-		</dependency>
 		<dependency>
 			<groupId>commons-io</groupId>
 			<artifactId>commons-io</artifactId>
-			<version>2.4</version>
+			<version>2.18.0</version>
 		</dependency>
 		<!-- end file -->
 
@@ -58,12 +54,12 @@
 		<dependency>
 			<groupId>org.mybatis</groupId>
 			<artifactId>mybatis</artifactId>
-			<version>3.4.1</version>
+			<version>3.5.16</version>
 		</dependency>
 		<dependency>
 			<groupId>org.mybatis</groupId>
 			<artifactId>mybatis-spring</artifactId>
-			<version>1.3.1</version>
+			<version>3.0.4</version>
 		</dependency>
 		<dependency>
 			<groupId>com.h2database</groupId>
@@ -73,23 +69,26 @@
 			<groupId>org.springframework</groupId>
 			<artifactId>spring-jdbc</artifactId>
 		</dependency>
+		<dependency>
+			<groupId>com.zaxxer</groupId>
+			<artifactId>HikariCP</artifactId>
+			<version>5.1.0</version>
+		</dependency>
 		<!-- end hsm整合 -->
 
 		<!-- MySQL 自定义连接数据库 -->
-		<!-- https://mvnrepository.com/artifact/mysql/mysql-connector-java -->
 		<dependency>
-			<groupId>mysql</groupId>
-			<artifactId>mysql-connector-java</artifactId>
-			<version>8.0.16</version><!--$NO-MVN-MAN-VER$ -->
+			<groupId>com.mysql</groupId>
+			<artifactId>mysql-connector-j</artifactId>
+			<version>8.0.33</version>
 		</dependency>
 		<!-- end MySQL -->
 
 		<!-- ZIP 压缩工具 -->
-		<!-- https://mvnrepository.com/artifact/org.zeroturnaround/zt-zip -->
 		<dependency>
 			<groupId>org.zeroturnaround</groupId>
 			<artifactId>zt-zip</artifactId>
-			<version>1.13</version>
+			<version>1.17</version>
 		</dependency>
 		<!-- end ZIP -->
 
@@ -97,58 +96,47 @@
 		<dependency>
 			<groupId>net.coobird</groupId>
 			<artifactId>thumbnailator</artifactId>
-			<version>0.4.8</version>
+			<version>0.4.20</version>
 		</dependency>
 		<!-- end Thumbnailator -->
 
 		<!-- 图片格式处理 -->
-		<!--
-		https://mvnrepository.com/artifact/com.twelvemonkeys.imageio/imageio-jpeg -->
 		<dependency>
 			<groupId>com.twelvemonkeys.imageio</groupId>
 			<artifactId>imageio-jpeg</artifactId>
-			<version>3.3.2</version>
+			<version>3.12.0</version>
 		</dependency>
-		<!--
-		https://mvnrepository.com/artifact/com.twelvemonkeys.imageio/imageio-tiff -->
 		<dependency>
 			<groupId>com.twelvemonkeys.imageio</groupId>
 			<artifactId>imageio-tiff</artifactId>
-			<version>3.3.2</version>
+			<version>3.12.0</version>
 		</dependency>
 		<!-- end 图片处理 -->
 
 		<!-- txt/word/ppt转PDF处理工具整合资源 -->
-		<!-- https://mvnrepository.com/artifact/org.freemarker/freemarker -->
 		<dependency>
 			<groupId>org.freemarker</groupId>
 			<artifactId>freemarker</artifactId>
 		</dependency>
-		<!-- https://mvnrepository.com/artifact/com.lowagie/itext -->
 		<dependency>
 			<groupId>com.lowagie</groupId>
 			<artifactId>itext</artifactId>
 			<version>2.1.7</version>
 		</dependency>
-		<!--
-		https://mvnrepository.com/artifact/fr.opensagres.xdocreport/org.apache.poi.xwpf.converter.pdf -->
 		<dependency>
 			<groupId>fr.opensagres.xdocreport</groupId>
 			<artifactId>org.apache.poi.xwpf.converter.pdf</artifactId>
 			<version>1.0.6</version>
 		</dependency>
-		<!--
-		https://mvnrepository.com/artifact/net.sourceforge.jchardet/jchardet -->
 		<dependency>
 			<groupId>net.sourceforge.jchardet</groupId>
 			<artifactId>jchardet</artifactId>
 			<version>1.0</version>
 		</dependency>
-		<!-- https://mvnrepository.com/artifact/org.apache.poi/poi-scratchpad -->
 		<dependency>
 			<groupId>org.apache.poi</groupId>
 			<artifactId>poi-scratchpad</artifactId>
-			<version>3.10-FINAL</version>
+			<version>5.3.0</version>
 		</dependency>
 		<!-- end txt/word/ppt -->
 
@@ -168,11 +156,10 @@
 		<!-- end MD5 -->
 
 		<!-- Markdown 文本解析器 -->
-		<!-- https://mvnrepository.com/artifact/com.vladsch.flexmark/flexmark -->
 		<dependency>
 			<groupId>com.vladsch.flexmark</groupId>
 			<artifactId>flexmark</artifactId>
-			<version>0.50.44</version>
+			<version>0.64.8</version>
 		</dependency>
 		<!-- end Markdown解析器 -->
 
@@ -188,41 +175,17 @@
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
 				<configuration>
-					<source>1.8</source>
-					<target>1.8</target>
-					<encoding>UTF8</encoding>
+					<source>21</source>
+					<target>21</target>
+					<encoding>UTF-8</encoding>
+					<compilerArgs>
+						<arg>-Xlint:deprecation</arg>
+					</compilerArgs>
 				</configuration>
 			</plugin>
 			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-jar-plugin</artifactId>
-				<configuration>
-					<archive>
-						<manifest>
-							<addClasspath>true</addClasspath>
-							<classpathPrefix>libs/</classpathPrefix>
-							<mainClass>kohgylw.kiftd.mc.MC</mainClass>
-						</manifest>
-					</archive>
-				</configuration>
-			</plugin>
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-dependency-plugin</artifactId>
-				<executions>
-					<execution>
-						<id>copy-dependencies</id>
-						<phase>package</phase>
-						<goals>
-							<goal>copy-dependencies</goal>
-						</goals>
-						<configuration>
-							<outputDirectory>
-								libs/
-							</outputDirectory>
-						</configuration>
-					</execution>
-				</executions>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-maven-plugin</artifactId>
 			</plugin>
 		</plugins>
 	</build>

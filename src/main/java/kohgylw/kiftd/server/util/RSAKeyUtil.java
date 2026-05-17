@@ -11,7 +11,7 @@ import java.security.*;
 
 @Component
 public class RSAKeyUtil {
-	private static final int KEY_SIZE = 1024;
+	private static final int KEY_SIZE = 2048;
 	private Key publicKey;
 	private Key privateKey;
 	private Base64.Encoder encoder;

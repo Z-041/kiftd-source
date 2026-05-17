@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.lang.ref.Cleaner;
 
 import javax.swing.JButton;
 import javax.swing.JDialog;
@@ -71,10 +72,30 @@ public class FSViewer extends KiftdDynamicWindow {
 
 	private static String previewDirName = "preview";// 用于预览的文件导出文件夹名，该文件夹将被创建在文件系统目录内
 
+	private static final Cleaner CLEANER = Cleaner.create();
+
+	private static class WorkerCleanup implements Runnable {
+		private final ExecutorService workerRef;
+
+		WorkerCleanup(ExecutorService workerRef) {
+			this.workerRef = workerRef;
+		}
+
+		@Override
+		public void run() {
+			if (workerRef != null && !workerRef.isShutdown()) {
+				workerRef.shutdown();
+			}
+		}
+	}
+
+	private final Cleaner.Cleanable cleanable;
+
 	// 资源加载
 	private FSViewer() throws SQLException {
 		setUIFont();
 		worker = Executors.newSingleThreadExecutor();
+		this.cleanable = CLEANER.register(this, new WorkerCleanup(worker));
 		window = new JDialog(ServerUIModule.window, "kiftd-ROOT");
 		window.setSize(750, 450);
 		window.setDefaultCloseOperation(1);
@@ -600,12 +621,6 @@ public class FSViewer extends KiftdDynamicWindow {
 			backToParentFolder.setEnabled(true);
 			homeBtn.setEnabled(true);
 		}
-	}
-
-	@Override
-	protected void finalize() throws Throwable {
-		super.finalize();
-		worker.shutdown();
 	}
 
 }

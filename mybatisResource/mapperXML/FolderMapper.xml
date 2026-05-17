@@ -41,7 +41,7 @@
 		SELECT * FROM FOLDER WHERE folder_parent =
 		#{parentId,jdbcType=VARCHAR} AND
 		folder_name =
-		#{folderName,jdbcType=VARCHAR}
+		#{folderName,jdbcType=VARCHAR} LIMIT 0,2147483647
 	</select>
 
 	<insert id="insertNewFolder" parameterType="kohgylw.kiftd.server.model.Folder">

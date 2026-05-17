@@ -107,7 +107,8 @@ public class FileSystemManager {
 			countFoldersByParentFolderId = c
 					.prepareStatement("SELECT count(folder_id) FROM FOLDER WHERE folder_parent = ?");
 			countNodesByExtendStoreIndex = c.prepareStatement("SELECT count(file_id) FROM FILE WHERE file_path LIKE ?");
-			selectNodesByExtendStoreIndex = c.prepareStatement("SELECT * FROM FILE WHERE file_path LIKE ?");
+			selectNodesByExtendStoreIndex = c.prepareStatement("SELECT * FROM FILE WHERE file_path LIKE ? LIMIT 0,"
+					+ MAX_FOLDERS_OR_FILES_LIMIT);
 		} catch (SQLException e) {
 			Printer.instance.print("错误：出现未知错误，文件系统解析失败，无法浏览文件。");
 		}

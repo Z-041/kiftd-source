@@ -12,8 +12,8 @@ import java.nio.charset.CharsetEncoder;
 import java.util.HashSet;
 import java.util.Set;
 
-import javax.annotation.Resource;
-import javax.servlet.http.*;
+import jakarta.annotation.Resource;
+import jakarta.servlet.http.*;
 import kohgylw.kiftd.server.util.*;
 import kohgylw.kiftd.server.enumeration.VCLevel;
 import kohgylw.kiftd.server.pojo.*;
@@ -91,7 +91,9 @@ public class AccountServiceImpl implements AccountService {
 				}
 			}
 			if (ConfigureReader.instance().checkAccountPwd(accountId, info.getAccountPwd())) {
-				session.setAttribute("ACCOUNT", (Object) accountId);
+				session.invalidate();
+				HttpSession newSession = request.getSession(true);
+				newSession.setAttribute("ACCOUNT", (Object) accountId);
 				// 如果该账户输入正确且是一个被关注的账户，则解除该账户的关注，释放空间
 				if (!ConfigureReader.instance().getVCLevel().equals(VCLevel.Close)) {
 					synchronized (focusAccount) {
@@ -269,7 +271,9 @@ public class AccountServiceImpl implements AccountService {
 							&& ios8859_1Encoder.canEncode(password)) {
 						if (ConfigureReader.instance().createNewAccount(account, password)) {
 							lu.writeSignUpEvent(request, account, password);
-							session.setAttribute("ACCOUNT", account);
+							session.invalidate();
+							HttpSession newSession = request.getSession(true);
+							newSession.setAttribute("ACCOUNT", account);
 							return "success";
 						} else {
 							return "cannotsignup";

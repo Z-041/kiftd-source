@@ -1,0 +1,38 @@
+# Maven 构建输出目录
+target/
+
+# 打包生成的 JAR 文件
+Cloudflow-*.jar
+
+# 运行时文件系统数据（含 H2 数据库）
+filesystem/
+
+# 服务器配置文件（含管理员密码等敏感信息）
+conf/
+
+# Eclipse IDE 配置（个人工作区设置）
+.settings/
+.classpath
+.project
+
+# Grahpify 知识图谱缓存（自动生成的 AST 分析缓存）
+graphify-out/
+
+# 构建过程生成的资源副本
+src/main/resources/
+
+# 待编译/合并的源文件（已发布 min/压缩版本）
+webContext/css/img/
+webContext/css/src/
+webContext/img/
+webContext/js/src/
+webContext/quickview/src/
+
+# 日志文件
+*.log
+
+# Windows 缩略图缓存
+Thumbs.db
+
+# macOS 元数据文件
+.DS_Store

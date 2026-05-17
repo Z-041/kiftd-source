@@ -1,9 +1,9 @@
 package kohgylw.kiftd.server.filter;
 
-import javax.servlet.annotation.*;
-import javax.servlet.*;
+import jakarta.servlet.annotation.*;
+import jakarta.servlet.*;
 import kohgylw.kiftd.server.util.*;
-import javax.servlet.http.*;
+import jakarta.servlet.http.*;
 
 import org.springframework.core.annotation.Order;
 

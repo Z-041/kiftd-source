@@ -1,13 +1,13 @@
 package kohgylw.kiftd.server.controller;
 
 import org.springframework.stereotype.*;
-import javax.annotation.*;
+import jakarta.annotation.*;
 
 import kohgylw.kiftd.server.service.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.*;
 
-import javax.servlet.http.*;
+import jakarta.servlet.http.*;
 
 /**
  * 

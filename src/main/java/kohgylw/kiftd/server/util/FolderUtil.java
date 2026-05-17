@@ -1,7 +1,7 @@
 package kohgylw.kiftd.server.util;
 
 import org.springframework.stereotype.*;
-import javax.annotation.*;
+import jakarta.annotation.*;
 
 import kohgylw.kiftd.server.enumeration.AccountAuth;
 import kohgylw.kiftd.server.exception.FoldersTotalOutOfLimitException;

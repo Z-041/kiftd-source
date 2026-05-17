@@ -1,6 +1,6 @@
 package kohgylw.kiftd.server.listener;
 
-import javax.servlet.annotation.*;
+import jakarta.servlet.annotation.*;
 
 import org.springframework.context.ApplicationContext;
 import org.springframework.web.context.support.WebApplicationContextUtils;
@@ -15,7 +15,7 @@ import java.nio.file.WatchService;
 import java.util.ArrayList;
 import java.util.List;
 
-import javax.servlet.*;
+import jakarta.servlet.*;
 
 import kohgylw.kiftd.printer.Printer;
 import kohgylw.kiftd.server.mapper.FolderMapper;

@@ -12,14 +12,12 @@ import kohgylw.kiftd.server.webdav.KiftdWebDAVServlet;
 
 import java.io.*;
 
-import javax.servlet.*;
+import jakarta.servlet.*;
 
-import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.web.server.WebServerFactoryCustomizer;
 import org.springframework.boot.web.servlet.*;
 import org.springframework.boot.web.servlet.server.ConfigurableServletWebServerFactory;
 import org.springframework.context.annotation.*;
-import org.springframework.util.unit.DataSize;
 
 /**
  * 
@@ -31,7 +29,7 @@ import org.springframework.util.unit.DataSize;
  * @author 青阳龙野(kohgylw)
  * @version 1.0
  */
-@AutoConfiguration
+@Configuration
 @ComponentScan({ "kohgylw.kiftd.server.controller", "kohgylw.kiftd.server.service.impl", "kohgylw.kiftd.server.util",
 		"kohgylw.kiftd.server.webdav.util" })
 @ServletComponentScan({ "kohgylw.kiftd.server.listener", "kohgylw.kiftd.server.filter" })
@@ -60,10 +58,7 @@ public class MVC extends ResourceHttpRequestHandler implements WebMvcConfigurer 
 	// 生成上传管理器，用于接收/缓存上传文件
 	@Bean
 	public MultipartConfigElement multipartConfigElement() {
-		final MultipartConfigFactory factory = new MultipartConfigFactory();
-		factory.setMaxFileSize(DataSize.ofBytes(-1L));
-		factory.setLocation(ConfigureReader.instance().getTemporaryfilePath());
-		return factory.createMultipartConfig();
+		return new MultipartConfigElement(ConfigureReader.instance().getTemporaryfilePath());
 	}
 
 	// 生成Gson实例，用于服务Json序列化和反序列化

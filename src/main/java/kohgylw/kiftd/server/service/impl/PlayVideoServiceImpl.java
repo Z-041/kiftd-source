@@ -9,8 +9,8 @@ import kohgylw.kiftd.server.mapper.*;
 
 import java.io.File;
 
-import javax.annotation.*;
-import javax.servlet.http.*;
+import jakarta.annotation.*;
+import jakarta.servlet.http.*;
 import kohgylw.kiftd.server.model.*;
 import kohgylw.kiftd.server.pojo.VideoInfo;
 import kohgylw.kiftd.printer.Printer;

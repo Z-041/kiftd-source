@@ -6,7 +6,7 @@ import org.springframework.stereotype.*;
 import kohgylw.kiftd.printer.Printer;
 import kohgylw.kiftd.server.enumeration.AccountAuth;
 import kohgylw.kiftd.server.mapper.*;
-import javax.annotation.*;
+import jakarta.annotation.*;
 import org.springframework.web.multipart.*;
 import java.io.*;
 import java.nio.file.DirectoryStream;

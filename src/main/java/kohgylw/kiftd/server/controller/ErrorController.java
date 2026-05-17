@@ -1,6 +1,6 @@
 package kohgylw.kiftd.server.controller;
 
-import javax.annotation.*;
+import jakarta.annotation.*;
 import kohgylw.kiftd.server.util.*;
 import kohgylw.kiftd.printer.*;
 import org.springframework.web.bind.annotation.*;

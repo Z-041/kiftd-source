@@ -59,7 +59,7 @@ public class SettingWindow extends KiftdDynamicWindow {
 	private SettingWindow() {
 		setUIFont();// 全局字体设置
 		// 窗口主体相关设置
-		(SettingWindow.window = new JDialog(ServerUIModule.window, "kiftd-设置")).setModal(true);
+		(SettingWindow.window = new JDialog(ServerUIModule.window, "Cloudflow-设置")).setModal(true);
 		SettingWindow.window.setSize(420, 425);
 		SettingWindow.window.setLocation(150, 150);
 		SettingWindow.window.setDefaultCloseOperation(1);

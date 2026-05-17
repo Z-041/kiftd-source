@@ -1,14 +1,15 @@
 package kohgylw.kiftd.server.util;
 
 import org.springframework.stereotype.*;
-import javax.annotation.*;
+import jakarta.annotation.*;
 import kohgylw.kiftd.server.mapper.*;
 import kohgylw.kiftd.printer.Printer;
 import kohgylw.kiftd.server.enumeration.*;
-import javax.servlet.http.*;
+import jakarta.servlet.http.*;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.lang.ref.Cleaner;
 
 import kohgylw.kiftd.server.model.*;
 
@@ -45,10 +46,38 @@ public class LogUtil {
 	private String sep = "";
 	private String logs = "";
 
+	private static final Cleaner CLEANER = Cleaner.create();
+
+	private static class LogUtilCleanup implements Runnable {
+		private final FileWriter writerRef;
+		private final ExecutorService threadPoolRef;
+
+		LogUtilCleanup(FileWriter writerRef, ExecutorService threadPoolRef) {
+			this.writerRef = writerRef;
+			this.threadPoolRef = threadPoolRef;
+		}
+
+		@Override
+		public void run() {
+			if (writerRef != null) {
+				try {
+					writerRef.close();
+				} catch (IOException e) {
+				}
+			}
+			if (threadPoolRef != null && !threadPoolRef.isShutdown()) {
+				threadPoolRef.shutdown();
+			}
+		}
+	}
+
+	private final Cleaner.Cleanable cleanable;
+
 	public LogUtil() {
 		sep = File.separator;
 		logs = ConfigureReader.instance().getPath() + sep + "logs";
 		writerThread = Executors.newSingleThreadExecutor();
+		this.cleanable = CLEANER.register(this, new LogUtilCleanup(writer, writerThread));
 		File l = new File(logs);
 		if (!l.exists()) {
 			l.mkdir();
@@ -507,15 +536,6 @@ public class LogUtil {
 				writeToLog("Event", content);
 			});
 		}
-	}
-
-	@Override
-	protected void finalize() throws Throwable {
-		super.finalize();
-		if (writer != null) {
-			writer.close();
-		}
-		writerThread.shutdown();
 	}
 
 }

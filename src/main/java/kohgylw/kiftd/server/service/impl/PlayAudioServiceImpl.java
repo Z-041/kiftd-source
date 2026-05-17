@@ -6,8 +6,8 @@ import org.springframework.stereotype.*;
 import com.google.gson.Gson;
 
 import kohgylw.kiftd.server.mapper.*;
-import javax.annotation.*;
-import javax.servlet.http.*;
+import jakarta.annotation.*;
+import jakarta.servlet.http.*;
 import kohgylw.kiftd.server.pojo.*;
 import kohgylw.kiftd.server.enumeration.*;
 import java.util.*;

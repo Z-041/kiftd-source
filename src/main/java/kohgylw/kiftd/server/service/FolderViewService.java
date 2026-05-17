@@ -1,6 +1,6 @@
 package kohgylw.kiftd.server.service;
 
-import javax.servlet.http.*;
+import jakarta.servlet.http.*;
 
 /**
  * 

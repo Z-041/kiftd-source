@@ -13,6 +13,8 @@ import org.apache.catalina.connector.Connector;
 import org.apache.coyote.http11.Http11NioProtocol;
 import org.apache.tomcat.util.descriptor.web.SecurityCollection;
 import org.apache.tomcat.util.descriptor.web.SecurityConstraint;
+import org.apache.tomcat.util.net.SSLHostConfig;
+import org.apache.tomcat.util.net.SSLHostConfigCertificate;
 import org.springframework.boot.*;
 import org.springframework.http.*;
 import org.springframework.boot.web.embedded.tomcat.TomcatServletWebServerFactory;
@@ -173,11 +175,16 @@ public class KiftdCtl {
 		// 配置针对Https的支持
 		connector.setScheme("https");// 设置请求协议头
 		connector.setPort(ConfigureReader.instance().getHttpsPort());// 设置https请求端口
+		connector.setSecure(true);
 		Http11NioProtocol protocol = (Http11NioProtocol) connector.getProtocolHandler();
 		protocol.setSSLEnabled(true);// 开启SSL加密通信
-		protocol.setKeystoreFile(ConfigureReader.instance().getHttpsKeyFile());// 设置证书文件
-		protocol.setKeystoreType(ConfigureReader.instance().getHttpsKeyType());// 设置加密类别（PKCS12/JKS）
-		protocol.setKeystorePass(ConfigureReader.instance().getHttpsKeyPass());// 设置证书密码
+		SSLHostConfig sslHostConfig = new SSLHostConfig();
+		SSLHostConfigCertificate certificate = new SSLHostConfigCertificate(sslHostConfig, SSLHostConfigCertificate.Type.UNDEFINED);
+		certificate.setCertificateKeystoreFile(ConfigureReader.instance().getHttpsKeyFile());
+		certificate.setCertificateKeystoreType(ConfigureReader.instance().getHttpsKeyType());
+		certificate.setCertificateKeystorePassword(ConfigureReader.instance().getHttpsKeyPass());
+		sslHostConfig.addCertificate(certificate);
+		protocol.addSslHostConfig(sslHostConfig);
 		return connector;
 	}
 }

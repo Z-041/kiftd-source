@@ -1,7 +1,7 @@
 package kohgylw.kiftd.server.configation;
 
 import javax.sql.*;
-import org.springframework.jdbc.datasource.*;
+import com.zaxxer.hikari.*;
 import kohgylw.kiftd.server.util.*;
 import org.springframework.context.annotation.*;
 import org.mybatis.spring.*;
@@ -27,12 +27,17 @@ public class DataAccess {
 
 	@Bean
 	public DataSource dataSource() {
-		final DriverManagerDataSource ds = new DriverManagerDataSource();
-		ds.setDriverClassName(ConfigureReader.instance().getFileNodePathDriver());
-		ds.setUrl(ConfigureReader.instance().getFileNodePathURL());
-		ds.setUsername(ConfigureReader.instance().getFileNodePathUserName());
-		ds.setPassword(ConfigureReader.instance().getFileNodePathPassWord());
-		return (DataSource) ds;
+		final HikariConfig config = new HikariConfig();
+		config.setDriverClassName(ConfigureReader.instance().getFileNodePathDriver());
+		config.setJdbcUrl(ConfigureReader.instance().getFileNodePathURL());
+		config.setUsername(ConfigureReader.instance().getFileNodePathUserName());
+		config.setPassword(ConfigureReader.instance().getFileNodePathPassWord());
+		config.setMaximumPoolSize(20);
+		config.setMinimumIdle(5);
+		config.setConnectionTimeout(30000);
+		config.setIdleTimeout(600000);
+		config.setMaxLifetime(1800000);
+		return new HikariDataSource(config);
 	}
 
 	@Bean(name = { "sqlSessionFactory" })

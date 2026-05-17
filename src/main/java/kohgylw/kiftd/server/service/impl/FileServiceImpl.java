@@ -4,7 +4,7 @@ import kohgylw.kiftd.server.service.*;
 
 import org.springframework.stereotype.*;
 import kohgylw.kiftd.server.mapper.*;
-import javax.annotation.*;
+import jakarta.annotation.*;
 import kohgylw.kiftd.server.enumeration.*;
 import kohgylw.kiftd.server.exception.FoldersTotalOutOfLimitException;
 import kohgylw.kiftd.server.listener.ServerInitListener;
@@ -14,7 +14,7 @@ import kohgylw.kiftd.server.pojo.CheckUploadFilesRespons;
 
 import org.springframework.web.multipart.*;
 
-import javax.servlet.http.*;
+import jakarta.servlet.http.*;
 import java.io.*;
 
 import kohgylw.kiftd.server.util.*;

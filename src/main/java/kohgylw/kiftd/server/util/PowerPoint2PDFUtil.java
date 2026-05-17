@@ -12,10 +12,12 @@ import java.io.OutputStream;
 import java.util.Arrays;
 import java.util.List;
 
-import org.apache.poi.hslf.model.Slide;
-import org.apache.poi.hslf.model.TextRun;
-import org.apache.poi.hslf.usermodel.RichTextRun;
-import org.apache.poi.hslf.usermodel.SlideShow;
+import org.apache.poi.hslf.usermodel.HSLFShape;
+import org.apache.poi.hslf.usermodel.HSLFSlide;
+import org.apache.poi.hslf.usermodel.HSLFSlideShow;
+import org.apache.poi.hslf.usermodel.HSLFTextParagraph;
+import org.apache.poi.hslf.usermodel.HSLFTextRun;
+import org.apache.poi.hslf.usermodel.HSLFTextShape;
 import org.apache.poi.xslf.usermodel.XMLSlideShow;
 import org.apache.poi.xslf.usermodel.XSLFShape;
 import org.apache.poi.xslf.usermodel.XSLFSlide;
@@ -69,23 +71,27 @@ public class PowerPoint2PDFUtil {
 		Image slideImage = null;
 		BufferedImage img = null;
 		if (type.equals(PowerPointType.PPT)) {
-			SlideShow ppt = new SlideShow(in);
+			HSLFSlideShow ppt = new HSLFSlideShow(in);
 			in.close();
 			pgsize = ppt.getPageSize();
-			Slide slide[] = ppt.getSlides();
+			List<HSLFSlide> slides = ppt.getSlides();
 			pdfDocument.setPageSize(new Rectangle((float) pgsize.getWidth(), (float) pgsize.getHeight()));
 			pdfWriter.open();
 			pdfDocument.open();
-			for (int i = 0; i < slide.length; i++) {
-				TextRun[] truns = slide[i].getTextRuns();
-				for (int k = 0; k < truns.length; k++) {
-					RichTextRun[] rtruns = truns[k].getRichTextRuns();
-					for (int l = 0; l < rtruns.length; l++) {
-						if(Arrays.asList(GraphicsEnvironment.getLocalGraphicsEnvironment().getAvailableFontFamilyNames()).contains(rtruns[l].getFontName())) {
-							continue;
+			for (HSLFSlide slide : slides) {
+				for (HSLFShape shape : slide.getShapes()) {
+					if (shape instanceof HSLFTextShape) {
+						HSLFTextShape textShape = (HSLFTextShape) shape;
+						List<HSLFTextParagraph> paragraphs = textShape.getTextParagraphs();
+						for (HSLFTextParagraph p : paragraphs) {
+							for (HSLFTextRun run : p.getTextRuns()) {
+								if(Arrays.asList(GraphicsEnvironment.getLocalGraphicsEnvironment().getAvailableFontFamilyNames()).contains(run.getFontFamily())) {
+									continue;
+								}
+								run.setFontIndex(1);
+								run.setFontFamily("WenQuanYi Zen Hei");
+							}
 						}
-						rtruns[l].setFontIndex(1);
-						rtruns[l].setFontName("WenQuanYi Zen Hei");
 					}
 				}
 
@@ -96,7 +102,7 @@ public class PowerPoint2PDFUtil {
 
 				graphics.setPaint(Color.white);
 				graphics.fill(new Rectangle2D.Float(0, 0, pgsize.width, pgsize.height));
-				slide[i].draw(graphics);
+				slide.draw(graphics);
 				graphics.getPaint();
 				slideImage = Image.getInstance(img, null);
 				table.addCell(new PdfPCell(slideImage, true));
