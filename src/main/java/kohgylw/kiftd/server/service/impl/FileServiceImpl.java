@@ -181,7 +181,7 @@ public class FileServiceImpl extends RangeFileStreamWriter implements FileServic
 		}
 		// 检查是否存在同名文件。不存在：直接存入新节点；存在：检查repeType代表的上传类型：覆盖、跳过、保留两者。
 		final List<Node> nodes = this.fm.queryByParentFolderId(folderId);
-		if (nodes.parallelStream().anyMatch((e) -> e.getFileName().equals(originalFileName))) {
+		if (nodes.stream().anyMatch((e) -> e.getFileName().equals(originalFileName))) {
 			// 针对存在同名文件的操作
 			if (repeType != null) {
 				switch (repeType) {
@@ -335,7 +335,7 @@ public class FileServiceImpl extends RangeFileStreamWriter implements FileServic
 		}
 		if (!file.getFileName().equals(newFileName)) {
 			// 不允许重名
-			if (fm.queryBySomeFolder(fileId).parallelStream().anyMatch((e) -> e.getFileName().equals(newFileName))) {
+			if (fm.queryBySomeFolder(fileId).stream().anyMatch((e) -> e.getFileName().equals(newFileName))) {
 				return "nameOccupied";
 			}
 			// 更新文件名
@@ -514,7 +514,7 @@ public class FileServiceImpl extends RangeFileStreamWriter implements FileServic
 		Folder f = flm.queryById(fid);
 		if (ConfigureReader.instance().accessFolder(f, account)) {
 			try {
-				idList.addAll(Arrays.asList(fm.queryByParentFolderId(fid).parallelStream().map((e) -> e.getFileId())
+				idList.addAll(Arrays.asList(fm.queryByParentFolderId(fid).stream().map((e) -> e.getFileId())
 						.toArray(String[]::new)));
 				List<Folder> cFolders = flm.queryByParentId(fid);
 				for (Folder cFolder : cFolders) {
@@ -600,7 +600,7 @@ public class FileServiceImpl extends RangeFileStreamWriter implements FileServic
 				// 记录操作者IP地址
 				String ip = idg.getIpAddr(request);
 				// 执行文件移动操作
-				if (fm.queryByParentFolderId(locationpath).parallelStream()
+				if (fm.queryByParentFolderId(locationpath).stream()
 						.anyMatch((e) -> e.getFileName().equals(node.getFileName()))) {
 					// 如果节点存在冲突，但又未声明对应的处理方法，则执行失败
 					if (optMap.get(id) == null) {
@@ -615,7 +615,7 @@ public class FileServiceImpl extends RangeFileStreamWriter implements FileServic
 							return NO_AUTHORIZED;// 无删除权限不能执行
 						}
 						// 得到冲突节点
-						Node n = fm.queryByParentFolderId(locationpath).parallelStream()
+						Node n = fm.queryByParentFolderId(locationpath).stream()
 								.filter((e) -> e.getFileName().equals(node.getFileName())).findFirst().get();
 						if (n.getFileId().equals(node.getFileId())) {
 							// 如果冲突节点就是原节点自身，则直接跳过，且无需记录日志（因为操作无效）
@@ -737,7 +737,7 @@ public class FileServiceImpl extends RangeFileStreamWriter implements FileServic
 				}
 				// 对于非复制操作，还必须确保移动目标不在被移动文件夹的内部，否则移动后就永远无法访问它了
 				if (!isCopy) {
-					if (fid.equals(locationpath) || fu.getParentList(locationpath).parallelStream()
+					if (fid.equals(locationpath) || fu.getParentList(locationpath).stream()
 							.anyMatch((e) -> e.getFolderId().equals(folder.getFolderId()))) {
 						return ERROR_PARAMETER;
 					}
@@ -746,7 +746,7 @@ public class FileServiceImpl extends RangeFileStreamWriter implements FileServic
 				String originPath = fu.getFolderPath(folder);
 				String ip = idg.getIpAddr(request);
 				// 判断目标文件夹内是否有文件夹与待移入文件夹冲突？
-				if (flm.queryByParentId(locationpath).parallelStream()
+				if (flm.queryByParentId(locationpath).stream()
 						.anyMatch((e) -> e.getFolderName().equals(folder.getFolderName()))) {
 					// 存在冲突，则根据声明的措施进行处理
 					if (optMap.get(fid) == null) {
@@ -760,7 +760,7 @@ public class FileServiceImpl extends RangeFileStreamWriter implements FileServic
 							return NO_AUTHORIZED;
 						}
 						// 获得冲突的文件夹
-						Folder f = flm.queryByParentId(locationpath).parallelStream()
+						Folder f = flm.queryByParentId(locationpath).stream()
 								.filter((e) -> e.getFolderName().equals(folder.getFolderName())).findFirst().get();
 						// 先删除冲突文件夹的节点
 						if (flm.deleteById(f.getFolderId()) > 0) {
@@ -951,7 +951,7 @@ public class FileServiceImpl extends RangeFileStreamWriter implements FileServic
 							fu.getAllFoldersId(node.getFileParentFolder()))) {
 						return NO_AUTHORIZED;// 只能复制不能剪切
 					}
-					if (fm.queryByParentFolderId(locationpath).parallelStream()
+					if (fm.queryByParentFolderId(locationpath).stream()
 							.anyMatch((e) -> e.getFileName().equals(node.getFileName()))) {
 						repeNodes.add(node);// 与目标文件夹里的某个文件夹重名？重名列表加一
 					} else {
@@ -985,12 +985,12 @@ public class FileServiceImpl extends RangeFileStreamWriter implements FileServic
 					// 对于文件夹而言，在移动模式下还要检查是否将一个文件夹移动到自己内部了，避免死循环
 					// 复制模式无需检查这一项
 					if (!isCopy) {
-						if (folderId.equals(locationpath) || fu.getParentList(locationpath).parallelStream()
+						if (folderId.equals(locationpath) || fu.getParentList(locationpath).stream()
 								.anyMatch((e) -> e.getFolderId().equals(folder.getFolderId()))) {
 							return "CANT_MOVE_TO_INSIDE:" + folder.getFolderName();
 						}
 					}
-					if (flm.queryByParentId(locationpath).parallelStream()
+					if (flm.queryByParentId(locationpath).stream()
 							.anyMatch((e) -> e.getFolderName().equals(folder.getFolderName()))) {
 						repeFolders.add(folder);// 与目标文件夹里的某个文件夹重名？重名列表加一
 					} else {
@@ -1177,7 +1177,7 @@ public class FileServiceImpl extends RangeFileStreamWriter implements FileServic
 		String fileName = getFileNameFormPath(originalFileName);
 		// 检查是否存在同名文件。存在则直接失败（确保上传的文件夹内容的原始性）
 		final List<Node> files = this.fm.queryByParentFolderId(folderId);
-		if (files.parallelStream().anyMatch((e) -> e.getFileName().equals(fileName))) {
+		if (files.stream().anyMatch((e) -> e.getFileName().equals(fileName))) {
 			return UPLOADERROR;
 		}
 		// 判断上传数目是否超过限额

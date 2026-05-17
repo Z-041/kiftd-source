@@ -48,7 +48,7 @@ public class FolderUtil {
 
 	public List<String> getAllFoldersId(final String fid) {
 		List<String> idList = new ArrayList<>();
-		idList.addAll(getParentList(fid).parallelStream().map((e) -> e.getFolderId()).collect(Collectors.toList()));
+		idList.addAll(getParentList(fid).stream().map((e) -> e.getFolderId()).collect(Collectors.toList()));
 		idList.add(fid);
 		return idList;
 	}
@@ -98,7 +98,7 @@ public class FolderUtil {
 		if (!ConfigureReader.instance().accessFolder(parentFolder, account)) {
 			return null;
 		}
-		if (fm.queryByParentId(parentId).parallelStream().anyMatch((e) -> e.getFolderName().equals(folderName))) {
+		if (fm.queryByParentId(parentId).stream().anyMatch((e) -> e.getFolderName().equals(folderName))) {
 			return null;
 		}
 		if (fm.countByParentId(parentId) >= FileNodeUtil.MAXIMUM_NUM_OF_SINGLE_FOLDER) {
@@ -164,7 +164,7 @@ public class FolderUtil {
 	 * @return boolean 是否有效，若返回false则进行了数据回滚
 	 */
 	public boolean isValidFolder(Folder f) {
-		Folder[] repeats = fm.queryByParentId(f.getFolderParent()).parallelStream()
+		Folder[] repeats = fm.queryByParentId(f.getFolderParent()).stream()
 				.filter((e) -> e.getFolderName().equals(f.getFolderName())).toArray(Folder[]::new);
 		if (fm.queryById(f.getFolderParent()) == null || repeats.length > 1) {
 			// 如果插入后存在：

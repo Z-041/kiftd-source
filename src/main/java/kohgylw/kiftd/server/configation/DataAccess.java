@@ -41,7 +41,6 @@ public class DataAccess {
 	}
 
 	@Bean(name = { "sqlSessionFactory" })
-	@Autowired
 	public SqlSessionFactoryBean sqlSessionFactoryBean(final DataSource ds) {
 		final SqlSessionFactoryBean ssf = new SqlSessionFactoryBean();
 		ssf.setDataSource(ds);

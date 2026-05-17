@@ -431,7 +431,7 @@ public class FileBlockUtil {
 			} else {// 存放于扩展存储区
 				short index = Short.parseShort(f.getFilePath().substring(0, f.getFilePath().indexOf('_')));
 				// 根据编号查到对应的扩展存储区路径，进而获取对应的文件块
-				file = new File(ConfigureReader.instance().getExtendStores().parallelStream()
+				file = new File(ConfigureReader.instance().getExtendStores().stream()
 						.filter((e) -> e.getIndex() == index).findAny().get().getPath(), f.getFilePath());
 			}
 			if (file.isFile()) {
@@ -553,7 +553,7 @@ public class FileBlockUtil {
 				int i = 1;
 				String flname = fo.getFolderName();
 				while (true) {
-					if (folders.parallelStream().filter((e) -> e.getFolderName().equals(fo.getFolderName()))
+					if (folders.stream().filter((e) -> e.getFolderName().equals(fo.getFolderName()))
 							.count() > 1) {
 						fo.setFolderName(flname + " " + i);
 						i++;
@@ -568,8 +568,8 @@ public class FileBlockUtil {
 					int i = 1;
 					String fname = node.getFileName();
 					while (true) {
-						if (nodes.parallelStream().filter((e) -> e.getFileName().equals(node.getFileName())).count() > 1
-								|| folders.parallelStream().filter((e) -> e.getFolderName().equals(node.getFileName()))
+						if (nodes.stream().filter((e) -> e.getFileName().equals(node.getFileName())).count() > 1
+								|| folders.stream().filter((e) -> e.getFolderName().equals(node.getFileName()))
 										.count() > 0) {
 							if (fname.indexOf(".") >= 0) {
 								node.setFileName(fname.substring(0, fname.lastIndexOf(".")) + " (" + i + ")"
@@ -621,7 +621,7 @@ public class FileBlockUtil {
 				int i = 1;
 				String flname = fo.getFolderName();
 				while (true) {
-					if (folders.parallelStream().filter((e) -> e.getFolderName().equals(fo.getFolderName()))
+					if (folders.stream().filter((e) -> e.getFolderName().equals(fo.getFolderName()))
 							.count() > 1) {
 						fo.setFolderName(flname + " " + i);
 						i++;
@@ -636,8 +636,8 @@ public class FileBlockUtil {
 				int i = 1;
 				String fname = node.getFileName();
 				while (true) {
-					if (nodes.parallelStream().filter((e) -> e.getFileName().equals(node.getFileName())).count() > 1
-							|| folders.parallelStream().filter((e) -> e.getFolderName().equals(node.getFileName()))
+					if (nodes.stream().filter((e) -> e.getFileName().equals(node.getFileName())).count() > 1
+							|| folders.stream().filter((e) -> e.getFolderName().equals(node.getFileName()))
 									.count() > 0) {
 						if (fname.indexOf(".") >= 0) {
 							node.setFileName(fname.substring(0, fname.lastIndexOf(".")) + " (" + i + ")"
@@ -743,7 +743,7 @@ public class FileBlockUtil {
 	 * @return boolean 通过检查则返回true，否则返回false并删除此节点
 	 */
 	public boolean isValidNode(Node n) {
-		Node[] repeats = fm.queryByParentFolderId(n.getFileParentFolder()).parallelStream()
+		Node[] repeats = fm.queryByParentFolderId(n.getFileParentFolder()).stream()
 				.filter((e) -> e.getFileName().equals(n.getFileName())).toArray(Node[]::new);
 		if (flm.queryById(n.getFileParentFolder()) == null || repeats.length > 1) {
 			// 如果插入后存在：

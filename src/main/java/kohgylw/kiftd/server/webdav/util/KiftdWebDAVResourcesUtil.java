@@ -105,8 +105,8 @@ public class KiftdWebDAVResourcesUtil {
 				// 之后，再在这个文件夹中查找到文件
 				String fileName = path.substring(path.lastIndexOf('/') + 1);
 				try {
-					Node file = nm.queryByParentFolderId(parentFolder.getFolderId()).parallelStream()
-							.filter((e) -> e.getFileName().equals(fileName)).findAny().get();
+					Node file = nm.queryByParentFolderId(parentFolder.getFolderId()).stream()
+							.filter((e) -> e.getFileName().equals(fileName)).findFirst().orElse(null);
 					return file;
 				} catch (NoSuchElementException e2) {
 					// 如果没找到则说明逻辑路径有错，返回null即可
@@ -162,10 +162,10 @@ public class KiftdWebDAVResourcesUtil {
 			// 如果存在，它本身是否可以被访问？
 			if (ConfigureReader.instance().accessFolder(f, account)) {
 				// 如果可以，那么它之下有多少文件夹可以被访问？
-				String[] folders = fm.queryByParentId(f.getFolderId()).parallelStream()
+				String[] folders = fm.queryByParentId(f.getFolderId()).stream()
 						.filter((e) -> ConfigureReader.instance().accessFolder(e, account))
 						.map((e) -> e.getFolderName() + "/").toArray(String[]::new);
-				String[] files = nm.queryByParentFolderId(f.getFolderId()).parallelStream().map((e) -> e.getFileName())
+				String[] files = nm.queryByParentFolderId(f.getFolderId()).stream().map((e) -> e.getFileName())
 						.toArray(String[]::new);
 				String[] result = new String[folders.length + files.length];
 				System.arraycopy(folders, 0, result, 0, folders.length);

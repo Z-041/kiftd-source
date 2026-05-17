@@ -423,15 +423,15 @@ public class ConsoleRunner {
 				String parent = "null";
 				for (int i = 1; i < paths.length - 1; i++) {
 					String folderName = paths[i];
-					parent = FileSystemManager.getInstance().getFoldersByParentId(parent).parallelStream()
+					parent = FileSystemManager.getInstance().getFoldersByParentId(parent).stream()
 							.filter((e) -> e.getFolderName().equals(folderName)).findFirst().get().getFolderId();
 				}
 				String fname = paths[paths.length - 1];
 				List<Folder> folders = FileSystemManager.getInstance().getFoldersByParentId(parent);
-				if (path.endsWith("/") || folders.parallelStream().anyMatch((e) -> e.getFolderName().equals(fname))) {
-					return folders.parallelStream().filter((e) -> e.getFolderName().equals(fname)).findFirst().get();
+				if (path.endsWith("/") || folders.stream().anyMatch((e) -> e.getFolderName().equals(fname))) {
+					return folders.stream().filter((e) -> e.getFolderName().equals(fname)).findFirst().get();
 				} else {
-					return FileSystemManager.getInstance().selectNodesByFolderId(parent).parallelStream()
+					return FileSystemManager.getInstance().selectNodesByFolderId(parent).stream()
 							.filter((e) -> e.getFileName().equals(fname)).findFirst().get();
 				}
 			} catch (Exception e) {
@@ -464,7 +464,7 @@ public class ConsoleRunner {
 			return null;
 		}
 		try {
-			return currentFolder.getFolders().parallelStream().filter((e) -> e.getFolderName().equals(fname))
+			return currentFolder.getFolders().stream().filter((e) -> e.getFolderName().equals(fname))
 					.findFirst().get().getFolderId();
 		} catch (NoSuchElementException e) {
 
@@ -498,11 +498,11 @@ public class ConsoleRunner {
 			return null;
 		}
 		try {
-			return currentFolder.getFolders().parallelStream().filter((e) -> e.getFolderName().equals(fname))
+			return currentFolder.getFolders().stream().filter((e) -> e.getFolderName().equals(fname))
 					.findFirst().get().getFolderId();
 		} catch (NoSuchElementException e) {
 			try {
-				return currentFolder.getFiles().parallelStream().filter((m) -> m.getFileName().equals(fname))
+				return currentFolder.getFiles().stream().filter((m) -> m.getFileName().equals(fname))
 						.findFirst().get().getFileId();
 			} catch (NoSuchElementException e2) {
 			}
@@ -738,10 +738,10 @@ public class ConsoleRunner {
 				String[] filesId = null;
 				String type = "";
 				if (id.equals(currentFolder.getCurrent().getFolderId())
-						|| currentFolder.getFolders().parallelStream().anyMatch((e) -> e.getFolderId().equals(id))) {
+						|| currentFolder.getFolders().stream().anyMatch((e) -> e.getFolderId().equals(id))) {
 					foldersId = new String[] { id };
 					filesId = new String[] {};
-				} else if (currentFolder.getFiles().parallelStream().anyMatch((e) -> e.getFileId().equals(id))) {
+				} else if (currentFolder.getFiles().stream().anyMatch((e) -> e.getFileId().equals(id))) {
 					foldersId = new String[] {};
 					filesId = new String[] { id };
 				} else {
@@ -831,7 +831,7 @@ public class ConsoleRunner {
 		}
 		String id = getSelectFolderOrFileId(fname);
 		try {
-			if (currentFolder.getFolders().parallelStream().anyMatch((e) -> e.getFolderId().equals(id))) {
+			if (currentFolder.getFolders().stream().anyMatch((e) -> e.getFolderId().equals(id))) {
 				if (confirmOpt("确认要删除该文件夹么？")) {
 					Printer.instance.print("正在删除文件夹，请稍候...");
 					pl = new ProgressListener();
@@ -847,7 +847,7 @@ public class ConsoleRunner {
 				}
 				return;
 			}
-			if (currentFolder.getFiles().parallelStream().anyMatch((e) -> e.getFileId().equals(id))) {
+			if (currentFolder.getFiles().stream().anyMatch((e) -> e.getFileId().equals(id))) {
 				if (confirmOpt("确认要删除该文件么？")) {
 					Printer.instance.print("正在删除文件，请稍候...");
 					pl = new ProgressListener();

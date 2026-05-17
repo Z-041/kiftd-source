@@ -53,7 +53,7 @@ public class FolderServiceImpl implements FolderService {
 				fu.getAllFoldersId(parentId))) {
 			return "noAuthorized";
 		}
-		if (fm.queryByParentId(parentId).parallelStream().anyMatch((e) -> e.getFolderName().equals(folderName))) {
+		if (fm.queryByParentId(parentId).stream().anyMatch((e) -> e.getFolderName().equals(folderName))) {
 			return "nameOccupied";
 		}
 		if (fm.countByParentId(parentId) >= FileNodeUtil.MAXIMUM_NUM_OF_SINGLE_FOLDER) {
@@ -185,8 +185,8 @@ public class FolderServiceImpl implements FolderService {
 					fm.updateFolderConstraintById(map);
 					fu.changeChildFolderConstraint(folderId, ifc);
 					if (!folder.getFolderName().equals(newName)) {
-						if (fm.queryByParentId(parentFolder.getFolderId()).parallelStream()
-								.anyMatch((e) -> e.getFolderName().equals(newName))) {
+						if (fm.queryByParentId(parentFolder.getFolderId()).stream()
+							.anyMatch((e) -> e.getFolderName().equals(newName))) {
 							return "nameOccupied";
 						}
 						Map<String, String> map2 = new HashMap<String, String>();
@@ -224,7 +224,7 @@ public class FolderServiceImpl implements FolderService {
 				fu.getAllFoldersId(parentId)) || !ConfigureReader.instance().accessFolder(p, account)) {
 			return "deleteError";
 		}
-		final Folder[] repeatFolders = this.fm.queryByParentId(parentId).parallelStream()
+		final Folder[] repeatFolders = this.fm.queryByParentId(parentId).stream()
 				.filter((f) -> f.getFolderName()
 						.equals(new String(folderName.getBytes(Charset.forName("UTF-8")), Charset.forName("UTF-8"))))
 				.toArray(Folder[]::new);
@@ -274,7 +274,7 @@ public class FolderServiceImpl implements FolderService {
 			return gson.toJson(cnfbnr);
 		}
 		Folder f = new Folder();
-		if (fm.queryByParentId(parentId).parallelStream().anyMatch((e) -> e.getFolderName().equals(folderName))) {
+		if (fm.queryByParentId(parentId).stream().anyMatch((e) -> e.getFolderName().equals(folderName))) {
 			f.setFolderName(FileNodeUtil.getNewFolderName(folderName, fm.queryByParentId(parentId)));
 		} else {
 			cnfbnr.setResult("error");

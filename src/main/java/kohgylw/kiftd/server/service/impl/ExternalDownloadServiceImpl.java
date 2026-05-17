@@ -59,7 +59,7 @@ public class ExternalDownloadServiceImpl extends RangeFileStreamWriter implement
 						// 查找该资源是否已经生成了一个凭证，如有，则直接使用，否则，新生成一个加入到凭证表。
 						this.lu.writeShareFileURLEvent(request, f);
 						if (downloadKeyMap.containsValue(f.getFileId())) {
-							Entry<String, String> k = downloadKeyMap.entrySet().parallelStream()
+							Entry<String, String> k = downloadKeyMap.entrySet().stream()
 									.filter((e) -> e.getValue().equals(f.getFileId())).findFirst().get();
 							return k.getKey();
 						} else {

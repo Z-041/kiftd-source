@@ -226,10 +226,10 @@ public class FileSystemManager {
 		List<Folder> folders = getFoldersByParentId(folderId);
 		List<Node> nodes = selectNodesByFolderId(folderId);
 		for (File f : files) {
-			if (f.isDirectory() && folders.parallelStream().anyMatch((e) -> e.getFolderName()
+			if (f.isDirectory() && folders.stream().anyMatch((e) -> e.getFolderName()
 					.equals(new String(f.getName().getBytes(Charset.forName("UTF-8")), Charset.forName("UTF-8"))))) {
 				result++;
-			} else if (nodes.parallelStream().anyMatch((e) -> e.getFileName()
+			} else if (nodes.stream().anyMatch((e) -> e.getFileName()
 					.equals(new String(f.getName().getBytes(Charset.forName("UTF-8")), Charset.forName("UTF-8"))))) {
 				result++;
 			}
@@ -264,10 +264,10 @@ public class FileSystemManager {
 				nodes.add(selectNodeById(nid));
 			}
 			for (File f : path.listFiles()) {
-				if (f.isDirectory() && folders.parallelStream().anyMatch((e) -> e.getFolderName().equals(
+				if (f.isDirectory() && folders.stream().anyMatch((e) -> e.getFolderName().equals(
 						new String(f.getName().getBytes(Charset.forName("UTF-8")), Charset.forName("UTF-8"))))) {
 					c++;
-				} else if (nodes.parallelStream().anyMatch((e) -> e.getFileName().equals(
+				} else if (nodes.stream().anyMatch((e) -> e.getFileName().equals(
 						new String(f.getName().getBytes(Charset.forName("UTF-8")), Charset.forName("UTF-8"))))) {
 					c++;
 				}
@@ -429,12 +429,12 @@ public class FileSystemManager {
 			long size = f.length();// 获得文件体积
 			// 检查目标文件夹内是否有重名文件？
 			List<Node> nodes = selectNodesByFolderId(folderId);
-			if (nodes.parallelStream().anyMatch((e) -> e.getFileName().equals(name))) {
+			if (nodes.stream().anyMatch((e) -> e.getFileName().equals(name))) {
 				// 有？那么是覆盖还是保留两者？
 				switch (type) {
 				case COVER:
 					// 覆盖
-					Node node = nodes.parallelStream().filter((e) -> e.getFileName().equals(f.getName())).findFirst()
+					Node node = nodes.stream().filter((e) -> e.getFileName().equals(f.getName())).findFirst()
 							.get();// 得到重名节点，删除它
 					deleteFile(node.getFileId());
 					if (selectNodeById(node.getFileId()) != null) {
@@ -510,10 +510,10 @@ public class FileSystemManager {
 			Folder parent = selectFolderById(folderId);
 			List<Folder> folders = getFoldersByParentId(folderId);
 			Folder folder = null;
-			if (folders.parallelStream().anyMatch((e) -> e.getFolderName().equals(name))) {
+			if (folders.stream().anyMatch((e) -> e.getFolderName().equals(name))) {
 				switch (type) {
 				case COVER:
-					folder = folders.parallelStream().filter((e) -> e.getFolderName().equals(name)).findFirst().get();
+					folder = folders.stream().filter((e) -> e.getFolderName().equals(name)).findFirst().get();
 					break;
 				case BOTH:
 					newName = FileNodeUtil.getNewFolderName(name, folders);
@@ -838,7 +838,7 @@ public class FileSystemManager {
 			} else {// 存放于扩展存储区
 				short index = Short.parseShort(f.getFilePath().substring(0, f.getFilePath().indexOf('_')));
 				// 根据编号查到对应的扩展存储区路径，进而获取对应的文件块
-				file = new File(ConfigureReader.instance().getExtendStores().parallelStream()
+				file = new File(ConfigureReader.instance().getExtendStores().stream()
 						.filter((e) -> e.getIndex() == index).findAny().get().getPath(), f.getFilePath());
 			}
 			if (file.isFile()) {

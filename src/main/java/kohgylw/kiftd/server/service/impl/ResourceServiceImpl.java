@@ -259,6 +259,9 @@ public class ResourceServiceImpl implements ResourceService {
 			randomFile.seek(start);
 			while (needSize > 0) {
 				int len = randomFile.read(buffer);
+				if (len <= 0) {
+					break;
+				}
 				if (needSize < buffer.length) {
 					out.write(buffer, 0, (int) needSize);
 				} else {

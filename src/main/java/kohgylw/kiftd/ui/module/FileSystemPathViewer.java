@@ -97,15 +97,15 @@ public class FileSystemPathViewer extends KiftdDynamicWindow {
 				if (addExtendStoresChooer.showOpenDialog(null) == JFileChooser.APPROVE_OPTION) {
 					File newExtendStores = addExtendStoresChooer.getSelectedFile();
 					if (newExtendStores.isDirectory() && newExtendStores.canRead() && newExtendStores.canWrite()) {
-						if (SettingWindow.extendStores.parallelStream()
-								.anyMatch(f -> f.getPath().equals(newExtendStores))) {
+						if (SettingWindow.extendStores.stream()
+						.anyMatch((f) -> f.getPath().equals(newExtendStores))) {
 							JOptionPane.showMessageDialog(window, "错误：该路径已被其他扩展存储区占用。", "错误",
 									JOptionPane.WARNING_MESSAGE);
 						} else {
 							String pathName = newExtendStores.getAbsolutePath();
 							if (encoder.canEncode(pathName) && pathName.indexOf("\\:") < 0
 									&& pathName.indexOf("\\\\") < 0) {
-								Short[] indexs = SettingWindow.extendStores.parallelStream().map((s) -> s.getIndex())
+								Short[] indexs = SettingWindow.extendStores.stream().map((s) -> s.getIndex())
 										.toArray(Short[]::new);
 								short index = 1;
 								while (Arrays.binarySearch(indexs, index) >= 0) {
@@ -150,8 +150,8 @@ public class FileSystemPathViewer extends KiftdDynamicWindow {
 					if (mainFileSystemPathChooer.showOpenDialog(null) == JFileChooser.APPROVE_OPTION) {
 						File selectPath = mainFileSystemPathChooer.getSelectedFile();
 						if (selectPath.isDirectory() && selectPath.canWrite() && selectPath.canRead()) {
-							if (!SettingWindow.extendStores.parallelStream()
-									.anyMatch(f -> f.getPath().equals(selectPath))) {
+							if (!SettingWindow.extendStores.stream()
+									.anyMatch((f) -> f.getPath().equals(selectPath))) {
 								String pathName = selectPath.getAbsolutePath();
 								if (new File(ConfigureReader.instance().getInitFileSystemPath()).equals(selectPath)
 										|| (encoder.canEncode(pathName) && pathName.indexOf("\\:") < 0
@@ -184,8 +184,8 @@ public class FileSystemPathViewer extends KiftdDynamicWindow {
 								disableAllButtons();
 								File selectPath = mainFileSystemPathChooer.getSelectedFile();
 								if (selectPath.isDirectory() && selectPath.canWrite() && selectPath.canRead()) {
-									if (fsp.getPath().equals(selectPath) || !SettingWindow.extendStores.parallelStream()
-											.anyMatch(f -> f.getPath().equals(selectPath))) {
+									if (fsp.getPath().equals(selectPath) || !SettingWindow.extendStores.stream()
+											.anyMatch((f) -> f.getPath().equals(selectPath))) {
 										String pathName = selectPath.getAbsolutePath();
 										if (encoder.canEncode(pathName) && pathName.indexOf("\\:") < 0
 												&& pathName.indexOf("\\\\") < 0) {

@@ -1602,13 +1602,13 @@ public class KiftdWebDAVServlet extends HttpServlet {
 			// 如果是文件，先检查目标文件夹内是否有重名文件？
 			kohgylw.kiftd.server.model.Node originNode = resource.getNode();
 			String originPath = fbu.getNodePath(originNode);
-			if (nm.queryByParentFolderId(targetFolder.getFolderId()).parallelStream()
+			if (nm.queryByParentFolderId(targetFolder.getFolderId()).stream()
 					.anyMatch((e) -> e.getFileName().equals(newName))) {
 				// 若有，是否执行覆盖？
 				if (overwrite) {
 					// 执行覆盖，获得冲突节点
 					kohgylw.kiftd.server.model.Node conflictNode = nm.queryByParentFolderId(targetFolder.getFolderId())
-							.parallelStream().filter((e) -> e.getFileName().equals(newName)).findFirst().get();
+							.stream().filter((e) -> e.getFileName().equals(newName)).findFirst().get();
 					if (conflictNode.getFileId().equals(originNode.getFileId())) {
 						// 如果要覆盖的节点就是原节点本身，则直接认为操作成功，也无需记录日志（因为操作无效）
 						resp.setStatus(WebdavStatus.SC_NO_CONTENT);
@@ -1712,19 +1712,19 @@ public class KiftdWebDAVServlet extends HttpServlet {
 			if (!isCopy) {
 				// 对于移动模式，还需要检查是否把文件夹移动到自己内部
 				if (originFolder.getFolderId().equals(targetFolder.getFolderId())
-						|| fu.getParentList(targetFolder.getFolderId()).parallelStream()
+						|| fu.getParentList(targetFolder.getFolderId()).stream()
 								.anyMatch((e) -> e.getFolderId().equals(originFolder.getFolderId()))) {
 					resp.setStatus(WebdavStatus.SC_FORBIDDEN);
 					return;
 				}
 			}
 			// 再检查目标文件夹内是否有重名文件夹？
-			if (fm.queryByParentId(targetFolder.getFolderId()).parallelStream()
+			if (fm.queryByParentId(targetFolder.getFolderId()).stream()
 					.anyMatch((e) -> e.getFolderName().equals(newName))) {
 				// 若有，是否覆盖？
 				if (overwrite) {
 					// 与移动文件的规则类似
-					Folder conflictFolder = fm.queryByParentId(targetFolder.getFolderId()).parallelStream()
+					Folder conflictFolder = fm.queryByParentId(targetFolder.getFolderId()).stream()
 							.filter((e) -> e.getFolderName().equals(newName)).findFirst().get();
 					if (fm.deleteById(conflictFolder.getFolderId()) > 0) {
 						if (isCopy) {

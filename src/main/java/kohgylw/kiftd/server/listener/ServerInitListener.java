@@ -81,6 +81,13 @@ public class ServerInitListener implements ServletContextListener {
 	public void contextDestroyed(final ServletContextEvent sce) {
 		// 停止服务器主目录改动的动态监听
 		run = false;
+		continueCheck = false;
+		if (pathWatchServiceThread != null) {
+			pathWatchServiceThread.interrupt();
+		}
+		if (cleanInnvalidAddedAuthThread != null) {
+			cleanInnvalidAddedAuthThread.interrupt();
+		}
 		// 清理临时文件
 		Printer.instance.print("清理临时文件...");
 		fbu.initTempDir();
@@ -94,23 +101,23 @@ public class ServerInitListener implements ServletContextListener {
 			// 对服务器主目录进行监听，主要监听文件改动事件
 			Path confPath = Paths.get(ConfigureReader.instance().getPath());
 			pathWatchServiceThread = new Thread(() -> {
-				try {
+				try (WatchService ws = confPath.getFileSystem().newWatchService()) {
+					confPath.register(ws, StandardWatchEventKinds.ENTRY_MODIFY,
+							StandardWatchEventKinds.ENTRY_DELETE, StandardWatchEventKinds.ENTRY_CREATE);
 					while (run) {
-						WatchService ws = confPath.getFileSystem().newWatchService();
-						confPath.register(ws, StandardWatchEventKinds.ENTRY_MODIFY,
-								StandardWatchEventKinds.ENTRY_DELETE, StandardWatchEventKinds.ENTRY_CREATE);
 						WatchKey wk = ws.take();
 						List<WatchEvent<?>> es = wk.pollEvents();
 						for (WatchEvent<?> we : es) {
-							// 根据改动文件的不同调用不同的处理方法
 							switch (we.context().toString()) {
 							case NoticeUtil.NOTICE_FILE_NAME:
-								nu.loadNotice();// 更新公告文件
+								nu.loadNotice();
 								break;
-
 							default:
 								break;
 							}
+						}
+						if (!wk.reset()) {
+							break;
 						}
 					}
 				} catch (Exception e) {
