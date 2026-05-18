@@ -8,7 +8,6 @@ import com.google.gson.GsonBuilder;
 import org.springframework.web.servlet.config.annotation.*;
 
 import kohgylw.kiftd.server.util.*;
-import kohgylw.kiftd.server.webdav.KiftdWebDAVServlet;
 
 import java.io.*;
 
@@ -30,8 +29,7 @@ import org.springframework.context.annotation.*;
  * @version 1.0
  */
 @Configuration
-@ComponentScan({ "kohgylw.kiftd.server.controller", "kohgylw.kiftd.server.service.impl", "kohgylw.kiftd.server.util",
-		"kohgylw.kiftd.server.webdav.util" })
+@ComponentScan({ "kohgylw.kiftd.server.controller", "kohgylw.kiftd.server.service.impl", "kohgylw.kiftd.server.util" })
 @ServletComponentScan({ "kohgylw.kiftd.server.listener", "kohgylw.kiftd.server.filter" })
 @Import({ DataAccess.class })
 public class MVC extends ResourceHttpRequestHandler implements WebMvcConfigurer {
@@ -67,9 +65,5 @@ public class MVC extends ResourceHttpRequestHandler implements WebMvcConfigurer 
 		return new GsonBuilder().create();
 	}
 
-	// 注册WebDAV处理Servlet
-	@Bean
-	public ServletRegistrationBean<Servlet> WebDAVServlet() {
-		return new ServletRegistrationBean<Servlet>(new KiftdWebDAVServlet(), "/dav/*");
-	}
+
 }

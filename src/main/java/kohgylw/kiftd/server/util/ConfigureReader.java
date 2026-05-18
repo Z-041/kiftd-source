@@ -85,8 +85,7 @@ public class ConfigureReader {
 	public static final int INVALID_IP_XFF_SETTING = 13;
 	public static final int INVALID_FFMPEG_SETTING = 14;
 	public static final int INVALID_MUST_LOGIN_SETTING = 15;
-	public static final int INVALID_WEBDAV_SETTING = 16;
-	public static final int INVALID_RECYCLE_BIN_PATH = 17;
+	public static final int INVALID_RECYCLE_BIN_PATH = 16;
 	public static final int LEGAL_PROPERTIES = 0;
 	private static Thread accountPropertiesUpdateDaemonThread;
 	private String timeZone;
@@ -101,7 +100,6 @@ public class ConfigureReader {
 	private boolean ipXFFAnalysis = true;// 是否启用XFF解析
 	private boolean enableFFMPEG = true;// 是否启用视频播放的在线解码功能
 	private boolean enableDownloadByZip = true;// 是否启用“打包下载”功能
-	private boolean enableWebDAV = true;// 是否启用WebDAV功能
 	private String recycleBinPath;// 删除留档路径
 
 	private static final int MAX_EXTENDSTORES_NUM = 255;// 扩展存储区最大数目
@@ -859,23 +857,6 @@ public class ConfigureReader {
 		} else {
 			enableDownloadByZip = true;
 		}
-		// 是否启用WebDAV功能
-		String webdavConf = serverp.getProperty("webdav");
-		if (webdavConf != null) {
-			switch (webdavConf) {
-			case "disable":
-				enableWebDAV = false;
-				break;
-			case "enable":
-				enableWebDAV = true;
-				break;
-			default:
-				Printer.instance.print("错误：WebDAV功能的配置不正确（只能设置为“disable”或“enable”），请重新检查。");
-				return INVALID_WEBDAV_SETTING;
-			}
-		} else {
-			enableWebDAV = true;
-		}
 		// 检查是否设置了删除留档的路径
 		String recycleBinPathProp = this.serverp.getProperty("recyclebin");
 		if (recycleBinPathProp != null && !recycleBinPathProp.isEmpty()) {
@@ -1576,20 +1557,6 @@ public class ConfigureReader {
 	 */
 	public boolean isEnableDownloadByZip() {
 		return enableDownloadByZip;
-	}
-
-	/**
-	 * 
-	 * <h2>判断用户是否启用了WebDAV功能</h2>
-	 * <p>
-	 * 判断用户是否启用了WebDAV功能。
-	 * </p>
-	 * 
-	 * @author 青阳龙野(kohgylw)
-	 * @return boolean 启用则返回true，否则返回false
-	 */
-	public boolean isEnableWebDAV() {
-		return enableWebDAV;
 	}
 
 	/**

@@ -16,7 +16,7 @@ import java.io.*;
  * 该过滤器用于拦截所有HTTP请求，根据系统配置的登录要求（mustLogin）检查用户是否已登录。
  * 对于需要登录但未登录的请求，根据请求类型进行不同处理：
  * HTML页面请求将被重定向至登录页，AJAX请求将返回"mustLogin"标识，
- * 而外部链接控制器、验证码获取和WebDAV等特定路径则直接放行。
+ * 而外部链接控制器、验证码获取等特定路径则直接放行。
  * </p>
  *
  * @author 青阳龙野(kohgylw)
@@ -41,9 +41,8 @@ public class MastLoginFilter implements Filter {
 		final HttpSession session = hsq.getSession();
 		if (url.startsWith("/externalLinksController") || url.startsWith("//externalLinksController")
 				|| url.startsWith("/homeController/getNewVerCode.do")
-				|| url.startsWith("//homeController/getNewVerCode.do") || url.startsWith("/dav")
-				|| url.startsWith("//dav")) {
-			chain.doFilter(request, response);// 对于外部链接控制器、验证码和WebDAV的请求直接放行。
+				|| url.startsWith("//homeController/getNewVerCode.do")) {
+			chain.doFilter(request, response);// 对于外部链接控制器、验证码的请求直接放行。
 			return;
 		}
 		// 如果是无需登录的请求，那么直接放行（如果访问者已经登录，那么会被后面的过滤器重定向至主页，此处无需处理）
