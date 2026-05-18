@@ -28,4 +28,9 @@ public class WelcomeController {
 		return "redirect:/home.html";
 	}
 
+	@RequestMapping({ "/favicon.ico" })
+	public String favicon() {
+		return "redirect:/img/icon.png";
+	}
+
 }
