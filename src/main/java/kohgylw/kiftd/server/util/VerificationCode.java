@@ -41,7 +41,9 @@ public class VerificationCode {
 
 	public void saveTo(String path) throws IOException {
 		File f = new File(path);
-		ImageIO.write(image, "jpeg", new FileOutputStream(f));
+		try (FileOutputStream fos = new FileOutputStream(f)) {
+			ImageIO.write(image, "jpeg", fos);
+		}
 	}
 	
 	public void saveTo(OutputStream out) throws IOException {

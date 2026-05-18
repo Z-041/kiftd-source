@@ -75,13 +75,15 @@ public class VideoTranscodeUtil {
 			File f = fbu.getFileFromBlocks(n);
 			if (vtt != null) {
 				if ("FIN".equals(vtt.getProgress())) {
-					String md5 = DigestUtils.md5Hex(new FileInputStream(f));
-					if (md5.equals(vtt.getMd5())
-							&& new File(ConfigureReader.instance().getTemporaryfilePath(), vtt.getOutputFileName())
-									.isFile()) {
-						return vtt.getProgress();
-					} else {
-						videoTranscodeThreads.remove(fId);
+					try (FileInputStream fis = new FileInputStream(f)) {
+						String md5 = DigestUtils.md5Hex(fis);
+						if (md5.equals(vtt.getMd5())
+								&& new File(ConfigureReader.instance().getTemporaryfilePath(), vtt.getOutputFileName())
+										.isFile()) {
+							return vtt.getProgress();
+						} else {
+							videoTranscodeThreads.remove(fId);
+						}
 					}
 				} else {
 					return vtt.getProgress();

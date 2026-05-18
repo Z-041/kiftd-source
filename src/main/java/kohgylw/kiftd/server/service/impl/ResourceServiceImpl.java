@@ -339,22 +339,22 @@ public class ResourceServiceImpl implements ResourceService {
 							response.setHeader("Last-Modified", ServerTimeUtil.getLastModifiedFormBlock(file));
 							response.setHeader("Cache-Control", "max-age=" + RESOURCE_CACHE_MAX_AGE);
 							// 执行转换并写出输出流
-							try {
-								String inputFileEncode = tcg.getTxtCharset(new FileInputStream(file));
-								BufferedReader bufferedReader = new BufferedReader(
+							try (FileInputStream fis = new FileInputStream(file)) {
+								String inputFileEncode = tcg.getTxtCharset(fis);
+								try (BufferedReader bufferedReader = new BufferedReader(
 										new InputStreamReader(new FileInputStream(file), inputFileEncode));
-								BufferedWriter bufferedWriter = new BufferedWriter(
-										new OutputStreamWriter(response.getOutputStream(), "UTF-8"));
-								String line;
-								while ((line = bufferedReader.readLine()) != null) {
-									bufferedWriter.write(line);
-									bufferedWriter.newLine();
+										BufferedWriter bufferedWriter = new BufferedWriter(
+												new OutputStreamWriter(response.getOutputStream(), "UTF-8"))) {
+									String line;
+									while ((line = bufferedReader.readLine()) != null) {
+										bufferedWriter.write(line);
+										bufferedWriter.newLine();
+									}
 								}
-								bufferedWriter.close();
-								bufferedReader.close();
 								this.lu.writeDownloadFileEvent(account, ip, n);
 								return;
 							} catch (IOException e) {
+								lu.writeException(e);
 							} catch (Exception e) {
 								Printer.instance.print(e.getMessage());
 								lu.writeException(e);

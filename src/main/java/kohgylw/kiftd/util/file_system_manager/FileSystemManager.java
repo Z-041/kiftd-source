@@ -741,24 +741,21 @@ public class FileSystemManager {
 			}
 			File block = getFileFormBlocks(node);
 			long size = block.length();
-			FileInputStream in = new FileInputStream(block);
-			FileOutputStream out = new FileOutputStream(target);
-			FileChannel fci = in.getChannel();
-			FileChannel fco = out.getChannel();
-			ByteBuffer buffer = ByteBuffer.allocate(BUFFER_SIZE);
-			int length = 0;
-			long finishLength = 0;
-			while ((length = fci.read(buffer)) != -1 && gono) {
-				buffer.flip();
-				fco.write(buffer);
-				buffer.clear();
-				finishLength += length;
-				per = (int) (((double) finishLength / (double) size) * 100);
+			try (FileInputStream in = new FileInputStream(block);
+					FileOutputStream out = new FileOutputStream(target)) {
+				FileChannel fci = in.getChannel();
+				FileChannel fco = out.getChannel();
+				ByteBuffer buffer = ByteBuffer.allocate(BUFFER_SIZE);
+				int length = 0;
+				long finishLength = 0;
+				while ((length = fci.read(buffer)) != -1 && gono) {
+					buffer.flip();
+					fco.write(buffer);
+					buffer.clear();
+					finishLength += length;
+					per = (int) (((double) finishLength / (double) size) * 100);
+				}
 			}
-			fci.close();
-			fco.close();
-			in.close();
-			out.close();
 			return;
 		}
 		throw new IllegalArgumentException();
@@ -931,22 +928,20 @@ public class FileSystemManager {
 
 	private void transferFile(File f, File target) throws Exception {
 		long size = f.length();
-		FileInputStream fileInputStream = new FileInputStream(f);
-		FileOutputStream fileOutputStream = new FileOutputStream(target);
-		BufferedInputStream in = new BufferedInputStream(fileInputStream);
-		BufferedOutputStream out = new BufferedOutputStream(fileOutputStream);
-		byte[] buffer = new byte[BUFFER_SIZE];
-		int length = 0;
-		long finishLength = 0;
-		while ((length = in.read(buffer)) != -1 && gono) {
-			out.write(buffer, 0, length);
-			finishLength += length;
-			per = (int) (((double) finishLength / (double) size) * 100);
+		try (FileInputStream fileInputStream = new FileInputStream(f);
+				FileOutputStream fileOutputStream = new FileOutputStream(target);
+				BufferedInputStream in = new BufferedInputStream(fileInputStream);
+				BufferedOutputStream out = new BufferedOutputStream(fileOutputStream)) {
+			byte[] buffer = new byte[BUFFER_SIZE];
+			int length = 0;
+			long finishLength = 0;
+			while ((length = in.read(buffer)) != -1 && gono) {
+				out.write(buffer, 0, length);
+				finishLength += length;
+				per = (int) (((double) finishLength / (double) size) * 100);
+			}
+			out.flush();
 		}
-		in.close();
-		out.flush();
-		out.close();
-		return;
 	}
 
 	/**

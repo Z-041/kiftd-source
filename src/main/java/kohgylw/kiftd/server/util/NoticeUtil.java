@@ -69,26 +69,24 @@ public class NoticeUtil {
 		File noticeHTML = new File(ConfigureReader.instance().getTemporaryfilePath(), NOTICE_OUTPUT_NAME);// 转化后的输出位置
 		if (noticeMD.isFile() && noticeMD.canRead()) {
 			Printer.instance.print("正在载入公告信息...");
-			try {
-				// 先判断公告信息文件的编码格式
-				String inputFileEncode = tcg.getTxtCharset(new FileInputStream(noticeMD));
-				// 将其转化为HTML格式并保存
-				Parser parser = Parser.builder(options).build();
-				HtmlRenderer renderer = HtmlRenderer.builder(options).build();
-				BufferedReader reader = new BufferedReader(
-						new InputStreamReader(new FileInputStream(noticeMD), inputFileEncode));
-				BufferedWriter writer = new BufferedWriter(
-						new OutputStreamWriter(new FileOutputStream(noticeHTML), "UTF-8"));
-				String line = null;
-				while ((line = reader.readLine()) != null) {
-					String html = renderer.render(parser.parse(line));
-					writer.write(html);
-					writer.newLine();
+			try (FileInputStream fis1 = new FileInputStream(noticeMD)) {
+				String inputFileEncode = tcg.getTxtCharset(fis1);
+				try (FileInputStream fis2 = new FileInputStream(noticeMD);
+						FileOutputStream fos = new FileOutputStream(noticeHTML);
+						BufferedReader reader = new BufferedReader(
+								new InputStreamReader(fis2, inputFileEncode));
+						BufferedWriter writer = new BufferedWriter(
+								new OutputStreamWriter(fos, "UTF-8"))) {
+					Parser parser = Parser.builder(options).build();
+					HtmlRenderer renderer = HtmlRenderer.builder(options).build();
+					String line = null;
+					while ((line = reader.readLine()) != null) {
+						String html = renderer.render(parser.parse(line));
+						writer.write(html);
+						writer.newLine();
+					}
+					writer.flush();
 				}
-				reader.close();
-				writer.flush();
-				writer.close();
-				// 计算md5并保存
 				md5 = DigestUtils.md5Hex(new FileInputStream(noticeMD));
 				Printer.instance.print("公告信息载入完成。");
 				return;

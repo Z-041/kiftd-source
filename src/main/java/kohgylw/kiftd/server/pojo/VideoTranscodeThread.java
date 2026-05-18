@@ -33,8 +33,9 @@ public class VideoTranscodeThread {
 	private String outputFileName;
 
 	public VideoTranscodeThread(File f, EncodingAttributes ea,ProcessLocator fl) throws Exception {
-		// 首先计算MD5值
-		md5 = DigestUtils.md5Hex(new FileInputStream(f));
+		try (FileInputStream fis = new FileInputStream(f)) {
+			md5 = DigestUtils.md5Hex(fis);
+		}
 		progress = "0.0";
 		MultimediaObject mo = new MultimediaObject(f,fl);
 		encoder = new Encoder(fl);

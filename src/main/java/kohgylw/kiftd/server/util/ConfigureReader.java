@@ -135,10 +135,11 @@ public class ConfigureReader {
 		}
 		try {
 			Printer.instance.print("正在载入配置文件...");
-			final FileInputStream serverPropIn = new FileInputStream(serverProp);
-			this.serverp.load(serverPropIn);
-			final FileInputStream accountPropIn = new FileInputStream(accountProp);
-			this.accountp.load(accountPropIn);
+			try (final FileInputStream serverPropIn = new FileInputStream(serverProp);
+					final FileInputStream accountPropIn = new FileInputStream(accountProp)) {
+				this.serverp.load(serverPropIn);
+				this.accountp.load(accountPropIn);
+			}
 			initIPRules();
 			initSignUpRules();
 			Printer.instance.print("配置文件载入完毕。正在检查配置...");
@@ -544,8 +545,8 @@ public class ConfigureReader {
 				this.serverp.setProperty("FS.extend." + es.getIndex(), es.getPath().getAbsolutePath());
 			}
 			if (this.testServerPropertiesAndEffect() == 0) {
-				try {
-					this.serverp.store(new FileOutputStream(this.confdir + SERVER_PROPERTIES_FILE), null);
+				try (FileOutputStream fos = new FileOutputStream(this.confdir + SERVER_PROPERTIES_FILE)) {
+					this.serverp.store(fos, null);
 					Printer.instance.print("配置更新完毕，准备就绪。");
 					return true;
 				} catch (Exception e) {
@@ -889,9 +890,8 @@ public class ConfigureReader {
 		dsp.setProperty("buff.size", DEFAULT_BUFFER_SIZE + "");
 		dsp.setProperty("password.change", DEFAULT_PASSWORD_CHANGE_SETTING);
 		dsp.setProperty("openFileChain", DEFAULT_FILE_CHAIN_SETTING);
-		try {
-			dsp.store(new FileOutputStream(this.confdir + SERVER_PROPERTIES_FILE),
-					"<This is the default kiftd server setting file. >");
+		try (FileOutputStream fos = new FileOutputStream(this.confdir + SERVER_PROPERTIES_FILE)) {
+			dsp.store(fos, "<This is the default kiftd server setting file. >");
 			Printer.instance.print("初始服务器配置文件生成完毕。");
 		} catch (FileNotFoundException e) {
 			Printer.instance.print("错误：无法生成初始服务器配置文件，存储路径不存在。");
@@ -1074,13 +1074,14 @@ public class ConfigureReader {
 								Printer.instance.print("正在更新账户配置信息...");
 								final File accountProp = new File(this.confdir + ACCOUNT_PROPERTIES_FILE);
 								if (accountProp.isFile() && accountProp.canRead()) {
-									final FileInputStream accountPropIn = new FileInputStream(accountProp);
-									synchronized (accountp) {
-										this.accountp.load(accountPropIn);
+									try (final FileInputStream accountPropIn = new FileInputStream(accountProp)) {
+										synchronized (accountp) {
+											this.accountp.load(accountPropIn);
+										}
+										initIPRules();
+										initSignUpRules();
+										Printer.instance.print("账户配置更新完成，已加载最新配置。");
 									}
-									initIPRules();
-									initSignUpRules();
-									Printer.instance.print("账户配置更新完成，已加载最新配置。");
 								} else {
 									accountp.clear();
 									Printer.instance.print("警告：账户配置文件已被删除或无法读取，账户信息已清空。");
