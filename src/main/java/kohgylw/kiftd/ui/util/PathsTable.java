@@ -15,6 +15,18 @@ import javax.swing.table.TableModel;
 
 import kohgylw.kiftd.ui.pojo.FileSystemPath;
 
+/**
+ *
+ * <h2>文件系统路径表格组件</h2>
+ * <p>
+ * 该类继承自JTable，用于在设置窗口中显示和选择文件系统路径列表。
+ * 支持显示主文件系统和扩展存储区扩展存储区的路径信息，包括类型（编号）和绝对路径两列，
+ * 并可根据窗口大小自动调整列宽。
+ * </p>
+ *
+ * @author 青阳龙野(kohgylw)
+ * @version 1.0
+ */
 public class PathsTable extends JTable {
 
 	private static final String[] columns = new String[] { "类型（编号）", "路径" };//表头

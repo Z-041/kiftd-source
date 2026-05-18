@@ -25,6 +25,20 @@ import kohgylw.kiftd.server.util.FolderUtil;
 import kohgylw.kiftd.server.util.LogUtil;
 import kohgylw.kiftd.server.util.RangeFileStreamWriter;
 
+/**
+ *
+ * <h2>永久资源链接服务实现类</h2>
+ * <p>
+ * 该类实现了 FileChainService 接口中定义的永久资源链接相关业务逻辑，
+ * 包括通过加密的永久链接密钥（ckey）获取资源文件，以及根据文件ID生成
+ * 对应的加密链接密钥。该机制使用AES加密算法对文件ID进行加密，生成
+ * 永久有效的资源链接，无需登录即可访问。
+ * </p>
+ *
+ * @author 青阳龙野(kohgylw)
+ * @version 1.0
+ * @see kohgylw.kiftd.server.service.FileChainService
+ */
 @Service
 public class FileChainServiceImpl extends RangeFileStreamWriter implements FileChainService {
 

@@ -9,12 +9,28 @@ import org.springframework.core.annotation.Order;
 
 import java.io.*;
 
+/**
+ *
+ * <h2>登录验证过滤器</h2>
+ * <p>
+ * 该过滤器用于拦截所有HTTP请求，根据系统配置的登录要求（mustLogin）检查用户是否已登录。
+ * 对于需要登录但未登录的请求，根据请求类型进行不同处理：
+ * HTML页面请求将被重定向至登录页，AJAX请求将返回"mustLogin"标识，
+ * 而外部链接控制器、验证码获取和WebDAV等特定路径则直接放行。
+ * </p>
+ *
+ * @author 青阳龙野(kohgylw)
+ * @version 1.0
+ */
 @WebFilter
 @Order(2)
 public class MastLoginFilter implements Filter {
+
+	@Override
 	public void init(final FilterConfig filterConfig) throws ServletException {
 	}
 
+	@Override
 	public void doFilter(final ServletRequest request, final ServletResponse response, final FilterChain chain)
 			throws IOException, ServletException {
 		final ConfigureReader cr = ConfigureReader.instance();
@@ -83,6 +99,8 @@ public class MastLoginFilter implements Filter {
 		}
 	}
 
+	@Override
 	public void destroy() {
 	}
+
 }

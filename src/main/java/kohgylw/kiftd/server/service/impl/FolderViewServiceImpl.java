@@ -14,6 +14,19 @@ import kohgylw.kiftd.server.enumeration.*;
 import kohgylw.kiftd.server.util.*;
 import com.google.gson.*;
 
+/**
+ *
+ * <h2>文件夹视图服务实现类</h2>
+ * <p>
+ * 该类实现了 FolderViewService 接口中定义的文件夹视图相关业务逻辑，
+ * 包括获取文件夹视图JSON数据、搜索视图JSON数据以及分页加载剩余文件夹/文件数据等功能。
+ * 所有操作均会进行访问权限校验，并返回符合前端展示格式的结构化数据。
+ * </p>
+ *
+ * @author 青阳龙野(kohgylw)
+ * @version 1.0
+ * @see kohgylw.kiftd.server.service.FolderViewService
+ */
 @Service
 public class FolderViewServiceImpl implements FolderViewService {
 

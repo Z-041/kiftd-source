@@ -5,19 +5,46 @@ import kohgylw.kiftd.server.util.*;
 import kohgylw.kiftd.printer.*;
 import org.springframework.web.bind.annotation.*;
 
+/**
+ *
+ * <h2>全局异常处理控制器</h2>
+ * <p>
+ * 该控制器使用 @ControllerAdvice 注解捕获整个应用中所有控制器抛出的未处理异常，
+ * 统一进行日志记录、文件块完整性检查以及控制台错误输出。
+ * </p>
+ *
+ * @author 青阳龙野(kohgylw)
+ * @version 1.0
+ */
 @ControllerAdvice
 public class ErrorController {
+
 	@Resource
 	private FileBlockUtil fbu;
+
 	@Resource
 	private LogUtil lu;
 
+	/**
+	 *
+	 * <h2>全局异常处理</h2>
+	 * <p>
+	 * 捕获应用中所有未处理的 Exception 类型异常，执行以下操作：
+	 * <ol>
+	 *   <li>将异常写入运行日志文件</li>
+	 *   <li>检查文件块存储的完整性</li>
+	 *   <li>在控制台输出错误信息</li>
+	 * </ol>
+	 * </p>
+	 *
+	 * @param e Exception 捕获到的异常对象
+	 */
 	@ExceptionHandler({ Exception.class })
 	public void handleException(final Exception e) {
 		this.lu.writeException(e);
 		this.fbu.checkFileBlocks();
 		Printer.instance
-				.print("\u5904\u7406\u8bf7\u6c42\u65f6\u53d1\u751f\u9519\u8bef\uff1a\n\r------\u4fe1\u606f------\n\r"
-						+ e.getMessage() + "\n\r------\u4fe1\u606f------");
+				.print("处理请求时发生错误：\n\r------信息------\n\r"
+						+ e.getMessage() + "\n\r------信息------");
 	}
 }

@@ -22,7 +22,12 @@ import kohgylw.kiftd.server.util.IpAddrGetter;
 /**
  * 
  * <h2>阻止特定IP访问过滤器</h2>
- * <p>该过滤器用于阻止特定IP进行访问，从而保护用户资源。</p>
+ * <p>
+ * 该过滤器用于根据系统配置的IP访问规则，阻止特定IP地址的HTTP请求，
+ * 从而保护服务器资源免受未授权的访问。如果请求的IP不在允许范围内，
+ * 则返回 HTTP 403 Forbidden 状态码。
+ * </p>
+ * 
  * @author 青阳龙野(kohgylw)
  * @version 1.0
  */
@@ -42,14 +47,14 @@ public class IPFilter implements Filter {
 	@Override
 	public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
 			throws IOException, ServletException {
-		if(ConfigureReader.instance().enableIPRule()) {
+		if (ConfigureReader.instance().enableIPRule()) {
 			HttpServletRequest hsr = (HttpServletRequest) request;
-			if(ConfigureReader.instance().filterAccessIP(idg.getIpAddr(hsr))) {
+			if (ConfigureReader.instance().filterAccessIP(idg.getIpAddr(hsr))) {
 				chain.doFilter(request, response);
-			}else {
-				((HttpServletResponse)response).sendError(HttpServletResponse.SC_FORBIDDEN);
+			} else {
+				((HttpServletResponse) response).sendError(HttpServletResponse.SC_FORBIDDEN);
 			}
-		}else {
+		} else {
 			chain.doFilter(request, response);
 		}
 	}

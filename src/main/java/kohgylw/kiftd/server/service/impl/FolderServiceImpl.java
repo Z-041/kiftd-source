@@ -18,6 +18,19 @@ import kohgylw.kiftd.server.util.*;
 import java.nio.charset.Charset;
 import java.util.*;
 
+/**
+ *
+ * <h2>文件夹服务实现类</h2>
+ * <p>
+ * 该类实现了 FolderService 接口中定义的文件夹相关业务逻辑，包括新建文件夹、
+ * 删除文件夹、重命名文件夹、按名称删除文件夹、按名称创建文件夹以及统计文件夹内容等功能。
+ * 所有操作均会进行权限校验和访问控制检查。
+ * </p>
+ *
+ * @author 青阳龙野(kohgylw)
+ * @version 1.0
+ * @see kohgylw.kiftd.server.service.FolderService
+ */
 @Service
 public class FolderServiceImpl implements FolderService {
 

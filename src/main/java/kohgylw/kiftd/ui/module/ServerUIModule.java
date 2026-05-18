@@ -16,6 +16,18 @@ import kohgylw.kiftd.printer.Printer;
 import kohgylw.kiftd.server.util.ConfigureReader;
 import kohgylw.kiftd.ui.callback.*;
 
+/**
+ *
+ * <h2>服务器主界面模块</h2>
+ * <p>
+ * 该类是kiftd服务器的主控制台窗口（Swing GUI），提供服务器启动/停止/重启、
+ * 文件管理、系统设置等操作界面。使用单例模式确保同一时间只有一个控制台实例，
+ * 支持系统托盘图标和后台运行。界面包含状态显示区、功能按钮区和日志输出区。
+ * </p>
+ *
+ * @author 青阳龙野(kohgylw)
+ * @version 1.0
+ */
 public class ServerUIModule extends KiftdDynamicWindow {
 
 	protected static JFrame window;

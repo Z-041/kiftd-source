@@ -5,6 +5,18 @@ import org.springframework.stereotype.*;
 import java.util.*;
 import java.text.*;
 
+/**
+ *
+ * <h2>服务器信息服务实现类</h2>
+ * <p>
+ * 该类实现了 ServerInfoService 接口中定义的服务器信息查询业务逻辑，
+ * 包括获取服务器操作系统名称和当前服务器时间等功能。
+ * </p>
+ *
+ * @author 青阳龙野(kohgylw)
+ * @version 1.0
+ * @see kohgylw.kiftd.server.service.ServerInfoService
+ */
 @Service
 public class ServerInfoServiceImpl implements ServerInfoService
 {

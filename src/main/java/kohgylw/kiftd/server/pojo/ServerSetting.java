@@ -4,6 +4,19 @@ import java.util.List;
 
 import kohgylw.kiftd.server.enumeration.*;
 
+/**
+ *
+ * <h2>服务器设置封装类</h2>
+ * <p>
+ * 该类用于封装kiftd服务器的全部配置信息，包括登录要求、验证码等级、
+ * 缓冲区大小、日志级别、端口号、文件存储路径、永久资源链接开关、
+ * 修改密码功能和扩展存储路径列表等。这些设置从配置文件中读取，
+ * 并通过ConfigureReader加载后供系统各模块使用。
+ * </p>
+ *
+ * @author 青阳龙野(kohgylw)
+ * @version 1.0
+ */
 public class ServerSetting {
 	private boolean mustLogin;
 	private VCLevel vc;

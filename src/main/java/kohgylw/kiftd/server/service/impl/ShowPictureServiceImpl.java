@@ -43,7 +43,7 @@ public class ShowPictureServiceImpl implements ShowPictureService {
 	 * 
 	 * @author 青阳龙野(kohgylw)
 	 * @param request
-	 *            HttpServletRequest 请求对象，需包含fileId字段（需预览的图片ID）。
+	 *                HttpServletRequest 请求对象，需包含fileId字段（需预览的图片ID）。
 	 * @return PictureViewList 预览列表封装对象，详见其注释。
 	 * @see kohgylw.kiftd.server.pojo.PictureViewList
 	 */
@@ -63,30 +63,31 @@ public class ShowPictureServiceImpl implements ShowPictureService {
 						final String fileName = n.getFileName();
 						final String suffix = fileName.substring(fileName.lastIndexOf(".") + 1).toLowerCase();
 						switch (suffix) {
-						case "jpg":
-						case "jpeg":
-						case "bmp":
-						case "png":
-						case "gif":
-							// 对于静态图片格式，如果体积超过2 MB则要进行压缩处理，以加快加载速度
-							PictureInfo pi = new PictureInfo();
-							pi.setFileName(fileName);
-							int pSize = Integer.parseInt(n.getFileSize());
-							File block = fbu.getFileFromBlocks(n);
-							long lastModified = block.lastModified();// 尽可能地让覆盖后的图片也能立即更新
-							if (pSize > 1 && !suffix.equals("gif")) {
-								pi.setUrl("homeController/showCondensedPicture.do?fileId=" + n.getFileId()
-										+ "&lastmodified=" + lastModified);
-							} else {
-								pi.setUrl("resourceController/getResource/" + n.getFileId() + "?lastmodified=" + lastModified);
-							}
-							pictureViewList.add(pi);
-							if (n.getFileId().equals(fileId)) {
-								index = pictureViewList.size() - 1;// 如果是正要预览的图片，记录位置
-							}
-							break;
-						default:
-							break;
+							case "jpg":
+							case "jpeg":
+							case "bmp":
+							case "png":
+							case "gif":
+								// 对于静态图片格式，如果体积超过2 MB则要进行压缩处理，以加快加载速度
+								PictureInfo pi = new PictureInfo();
+								pi.setFileName(fileName);
+								int pSize = Integer.parseInt(n.getFileSize());
+								File block = fbu.getFileFromBlocks(n);
+								long lastModified = block.lastModified();// 尽可能地让覆盖后的图片也能立即更新
+								if (pSize > 1 && !suffix.equals("gif")) {
+									pi.setUrl("homeController/showCondensedPicture.do?fileId=" + n.getFileId()
+											+ "&lastmodified=" + lastModified);
+								} else {
+									pi.setUrl("resourceController/getResource/" + n.getFileId() + "?lastmodified="
+											+ lastModified);
+								}
+								pictureViewList.add(pi);
+								if (n.getFileId().equals(fileId)) {
+									index = pictureViewList.size() - 1;// 如果是正要预览的图片，记录位置
+								}
+								break;
+							default:
+								break;
 						}
 					}
 					final PictureViewList pvl = new PictureViewList();
@@ -109,7 +110,7 @@ public class ShowPictureServiceImpl implements ShowPictureService {
 
 	@Override
 	public void getCondensedPicture(final HttpServletRequest request, final HttpServletResponse response) {
-		// TODO 自动生成的方法存根
+
 		String fileId = request.getParameter("fileId");
 		String account = (String) request.getSession().getAttribute("ACCOUNT");
 		if (fileId != null) {

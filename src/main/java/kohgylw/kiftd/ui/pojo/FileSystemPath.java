@@ -2,6 +2,17 @@ package kohgylw.kiftd.ui.pojo;
 
 import java.io.File;
 
+/**
+ *
+ * <h2>文件系统路径封装类</h2>
+ * <p>
+ * 该类用于封装文件系统存储路径的信息，包括路径类型（主文件系统/扩展存储区）、
+ * 对应的File对象和索引编号。用于在设置窗口中展示和选择文件存储位置。
+ * </p>
+ *
+ * @author 青阳龙野(kohgylw)
+ * @version 1.0
+ */
 public class FileSystemPath {
 	
 	public static final String MAIN_FILE_SYSTEM_NAME="主文件系统";

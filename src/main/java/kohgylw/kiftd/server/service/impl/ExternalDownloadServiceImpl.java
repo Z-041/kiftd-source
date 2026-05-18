@@ -24,10 +24,24 @@ import kohgylw.kiftd.server.util.FolderUtil;
 import kohgylw.kiftd.server.util.LogUtil;
 import kohgylw.kiftd.server.util.RangeFileStreamWriter;
 
+/**
+ *
+ * <h2>外部下载服务实现类</h2>
+ * <p>
+ * 该类实现了 ExternalDownloadService 接口中定义的外部下载相关业务逻辑，
+ * 包括生成下载凭证（download key）以及通过凭证进行文件下载等功能。
+ * 外部下载机制允许用户生成一个临时的下载链接分享给其他用户，
+ * 无需登录即可通过该凭证下载指定的文件资源。
+ * </p>
+ *
+ * @author 青阳龙野(kohgylw)
+ * @version 1.0
+ * @see kohgylw.kiftd.server.service.ExternalDownloadService
+ */
 @Service
 public class ExternalDownloadServiceImpl extends RangeFileStreamWriter implements ExternalDownloadService {
 
-	private static Map<String, String> downloadKeyMap = new HashMap<>();// 凭证池，用于存储生成好的下载凭证
+	private static Map<String, String> downloadKeyMap = new HashMap<>();
 	private static final String CONTENT_TYPE = "application/octet-stream";
 
 	@Resource

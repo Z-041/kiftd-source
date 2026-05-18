@@ -3,6 +3,18 @@ package kohgylw.kiftd.printer;
 import kohgylw.kiftd.ui.module.*;
 import kohgylw.kiftd.server.util.*;
 
+/**
+ *
+ * <h2>信息输出工具</h2>
+ * <p>
+ * 该类负责将服务器运行信息输出到控制台或UI界面的日志区域。
+ * 支持两种输出模式：UI模式（输出到图形界面的日志文本框）和命令行模式（输出到标准控制台）。
+ * 使用单例模式，通过静态方法init()初始化后全局使用。
+ * </p>
+ *
+ * @author 青阳龙野(kohgylw)
+ * @version 1.0
+ */
 public class Printer
 {
     public static Printer instance;

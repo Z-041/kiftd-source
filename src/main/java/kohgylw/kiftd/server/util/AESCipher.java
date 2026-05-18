@@ -14,6 +14,18 @@ import javax.crypto.spec.SecretKeySpec;
 
 import org.springframework.stereotype.Component;
 
+/**
+ *
+ * <h2>AES加密解密工具类</h2>
+ * <p>
+ * 该工具类提供基于AES-GCM模式的加密和解密功能，用于生成和管理永久资源链接（FileChain）的加密密钥。
+ * 支持生成256位随机AES密钥、使用密钥加密文件ID生成安全链接，以及解密链接还原文件ID。
+ * 使用GCM（Galois/Counter Mode）认证加密模式，确保数据的机密性和完整性。
+ * </p>
+ *
+ * @author 青阳龙野(kohgylw)
+ * @version 1.0
+ */
 @Component
 public class AESCipher {
 

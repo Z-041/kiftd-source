@@ -2,6 +2,19 @@ package kohgylw.kiftd.server.util;
 
 import java.util.regex.*;
 
+/**
+ *
+ * <h2>文本格式校验工具类</h2>
+ * <p>
+ * 该工具类提供了文件夹名称和文件名的格式校验功能，
+ * 以及字符串中是否包含转义符的检测功能。
+ * 用于确保用户输入的文件/文件夹名称符合文件系统规范，
+ * 避免包含非法字符（如 |、\\、/、*、<、>、\"、?、&、$、: 等）。
+ * </p>
+ *
+ * @author 青阳龙野(kohgylw)
+ * @version 1.0
+ */
 public class TextFormateUtil
 {
     private static TextFormateUtil tfu;

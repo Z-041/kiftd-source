@@ -11,6 +11,19 @@ import java.nio.file.*;
 import java.security.*;
 import java.security.spec.*;
 
+/**
+ *
+ * <h2>RSA密钥对生成与存储工具类</h2>
+ * <p>
+ * 该工具类负责生成和管理RSA非对称加密密钥对（2048位），
+ * 用于前端登录密码的加密传输。密钥对会在首次启动时自动生成，
+ * 并持久化存储至 conf/rsa.key 文件中，以便服务器重启后继续使用。
+ * 公钥会提供给前端用于加密用户密码，私钥用于服务端解密。
+ * </p>
+ *
+ * @author 青阳龙野(kohgylw)
+ * @version 1.0
+ */
 @Component
 public class RSAKeyUtil {
 	private static final int KEY_SIZE = 2048;

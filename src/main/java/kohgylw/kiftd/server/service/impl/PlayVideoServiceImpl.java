@@ -18,6 +18,20 @@ import kohgylw.kiftd.server.enumeration.*;
 import kohgylw.kiftd.server.util.*;
 import ws.schild.jave.MultimediaObject;
 
+/**
+ *
+ * <h2>视频播放服务实现类</h2>
+ * <p>
+ * 该类实现了 PlayVideoService 接口中定义的视频播放相关业务逻辑，
+ * 包括检测视频文件格式、判断是否需要转码处理以及返回视频播放信息等。
+ * 对于非H264编码的MP4文件以及其他视频格式（如MKV、MOV、WebM等），
+ * 如果系统启用了FFmpeg，则会标记为需要转码后再进行播放。
+ * </p>
+ *
+ * @author 青阳龙野(kohgylw)
+ * @version 1.0
+ * @see kohgylw.kiftd.server.service.PlayVideoService
+ */
 @Service
 public class PlayVideoServiceImpl implements PlayVideoService {
 	@Resource

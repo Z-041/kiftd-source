@@ -15,6 +15,20 @@ import ws.schild.jave.process.ProcessLocator;
 import ws.schild.jave.process.ProcessWrapper;
 import ws.schild.jave.process.ffmpeg.FFMPEGProcess;
 
+/**
+ *
+ * <h2>FFmpeg引擎定位器</h2>
+ * <p>
+ * 该类负责定位和管理FFmpeg可执行文件，用于视频转码功能。
+ * 在实例化过程中会根据操作系统自动选择对应的FFmpeg可执行文件，
+ * 并将其复制到临时目录以供JAVE库调用。
+ * 支持自定义FFmpeg可执行文件（放置于程序主目录下），
+ * 也支持使用内置的各平台FFmpeg二进制文件。
+ * </p>
+ *
+ * @author 青阳龙野(kohgylw)
+ * @version 1.0
+ */
 @Component
 public class KiftdFFMPEGLocator implements ProcessLocator {
 

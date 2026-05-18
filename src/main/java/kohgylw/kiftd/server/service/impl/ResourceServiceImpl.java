@@ -36,7 +36,21 @@ import kohgylw.kiftd.server.util.ServerTimeUtil;
 import kohgylw.kiftd.server.util.TxtCharsetGetter;
 import kohgylw.kiftd.server.util.VideoTranscodeUtil;
 
-//资源服务类，所有处理非下载流请求的工作均在此完成
+/**
+ *
+ * <h2>资源服务实现类</h2>
+ * <p>
+ * 该类实现了 ResourceService 接口中定义的资源相关业务逻辑，
+ * 包括获取文件资源（支持断点续传和缓存控制）、视频转码状态查询、
+ * LRC歌词文件以UTF-8编码输出、公告内容获取等功能。
+ * 以及公告MD5值查询等功能。
+ * 所有资源访问均会进行权限校验，并支持断点续传（Range）和缓存控制（ETag/Last-Modified）。
+ * </p>
+ *
+ * @author 青阳龙野(kohgylw)
+ * @version 1.0
+ * @see kohgylw.kiftd.server.service.ResourceService
+ */
 @Service
 public class ResourceServiceImpl implements ResourceService {
 

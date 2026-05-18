@@ -18,6 +18,19 @@ import kohgylw.kiftd.server.util.*;
 import kohgylw.kiftd.server.enumeration.VCLevel;
 import kohgylw.kiftd.server.pojo.*;
 
+/**
+ *
+ * <h2>账户服务实现类</h2>
+ * <p>
+ * 该类实现了 AccountService 接口中定义的账户相关业务逻辑，包括用户登录校验、
+ * 注销会话、RSA公钥获取、验证码生成、密码修改、新用户注册以及会话保活等功能。
+ * 登录校验过程中集成了RSA解密、验证码校验和登录失败账户关注机制，以增强系统安全性。
+ * </p>
+ *
+ * @author 青阳龙野(kohgylw)
+ * @version 1.0
+ * @see kohgylw.kiftd.server.service.AccountService
+ */
 @Service
 public class AccountServiceImpl implements AccountService {
 	@Resource
@@ -25,7 +38,6 @@ public class AccountServiceImpl implements AccountService {
 	@Resource
 	private LogUtil lu;
 
-	// 登录密钥有效期
 	private static final long TIME_OUT = 30000L;
 
 	@Resource
@@ -54,16 +66,15 @@ public class AccountServiceImpl implements AccountService {
 			default:
 				break;
 			}
-			// 验证码生成工厂，包含了一些不太容易误认的字符
 			vcf = new VerificationCodeFactory(45, line, oval, 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'j', 'k', 'm',
 					'n', 'p', 'q', 'r', 's', 't', 'w', 'x', 'y', 'z', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B',
 					'C', 'D', 'E', 'F', 'G', 'H', 'J', 'K', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'W', 'X', 'Y', 'Z');
 		}
 	}
 
-	// 关注账户，当任意一个账户登录失败后将加入至该集合中，登录成功则移除。登录集合中的账户必须进行验证码验证
 	private static final Set<String> focusAccount = new HashSet<>();
 
+	@Override
 	public String checkLoginRequest(final HttpServletRequest request, final HttpSession session) {
 		final String encrypted = request.getParameter("encrypted");
 		try {
@@ -114,10 +125,12 @@ public class AccountServiceImpl implements AccountService {
 		}
 	}
 
+	@Override
 	public void logout(final HttpSession session) {
 		session.invalidate();
 	}
 
+	@Override
 	public String getPublicKey() {
 		PublicKeyInfo pki = new PublicKeyInfo();
 		pki.setPublicKey(ku.getPublicKey());
