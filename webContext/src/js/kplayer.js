@@ -8,7 +8,7 @@ $(function() {
 	window.onresize = function() {
 		showCloseBtn();
 	}
-	pingInt = setInterval("ping()", 60000);
+	pingInt = setInterval(function() { ping(); }, 60000);
 	var fileId = getFileId();
 	$
 		.ajax({
@@ -20,7 +20,7 @@ $(function() {
 			},
 			success: function(result) {
 				if (result != "ERROR") {
-					f = eval("(" + result + ")");
+					f = JSON.parse(result);
 					$("#vname").text(f.fileName);
 					$("#vcreator").text(f.fileCreator);
 					$("#vcdate").text(f.fileCreationDate);
@@ -118,7 +118,7 @@ function doTranscode() {
 				reMainPage();
 			} else {
 				$("#transcodeProgress").text(result);
-				tTimer = setTimeout('doTranscode()', 500);// 每隔1秒询问一次进度
+				tTimer = setTimeout(function() { doTranscode(); }, 500);// 每隔0.5秒询问一次进度
 			}
 		},
 		error: function() {

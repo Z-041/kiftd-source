@@ -23,11 +23,6 @@ var uploadTargetFolder;// 执行上传操作时的目标文件夹（单独保存
 var isChangingPassword = false;// 是否正在执行修改密码操作
 var importFolderName;// 上传文件夹时保存文件夹名称
 var xhr;// 文件或文件夹上传请求对象
-var viewerPageSize = 15; // 显示图片页的最大长度，注意最好是奇数
-var viewer; // viewer对象，用于预览图片功能
-var viewerPageIndex; // 分页预览图片——已浏览图片页号
-var viewerTotal; // 分页预览图片——总页码数
-var pvl;// 预览图片列表的JSON格式对象
 var checkFilesTip = "提示：您还未选择任何文件，请先选中一些文件后再执行本操作：<br /><br /><kbd>单击</kbd>：选中某一文件<br /><br /><kbd><kbd>Shift</kbd>+<kbd>单击</kbd></kbd>：选中多个文件<br /><br /><kbd><kbd>Shift</kbd>+<kbd>双击</kbd></kbd>：选中连续的文件<br /><br /><kbd><kbd>Shitf</kbd>+<kbd>A</kbd></kbd>：选中/取消选中所有文件";// 选取文件提示
 var winHeight;// 窗口高度
 var pingInt;// 定时应答器的定时装置
@@ -459,7 +454,7 @@ $(function() {
 							$("#fim_statistics_total").text("（获取失败）");
 						} else {
 							// 获取成功，则解析其中的信息并显示
-							var folderCountResult = eval("(" + result + ")");
+							var folderCountResult = JSON.parse(result);
 							$("#fim_folderSize").text(formatFileSize(folderCountResult.totalSize));
 							$("#fim_statistics_total").html("（总计包含" + folderCountResult.folderNum + "个文件夹，" + folderCountResult.fileNum + "个文件）");
 						}
@@ -571,7 +566,7 @@ function showFolderView(fid, targetId) {
 					break;
 				default:
 					// 上述情况都不是，则返回的应该是文件夹视图数据，接下来对其进行解析
-					folderView = eval("(" + result + ")");
+					folderView = JSON.parse(result);
 					// 记录当前获取的文件夹视图的ID号，便于其他操作使用
 					locationpath = folderView.folder.folderId;
 					// 存储打开的文件夹路径至Cookie中，以便下次打开时直接显示
@@ -691,7 +686,7 @@ function dologin() {
 			data: {},
 			dataType: 'text',
 			success: function(result) {
-				var publicKeyInfo = eval("(" + result + ")");
+				var publicKeyInfo = JSON.parse(result);
 				var date = new Date();// 这个是客户浏览器上的当前时间
 				var loginInfo = '{accountId:"' + accountId + '",accountPwd:"'
 					+ accountPwd + '",time:"' + publicKeyInfo.time + '"}';
@@ -813,7 +808,7 @@ function showParentList(folderView) {
 	if (folderView.parentList.length > 0) {
 		$.each(folderView.parentList, function(n, val) {
 			$("#parentFolderList").append(
-				"<li><a href='javascript:void(0);' onclick='entryFolder("
+				"<li><a href='#' onclick='event.preventDefault(); entryFolder("
 				+ '"' + val.folderId + '"' + ")'>" + val.folderName
 				+ "</a></li>");
 		});
@@ -1080,12 +1075,6 @@ function createFileRow(fi, aL, aD, aR, aO) {
 			case "gif":
 			case "png":
 			case "bmp":
-				fileRow = fileRow
-					+ "<button onclick='showPicture("
-					+ '"'
-					+ fi.fileId
-					+ '"'
-					+ ")' class='btn btn-link btn-xs'><span class='glyphicon glyphicon-picture'></span> 查看</button>";
 				break;
 			default:
 				break;
@@ -1546,7 +1535,7 @@ function checkUploadFile() {
 									showUploadFileAlert("提示：该文件夹内存储的文件数量已达上限，无法在其中上传更多文件。您可以尝试将其上传至其他文件夹内。");
 									break;
 								default:
-									var resp = eval("(" + result + ")");
+									var resp = JSON.parse(result);
 									if (resp.checkResult == "fileTooLarge") {
 										showUploadFileAlert("提示：文件["
 											+ resp.overSizeFile
@@ -1669,7 +1658,7 @@ function doupload(count) {
 		xhr.send(fd);// 上传FormData对象
 
 		if (pingInt == null) {
-			pingInt = setInterval("ping()", 60000);// 上传中开始计时应答
+			pingInt = setInterval(function() { ping(); }, 60000);// 上传中开始计时应答
 		}
 
 		// 上传结束后执行的回调函数
@@ -1920,129 +1909,6 @@ function getSuffix(filename) {
 // 播放指定格式的视频
 function playVideo(fileId) {
 	window.open("quickview/video.html?fileId=" + fileId);
-}
-
-// 查看图片
-function showPicture(fileId) {
-	$.ajax({
-		url: "homeController/getPrePicture.ajax",
-		data: {
-			fileId: fileId
-		},
-		type: "POST",
-		dataType: "text",
-		success: function(result) {
-			if (result != "ERROR") {
-				pvl = eval("(" + result + ")");
-				// 整合viewer.js插件
-				if (pvl.pictureViewList.length <= viewerPageSize) {
-					createViewList();// 以全列方式显示图片列表
-				} else {
-					// 以分页方式显示图片列表
-					viewerPageIndex = Math.ceil((pvl.index + 1)
-						/ viewerPageSize);
-					viewerTotal = Math.ceil(pvl.pictureViewList.length
-						/ viewerPageSize);
-					createViewListByPage();
-					var innerIndex = pvl.index
-						- ((viewerPageIndex - 1) * viewerPageSize);
-					if (viewerPageIndex > 1) {
-						innerIndex++;
-					}
-					viewer.viewer('view', innerIndex);
-					viewer.viewer('show', true);
-				}
-				// end
-			} else {
-				alert("错误：无法定位要预览的文件或该操作未被授权。");
-			}
-		},
-		error: function() {
-			alert("错误：请求失败，请刷新重试。");
-		}
-	});
-}
-
-// 用于创建并显示小于2*limit+1长度的图片列表
-function createViewList() {
-	if (viewer == null) {
-		var images = document.createElement("ul");
-		for (var i = 0; i < pvl.pictureViewList.length; i++) {
-			$(images).append(
-				"<li><img src='" + pvl.pictureViewList[i].url + "' alt='"
-				+ html2Escape(pvl.pictureViewList[i].fileName)
-				+ "' /></li>");
-		}
-		viewer = $(images);
-		viewer.viewer({
-			loop: false,
-			hidden: function() {
-				viewer.data('viewer').destroy();
-				viewer = null;
-			}
-		});
-	}
-	viewer.viewer('view', pvl.index);
-	viewer.viewer('show', true);
-}
-
-// 用于创建长于2*limit+1长度的图片分页列表
-function createViewListByPage() {
-	// 初始化分页结构
-	if (viewer == null) {
-		var images = document.createElement("ul");
-		var startIndex = (viewerPageIndex - 1) * viewerPageSize;
-		if (viewerPageIndex > 1) {
-			$(images).append("<li><img src='css/left.png' alt='上一页' /></li>");
-		}
-		for (var i = 0; i < viewerPageSize
-			&& i < (pvl.pictureViewList.length - (viewerPageIndex - 1)
-				* viewerPageSize); i++) {
-			$(images)
-				.append(
-					"<li><img src='"
-					+ pvl.pictureViewList[startIndex + i].url
-					+ "' alt='"
-					+ html2Escape(pvl.pictureViewList[startIndex
-						+ i].fileName) + "' /></li>");
-		}
-		if (viewerPageIndex < viewerTotal) {
-			$(images).append("<li><img src='css/right.png' alt='下一页' /></li>");
-		}
-		viewer = $(images);
-		viewer
-			.viewer({
-				loop: false,
-				view: function(event) {
-					// 点击的计数为event.detail.index;
-					if (event.detail.index == 0 && viewerPageIndex != 1) {
-						viewerPageIndex--;
-						viewer.data('viewer').destroy();
-						viewer.empty();
-						viewer = null;
-						createViewListByPage();
-						if (viewerPageIndex > 1) {
-							viewer.viewer('view', viewerPageSize);
-						} else {
-							viewer.viewer('view', viewerPageSize - 1);
-						}
-					} else if (event.detail.index == viewerPageSize + 1
-						|| (event.detail.index == viewerPageSize && viewerPageIndex == 1)) {
-						viewerPageIndex++;
-						viewer.data('viewer').destroy();
-						viewer.empty();
-						viewer = null;
-						createViewListByPage();
-						viewer.viewer('view', 1);
-					}
-				},
-				hidden: function() {
-					viewer.data('viewer').destroy();
-					viewer.empty();
-					viewer = null;
-				}
-			});
-	}
 }
 
 // 兼容Chrome、IE、FF的Shift判定
@@ -2606,7 +2472,7 @@ function doMoveFiles() {
 							break;
 						default:
 							if (result.startsWith("duplicationFileName:")) {
-								repeMap = eval("(" + result.substring(20) + ")");
+								repeMap = JSON.parse(result.substring(20));
 								repeIndex = 0;
 								strMoveOptMap = {};
 								mRepeSize = repeMap.repeFolders.length
@@ -2854,7 +2720,7 @@ function selectInCompletePath(keyworld) {
 				document.cookie = "folder_id=" + escape("root");
 				window.location.href = "/";
 			} else {
-				folderView = eval("(" + result + ")");
+				folderView = JSON.parse(result);
 				locationpath = folderView.folder.folderId;
 				parentpath = folderView.folder.folderParent;
 				constraintLevel = folderView.folder.folderConstraint;
@@ -2925,7 +2791,7 @@ function getDownloadURL() {
 			error: function() {
 				$("#downloadHrefBox")
 					.html(
-						"<span class='text-muted'>获取失败，请检查网络状态或<a href='javascript:void(0);' onclick='getDownloadURL()'>点此</a>重新获取。</span>");
+						"<span class='text-muted'>获取失败，请检查网络状态或<a href='#' onclick='event.preventDefault(); getDownloadURL()'>点此</a>重新获取。</span>");
 			}
 		});
 }
@@ -3046,7 +2912,7 @@ function checkImportFolder() {
 						folderId: uploadTargetFolder
 					},
 					success: function(result) {
-						var resJson = eval("(" + result + ")");
+						var resJson = JSON.parse(result);
 						switch (resJson.result) {
 							case 'noAuthorized':
 								showImportFolderAlert("提示：您的操作未被授权，无法开始上传");
@@ -3156,7 +3022,7 @@ function importAndBoth() {
 			},
 			dataType: 'text',
 			success: function(result) {
-				var resJson = eval("(" + result + ")");
+				var resJson = JSON.parse(result);
 				if (resJson.result == 'success') {
 					iteratorImport(0, resJson.newName);// 若新建成功，则使用新文件夹名称开始上传
 				} else if (resJson.result == 'foldersTotalOutOfLimit') {
@@ -3205,7 +3071,7 @@ function iteratorImport(i, newFolderName) {
 		xhr.send(fd);// 上传FormData对象
 
 		if (pingInt == null) {
-			pingInt = setInterval("ping()", 60000);// 上传中开始计时应答
+			pingInt = setInterval(function() { ping(); }, 60000);// 上传中开始计时应答
 		}
 
 		// 上传结束后执行的回调函数
@@ -3330,7 +3196,7 @@ function doChangePassword() {
 		dataType: 'text',
 		success: function(result) {
 			// 获取公钥
-			var changepwd_publicKeyInfo = eval("(" + result + ")");
+			var changepwd_publicKeyInfo = JSON.parse(result);
 			// 生成JSON对象格式的信息
 			var changePasswordInfo = '{oldPwd:"' + change_oldPassword
 				+ '",newPwd:"' + change_newPassword + '",time:"'
@@ -3602,7 +3468,7 @@ function loadingRemainingFolderView(targetId) {
 					default:
 						folderView.foldersOffset = newfoldersOffset;
 						folderView.filesOffset = newfilesOffset;
-						var remainingFV = eval("(" + result + ")");
+						var remainingFV = JSON.parse(result);
 						updateFolderTable(remainingFV);
 						updateTheFolderInfo();
 						if (folderView.foldersOffset > 0
