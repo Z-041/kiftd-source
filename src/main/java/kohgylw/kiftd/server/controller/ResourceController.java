@@ -26,27 +26,6 @@ public class ResourceController {
 		rs.getResource(fileId, request, response);
 	}
 
-	// 以PDF格式获取word预览视图
-	@RequestMapping("/getWordView/{fileId}")
-	public void getWordView(@PathVariable("fileId") String fileId, HttpServletRequest request,
-			HttpServletResponse response) {
-		rs.getWordView(fileId, request, response);
-	}
-
-	// 以PDF格式获取TXT预览视图
-	@RequestMapping("/getTxtView/{fileId}")
-	public void getTxtView(@PathVariable("fileId") String fileId, HttpServletRequest request,
-			HttpServletResponse response) {
-		rs.getTxtView(fileId, request, response);
-	}
-
-	// 以PDF格式获取PPT预览视图
-	@RequestMapping("/getPPTView/{fileId}")
-	public void getPPTView(@PathVariable("fileId") String fileId, HttpServletRequest request,
-			HttpServletResponse response) {
-		rs.getPPTView(fileId, request, response);
-	}
-	
 	// 得到UTF-8编码格式的LRC歌词（文本）流
 	@RequestMapping("/getLRContext/{fileId}")
 	public void getLRContext(@PathVariable("fileId") String fileId, HttpServletRequest request,

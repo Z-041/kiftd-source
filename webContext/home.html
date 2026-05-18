@@ -19,8 +19,6 @@
     <link rel="stylesheet" href="css/overrall.min.css" />
     <!-- 图片查看器插件 -->
     <link rel="stylesheet" href="css/viewer.min.css" />
-    <!-- 音乐播放器插件 -->
-    <link rel="stylesheet" href="css/APlayer.min.css" />
     <!-- 页面图标 -->
     <link rel="icon" type="image/x-icon" href="css/img/icon.png" />
     <!-- 对旧浏览器的支持部分... -->
@@ -1072,69 +1070,6 @@
       </div>
     </div>
     <!-- end 打包下载 -->
-    <!--音乐播放模态框-->
-    <div class="modal fade" id="audioPlayerModal" tabindex="-1" role="dialog">
-      <div class="modal-dialog" role="document">
-        <div class="modal-content">
-          <div class="modal-body">
-            <div id="aplayer" class="aplayer"></div>
-          </div>
-          <div class="modal-footer">
-            <button
-              type="button"
-              class="btn btn-default"
-              onclick="audio_vulome_down()"
-            >
-              <span
-                class="glyphicon glyphicon-volume-down"
-                aria-hidden="true"
-              ></span>
-            </button>
-            <button
-              type="button"
-              class="btn btn-default"
-              onclick="audio_vulome_up()"
-            >
-              <span
-                class="glyphicon glyphicon-volume-up"
-                aria-hidden="true"
-              ></span>
-            </button>
-            <button type="button" class="btn btn-default" onclick="audio_bw()">
-              <span
-                class="glyphicon glyphicon-backward"
-                aria-hidden="true"
-              ></span>
-            </button>
-            <button
-              type="button"
-              class="btn btn-primary"
-              id="playOrPause"
-              onclick="audio_playOrPause()"
-            >
-              <span class="glyphicon glyphicon-play" aria-hidden="true"></span>
-            </button>
-            <button type="button" class="btn btn-default" onclick="audio_fw()">
-              <span
-                class="glyphicon glyphicon-forward"
-                aria-hidden="true"
-              ></span>
-            </button>
-            <button
-              type="button"
-              class="btn btn-default"
-              onclick="closeAudioPlayer()"
-            >
-              <span
-                class="glyphicon glyphicon-remove"
-                aria-hidden="true"
-              ></span>
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-    <!-- end 音乐播放 -->
     <!-- 加载提示框 -->
     <div
       id="loadingModal"
@@ -1497,8 +1432,6 @@
   <!-- 图片查看器 -->
   <script type="text/javascript" src="js/viewer.min.js"></script>
   <script type="text/javascript" src="js/jquery-viewer.min.js"></script>
-  <!-- 音乐播放器 -->
-  <script type="text/javascript" src="js/APlayer.min.js"></script>
   <!-- 页面操作定义 -->
   <script type="text/javascript" src="js/home.min.js"></script>
 </html>

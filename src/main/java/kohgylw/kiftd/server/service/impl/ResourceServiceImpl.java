@@ -19,7 +19,6 @@ import org.springframework.stereotype.Service;
 
 import kohgylw.kiftd.printer.Printer;
 import kohgylw.kiftd.server.enumeration.AccountAuth;
-import kohgylw.kiftd.server.enumeration.PowerPointType;
 import kohgylw.kiftd.server.mapper.FolderMapper;
 import kohgylw.kiftd.server.mapper.NodeMapper;
 import kohgylw.kiftd.server.model.Node;
@@ -27,16 +26,13 @@ import kohgylw.kiftd.server.pojo.VideoTranscodeThread;
 import kohgylw.kiftd.server.service.ResourceService;
 import kohgylw.kiftd.server.util.ConfigureReader;
 import kohgylw.kiftd.server.util.ContentTypeMap;
-import kohgylw.kiftd.server.util.Docx2PDFUtil;
 import kohgylw.kiftd.server.util.FileBlockUtil;
 import kohgylw.kiftd.server.util.FolderUtil;
 import kohgylw.kiftd.server.util.IpAddrGetter;
 import kohgylw.kiftd.server.util.KiftdFFMPEGLocator;
 import kohgylw.kiftd.server.util.LogUtil;
 import kohgylw.kiftd.server.util.NoticeUtil;
-import kohgylw.kiftd.server.util.PowerPoint2PDFUtil;
 import kohgylw.kiftd.server.util.ServerTimeUtil;
-import kohgylw.kiftd.server.util.Txt2PDFUtil;
 import kohgylw.kiftd.server.util.TxtCharsetGetter;
 import kohgylw.kiftd.server.util.VideoTranscodeUtil;
 
@@ -51,21 +47,15 @@ public class ResourceServiceImpl implements ResourceService {
 	@Resource
 	private LogUtil lu;
 	@Resource
-	private Docx2PDFUtil d2pu;
-	@Resource
-	private Txt2PDFUtil t2pu;
-	@Resource
 	private VideoTranscodeUtil vtu;
-	@Resource
-	private PowerPoint2PDFUtil p2pu;
 	@Resource
 	private FolderUtil fu;
 	@Resource
 	private FolderMapper fm;
 	@Resource
-	private TxtCharsetGetter tcg;
-	@Resource
 	private NoticeUtil nu;
+	@Resource
+	private TxtCharsetGetter tcg;
 	@Resource
 	private ContentTypeMap ctm;
 	@Resource
@@ -280,91 +270,6 @@ public class ResourceServiceImpl implements ResourceService {
 		}
 	}
 
-	// 对word的预览实现
-	@Override
-	public void getWordView(String fileId, HttpServletRequest request, HttpServletResponse response) {
-		final String account = (String) request.getSession().getAttribute("ACCOUNT");
-		// 权限检查
-		if (fileId != null) {
-			Node n = nm.queryById(fileId);
-			if (n != null) {
-				if (ConfigureReader.instance().authorized(account, AccountAuth.DOWNLOAD_FILES,
-						fu.getAllFoldersId(n.getFileParentFolder()))
-						&& ConfigureReader.instance().accessFolder(fm.queryById(n.getFileParentFolder()), account)) {
-					File file = fbu.getFileFromBlocks(n);
-					if (file != null && file.isFile()) {
-						// 后缀检查
-						String suffix = "";
-						if (n.getFileName().indexOf(".") >= 0) {
-							suffix = n.getFileName().substring(n.getFileName().lastIndexOf(".")).trim().toLowerCase();
-						}
-						if (".docx".equals(suffix)) {
-							String contentType = ctm.getContentType(".pdf");
-							response.setContentType(contentType);
-							String ip = idg.getIpAddr(request);
-							// 执行转换并写出输出流
-							try {
-								d2pu.convertPdf(new FileInputStream(file), response.getOutputStream());
-								lu.writeDownloadFileEvent(account, ip, n);
-								return;
-							} catch (IOException e) {
-							} catch (Exception e) {
-								Printer.instance.print(e.getMessage());
-								lu.writeException(e);
-							}
-						}
-					}
-				}
-			}
-		}
-		try {
-			response.sendError(500);
-		} catch (Exception e1) {
-		}
-	}
-
-	// 对TXT预览的实现
-	@Override
-	public void getTxtView(String fileId, HttpServletRequest request, HttpServletResponse response) {
-		final String account = (String) request.getSession().getAttribute("ACCOUNT");
-		// 权限检查
-		if (fileId != null) {
-			Node n = nm.queryById(fileId);
-			if (n != null) {
-				if (ConfigureReader.instance().authorized(account, AccountAuth.DOWNLOAD_FILES,
-						fu.getAllFoldersId(n.getFileParentFolder()))
-						&& ConfigureReader.instance().accessFolder(fm.queryById(n.getFileParentFolder()), account)) {
-					File file = fbu.getFileFromBlocks(n);
-					if (file != null && file.isFile()) {
-						// 后缀检查
-						String suffix = "";
-						if (n.getFileName().indexOf(".") >= 0) {
-							suffix = n.getFileName().substring(n.getFileName().lastIndexOf(".")).trim().toLowerCase();
-						}
-						if (".txt".equals(suffix)) {
-							String contentType = ctm.getContentType(".pdf");
-							response.setContentType(contentType);
-							String ip = idg.getIpAddr(request);
-							// 执行转换并写出输出流
-							try {
-								t2pu.convertPdf(file, response.getOutputStream());
-								lu.writeDownloadFileEvent(account, ip, n);
-								return;
-							} catch (Exception e) {
-								Printer.instance.print(e.getMessage());
-								lu.writeException(e);
-							}
-						}
-					}
-				}
-			}
-		}
-		try {
-			response.sendError(500);
-		} catch (Exception e1) {
-		}
-	}
-
 	@Override
 	public String getVideoTranscodeStatus(HttpServletRequest request) {
 		if (kfl.isEnableFFmpeg()) {
@@ -379,55 +284,6 @@ public class ResourceServiceImpl implements ResourceService {
 			}
 		}
 		return "ERROR";
-	}
-
-	// 对PPT预览的实现
-	@Override
-	public void getPPTView(String fileId, HttpServletRequest request, HttpServletResponse response) {
-		final String account = (String) request.getSession().getAttribute("ACCOUNT");
-		// 权限检查
-		if (fileId != null) {
-			Node n = nm.queryById(fileId);
-			if (n != null) {
-				if (ConfigureReader.instance().authorized(account, AccountAuth.DOWNLOAD_FILES,
-						fu.getAllFoldersId(n.getFileParentFolder()))
-						&& ConfigureReader.instance().accessFolder(fm.queryById(n.getFileParentFolder()), account)) {
-					File file = fbu.getFileFromBlocks(n);
-					if (file != null && file.isFile()) {
-						// 后缀检查
-						String suffix = "";
-						if (n.getFileName().indexOf(".") >= 0) {
-							suffix = n.getFileName().substring(n.getFileName().lastIndexOf(".")).trim().toLowerCase();
-						}
-						switch (suffix) {
-						case ".ppt":
-						case ".pptx":
-							String contentType = ctm.getContentType(".pdf");
-							response.setContentType(contentType);
-							String ip = idg.getIpAddr(request);
-							// 执行转换并写出输出流
-							try {
-								p2pu.convertPdf(new FileInputStream(file), response.getOutputStream(),
-										".ppt".equals(suffix) ? PowerPointType.PPT : PowerPointType.PPTX);
-								lu.writeDownloadFileEvent(account, ip, n);
-								return;
-							} catch (IOException e) {
-							} catch (Exception e) {
-								Printer.instance.print(e.getMessage());
-								lu.writeException(e);
-							}
-							break;
-						default:
-							break;
-						}
-					}
-				}
-			}
-		}
-		try {
-			response.sendError(500);
-		} catch (Exception e1) {
-		}
 	}
 
 	@Override

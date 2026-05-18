@@ -38,8 +38,6 @@ public class HomeController {
 	@Resource
 	private ShowPictureService sps;
 	@Resource
-	private PlayAudioService pas;
-	@Resource
 	private FileChainService fcs;
 
 	@RequestMapping({ "/getServerOS.ajax" })
@@ -229,12 +227,6 @@ public class HomeController {
 	public void downloadCheckedFilesZip(final HttpServletRequest request, final HttpServletResponse response)
 			throws Exception {
 		this.fis.downloadCheckedFilesZip(request, response);
-	}
-
-	@RequestMapping(value = { "/playAudios.ajax" }, produces = { CHARSET_BY_AJAX })
-	@ResponseBody
-	public String playAudios(final HttpServletRequest request) {
-		return this.pas.getAudioInfoListByJson(request);
 	}
 
 	/**
