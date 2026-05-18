@@ -338,9 +338,12 @@ public class ResourceServiceImpl implements ResourceService {
 							response.setHeader("ETag", this.fbu.getETag(file));
 							response.setHeader("Last-Modified", ServerTimeUtil.getLastModifiedFormBlock(file));
 							response.setHeader("Cache-Control", "max-age=" + RESOURCE_CACHE_MAX_AGE);
-							// 执行转换并写出输出流
-							try (FileInputStream fis = new FileInputStream(file)) {
-								String inputFileEncode = tcg.getTxtCharset(fis);
+							try {
+								// 执行转换并写出输出流
+								String inputFileEncode;
+								try (FileInputStream fis = new FileInputStream(file)) {
+									inputFileEncode = tcg.getTxtCharset(fis);
+								}
 								try (BufferedReader bufferedReader = new BufferedReader(
 										new InputStreamReader(new FileInputStream(file), inputFileEncode));
 										BufferedWriter bufferedWriter = new BufferedWriter(
@@ -357,9 +360,7 @@ public class ResourceServiceImpl implements ResourceService {
 								lu.writeException(e);
 							} catch (Exception e) {
 								Printer.instance.print(e.getMessage());
-								lu.writeException(e);
 							}
-
 						}
 					}
 				}

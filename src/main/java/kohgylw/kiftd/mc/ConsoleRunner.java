@@ -423,16 +423,20 @@ public class ConsoleRunner {
 				String parent = "null";
 				for (int i = 1; i < paths.length - 1; i++) {
 					String folderName = paths[i];
-					parent = FileSystemManager.getInstance().getFoldersByParentId(parent).stream()
-							.filter((e) -> e.getFolderName().equals(folderName)).findFirst().get().getFolderId();
+					Folder folder = FileSystemManager.getInstance().getFoldersByParentId(parent).stream()
+							.filter((e) -> e.getFolderName().equals(folderName)).findFirst().orElse(null);
+					if (folder == null) {
+						return null;
+					}
+					parent = folder.getFolderId();
 				}
 				String fname = paths[paths.length - 1];
 				List<Folder> folders = FileSystemManager.getInstance().getFoldersByParentId(parent);
 				if (path.endsWith("/") || folders.stream().anyMatch((e) -> e.getFolderName().equals(fname))) {
-					return folders.stream().filter((e) -> e.getFolderName().equals(fname)).findFirst().get();
+					return folders.stream().filter((e) -> e.getFolderName().equals(fname)).findFirst().orElse(null);
 				} else {
 					return FileSystemManager.getInstance().selectNodesByFolderId(parent).stream()
-							.filter((e) -> e.getFileName().equals(fname)).findFirst().get();
+							.filter((e) -> e.getFileName().equals(fname)).findFirst().orElse(null);
 				}
 			} catch (Exception e) {
 			}
@@ -463,11 +467,10 @@ public class ConsoleRunner {
 			}
 			return null;
 		}
-		try {
-			return currentFolder.getFolders().stream().filter((e) -> e.getFolderName().equals(fname))
-					.findFirst().get().getFolderId();
-		} catch (NoSuchElementException e) {
-
+		Folder folder = currentFolder.getFolders().stream().filter((e) -> e.getFolderName().equals(fname))
+				.findFirst().orElse(null);
+		if (folder != null) {
+			return folder.getFolderId();
 		}
 		return null;
 	}
@@ -497,15 +500,15 @@ public class ConsoleRunner {
 			}
 			return null;
 		}
-		try {
-			return currentFolder.getFolders().stream().filter((e) -> e.getFolderName().equals(fname))
-					.findFirst().get().getFolderId();
-		} catch (NoSuchElementException e) {
-			try {
-				return currentFolder.getFiles().stream().filter((m) -> m.getFileName().equals(fname))
-						.findFirst().get().getFileId();
-			} catch (NoSuchElementException e2) {
-			}
+		Folder folder = currentFolder.getFolders().stream().filter((e) -> e.getFolderName().equals(fname))
+				.findFirst().orElse(null);
+		if (folder != null) {
+			return folder.getFolderId();
+		}
+		Node file = currentFolder.getFiles().stream().filter((m) -> m.getFileName().equals(fname))
+				.findFirst().orElse(null);
+		if (file != null) {
+			return file.getFileId();
 		}
 		return null;
 	}

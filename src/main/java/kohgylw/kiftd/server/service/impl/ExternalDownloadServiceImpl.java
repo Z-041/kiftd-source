@@ -74,8 +74,10 @@ public class ExternalDownloadServiceImpl extends RangeFileStreamWriter implement
 						this.lu.writeShareFileURLEvent(request, f);
 						if (downloadKeyMap.containsValue(f.getFileId())) {
 							Entry<String, String> k = downloadKeyMap.entrySet().stream()
-									.filter((e) -> e.getValue().equals(f.getFileId())).findFirst().get();
-							return k.getKey();
+									.filter((e) -> e.getValue().equals(f.getFileId())).findFirst().orElse(null);
+							if (k != null) {
+								return k.getKey();
+							}
 						} else {
 							String dKey = UUID.randomUUID().toString();
 							downloadKeyMap.put(dKey, f.getFileId());

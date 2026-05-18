@@ -616,7 +616,10 @@ public class FileServiceImpl extends RangeFileStreamWriter implements FileServic
 						}
 						// 得到冲突节点
 						Node n = fm.queryByParentFolderId(locationpath).stream()
-								.filter((e) -> e.getFileName().equals(node.getFileName())).findFirst().get();
+								.filter((e) -> e.getFileName().equals(node.getFileName())).findFirst().orElse(null);
+						if (n == null) {
+							continue;
+						}
 						if (n.getFileId().equals(node.getFileId())) {
 							// 如果冲突节点就是原节点自身，则直接跳过，且无需记录日志（因为操作无效）
 							continue;
@@ -761,7 +764,10 @@ public class FileServiceImpl extends RangeFileStreamWriter implements FileServic
 						}
 						// 获得冲突的文件夹
 						Folder f = flm.queryByParentId(locationpath).stream()
-								.filter((e) -> e.getFolderName().equals(folder.getFolderName())).findFirst().get();
+								.filter((e) -> e.getFolderName().equals(folder.getFolderName())).findFirst().orElse(null);
+						if (f == null) {
+							break;
+						}
 						// 先删除冲突文件夹的节点
 						if (flm.deleteById(f.getFolderId()) > 0) {
 							// 判断是否为复制模式

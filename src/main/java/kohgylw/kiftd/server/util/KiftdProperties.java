@@ -130,31 +130,31 @@ public class KiftdProperties {
 	 *            java.io.InputStream 输入流，必须为文本输入流
 	 */
 	public void load(InputStream in) throws IOException {
-		BufferedReader reader = new BufferedReader(new InputStreamReader(in, "8859_1"));
-		String lineStr = null;
-		// 按行读取文本
-		clear();
-		while ((lineStr = reader.readLine()) != null && contexts.size() < Integer.MAX_VALUE) {
-			if (lineStr.startsWith("#")) {
-				contexts.add(new LineContext(null, null, lineStr));// 保存为注释
-			} else {
-				int delimit0 = lineStr.indexOf("=");
-				int delimit1 = lineStr.indexOf(":");// 兼容Properties的“:”分割规则，但保存时将统一改为“=”
-				int delimitIndex = -1;// 判断第一个出现的分隔符的位置
-				if (delimit0 >= 0) {
-					delimitIndex = delimit0;
-				}
-				if (delimit1 >= 0 && delimit1 < delimit0) {
-					delimitIndex = delimit1;
-				}
-				if (delimitIndex >= 0) {
-					setProperty(lineStr.substring(0, delimitIndex), lineStr.substring(delimitIndex + 1));// 保存为键值对
+		try (BufferedReader reader = new BufferedReader(new InputStreamReader(in, "8859_1"))) {
+			String lineStr = null;
+			// 按行读取文本
+			clear();
+			while ((lineStr = reader.readLine()) != null && contexts.size() < Integer.MAX_VALUE) {
+				if (lineStr.startsWith("#")) {
+					contexts.add(new LineContext(null, null, lineStr));// 保存为注释
 				} else {
-					contexts.add(new LineContext(null, null, lineStr));// 保存为其他文本
+					int delimit0 = lineStr.indexOf("=");
+					int delimit1 = lineStr.indexOf(":");// 兼容Properties的“:”分割规则，但保存时将统一改为“=”
+					int delimitIndex = -1;// 判断第一个出现的分隔符的位置
+					if (delimit0 >= 0) {
+						delimitIndex = delimit0;
+					}
+					if (delimit1 >= 0 && delimit1 < delimit0) {
+						delimitIndex = delimit1;
+					}
+					if (delimitIndex >= 0) {
+						setProperty(lineStr.substring(0, delimitIndex), lineStr.substring(delimitIndex + 1));// 保存为键值对
+					} else {
+						contexts.add(new LineContext(null, null, lineStr));// 保存为其他文本
+					}
 				}
 			}
 		}
-		reader.close();
 	}
 
 	/**
@@ -171,23 +171,23 @@ public class KiftdProperties {
 	 *            java.lang.String 标题头，若传入null则不添加此项
 	 */
 	public void store(OutputStream out, String header) throws IOException {
-		BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(out, "8859_1"));
-		if (header != null) {
-			writer.write("#" + header);
-			writer.newLine();
-			writer.write("#" + new Date().toString());
-			writer.newLine();
-		}
-		for (LineContext line : contexts) {
-			if (line.key != null) {
-				writer.write(line.key + "=" + line.value);
+		try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(out, "8859_1"))) {
+			if (header != null) {
+				writer.write("#" + header);
 				writer.newLine();
-			} else {
-				writer.write(line.text);
+				writer.write("#" + new Date().toString());
 				writer.newLine();
 			}
+			for (LineContext line : contexts) {
+				if (line.key != null) {
+					writer.write(line.key + "=" + line.value);
+					writer.newLine();
+				} else {
+					writer.write(line.text);
+					writer.newLine();
+				}
+			}
 		}
-		writer.close();
 	}
 
 	/**

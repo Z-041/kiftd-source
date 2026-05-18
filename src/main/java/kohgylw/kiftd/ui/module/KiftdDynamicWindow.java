@@ -68,8 +68,8 @@ public class KiftdDynamicWindow {
 		// 检查conf文件夹中是否包含名为“init.txt”的设置文件，若有，则使用其中定义的缩放比；否则使用程序计算的缩放比。
 		File settingFile = new File(confdir, "init.txt");
 		Properties settingp = new Properties();
-		try {
-			settingp.load(new FileInputStream(settingFile));
+		try (FileInputStream fis = new FileInputStream(settingFile)) {
+			settingp.load(fis);
 			String udp = settingp.getProperty("scale");// 缩放比的设置项必须是scale=?形式
 			if (udp != null) {
 				double udpi = Double.parseDouble(udp);

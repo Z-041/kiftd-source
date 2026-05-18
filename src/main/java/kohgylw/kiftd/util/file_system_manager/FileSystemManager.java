@@ -435,7 +435,10 @@ public class FileSystemManager {
 				case COVER:
 					// 覆盖
 					Node node = nodes.stream().filter((e) -> e.getFileName().equals(f.getName())).findFirst()
-							.get();// 得到重名节点，删除它
+							.orElse(null);
+					if (node == null) {
+						break;
+					}
 					deleteFile(node.getFileId());
 					if (selectNodeById(node.getFileId()) != null) {
 						// 测试是否删除成功
@@ -513,7 +516,10 @@ public class FileSystemManager {
 			if (folders.stream().anyMatch((e) -> e.getFolderName().equals(name))) {
 				switch (type) {
 				case COVER:
-					folder = folders.stream().filter((e) -> e.getFolderName().equals(name)).findFirst().get();
+					folder = folders.stream().filter((e) -> e.getFolderName().equals(name)).findFirst().orElse(null);
+					if (folder == null) {
+						return;
+					}
 					break;
 				case BOTH:
 					newName = FileNodeUtil.getNewFolderName(name, folders);
@@ -720,15 +726,15 @@ public class FileSystemManager {
 			per = 0;
 			message = "正在导出文件：" + node.getFileName();
 			if (Arrays.stream(path.listFiles()).parallel().filter((e) -> e.isFile())
-					.anyMatch((f) -> new String(f.getName().getBytes()).equals(node.getFileName()))) {
+					.anyMatch((f) -> f.getName().equals(node.getFileName()))) {
 				switch (type) {
 				case COVER:
 					target = Arrays.stream(path.listFiles()).parallel().filter((e) -> e.isFile())
-							.filter((e) -> new String(e.getName().getBytes()).equals(node.getFileName())).findFirst()
+							.filter((e) -> e.getName().equals(node.getFileName())).findFirst()
 							.get();
 					break;
 				case BOTH:
-					target = new File(path, new String(FileNodeUtil.getNewNodeName(node, path).getBytes()));
+					target = new File(path, FileNodeUtil.getNewNodeName(node, path));
 					target.createNewFile();
 					break;
 				default:
@@ -736,7 +742,7 @@ public class FileSystemManager {
 				}
 			}
 			if (target == null) {
-				target = new File(path, new String(node.getFileName().getBytes()));
+				target = new File(path, node.getFileName());
 				target.createNewFile();
 			}
 			File block = getFileFormBlocks(node);
@@ -769,15 +775,15 @@ public class FileSystemManager {
 		message = "正在导出文件夹：" + folder.getFolderName();
 		if (folder != null && path != null && path.isDirectory()) {
 			if (Arrays.stream(path.listFiles()).parallel().filter((e) -> e.isDirectory())
-					.anyMatch((f) -> new String(f.getName().getBytes()).equals(folder.getFolderName()))) {
+					.anyMatch((f) -> f.getName().equals(folder.getFolderName()))) {
 				switch (type) {
 				case COVER:
 					target = Arrays.stream(path.listFiles()).parallel().filter((e) -> e.isDirectory())
-							.filter((e) -> new String(e.getName().getBytes()).equals(folder.getFolderName()))
+							.filter((e) -> e.getName().equals(folder.getFolderName()))
 							.findFirst().get();
 					break;
 				case BOTH:
-					target = new File(path, new String(FileNodeUtil.getNewFolderName(folder, path).getBytes()));
+					target = new File(path, FileNodeUtil.getNewFolderName(folder, path));
 					target.mkdir();
 					break;
 
@@ -786,13 +792,13 @@ public class FileSystemManager {
 				}
 			}
 			if (Arrays.stream(path.listFiles()).parallel().filter((e) -> e.isFile())
-					.anyMatch((e) -> new String(e.getName().getBytes()).equals(folder.getFolderName()))) {
-				target = new File(path, new String(folder.getFolderName().getBytes()) + "_与文件同名"
+					.anyMatch((e) -> e.getName().equals(folder.getFolderName()))) {
+				target = new File(path, folder.getFolderName() + "_与文件同名"
 						+ UUID.randomUUID().toString().replaceAll("-", ""));
 				target.mkdir();
 			}
 			if (target == null) {
-				target = new File(path, new String(folder.getFolderName().getBytes()));
+				target = new File(path, folder.getFolderName());
 				target.mkdir();
 			}
 			per = 100;
@@ -835,8 +841,11 @@ public class FileSystemManager {
 			} else {// 存放于扩展存储区
 				short index = Short.parseShort(f.getFilePath().substring(0, f.getFilePath().indexOf('_')));
 				// 根据编号查到对应的扩展存储区路径，进而获取对应的文件块
-				file = new File(ConfigureReader.instance().getExtendStores().stream()
-						.filter((e) -> e.getIndex() == index).findAny().get().getPath(), f.getFilePath());
+				ExtendStores es = ConfigureReader.instance().getExtendStores().stream()
+						.filter((e) -> e.getIndex() == index).findAny().orElse(null);
+				if (es != null) {
+					file = new File(es.getPath(), f.getFilePath());
+				}
 			}
 			if (file.isFile()) {
 				return file;

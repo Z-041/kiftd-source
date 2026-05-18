@@ -431,8 +431,11 @@ public class FileBlockUtil {
 			} else {// 存放于扩展存储区
 				short index = Short.parseShort(f.getFilePath().substring(0, f.getFilePath().indexOf('_')));
 				// 根据编号查到对应的扩展存储区路径，进而获取对应的文件块
-				file = new File(ConfigureReader.instance().getExtendStores().stream()
-						.filter((e) -> e.getIndex() == index).findAny().get().getPath(), f.getFilePath());
+				ExtendStores es = ConfigureReader.instance().getExtendStores().stream()
+						.filter((e) -> e.getIndex() == index).findAny().orElse(null);
+				if (es != null) {
+					file = new File(es.getPath(), f.getFilePath());
+				}
 			}
 			if (file.isFile()) {
 				return file;

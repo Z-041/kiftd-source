@@ -87,7 +87,9 @@ public class NoticeUtil {
 					}
 					writer.flush();
 				}
-				md5 = DigestUtils.md5Hex(new FileInputStream(noticeMD));
+				try (FileInputStream fis3 = new FileInputStream(noticeMD)) {
+					md5 = DigestUtils.md5Hex(fis3);
+				}
 				Printer.instance.print("公告信息载入完成。");
 				return;
 			} catch (Exception e) {
