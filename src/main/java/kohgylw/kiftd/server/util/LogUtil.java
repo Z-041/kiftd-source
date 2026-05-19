@@ -206,7 +206,7 @@ public class LogUtil {
 			String a = account;
 			String ip = idg.getIpAddr(request);
 			writerThread.execute(() -> {
-				Folder folder = fm.queryById(f.getFileParentFolder());
+				Folder folder = fm.selectById(f.getFileParentFolder());
 				List<Folder> l = fu.getParentList(folder.getFolderId());
 				String pl = new String();
 				for (Folder i : l) {
@@ -233,7 +233,7 @@ public class LogUtil {
 			String a = account;
 			String ip = idg.getIpAddr(request);
 			writerThread.execute(() -> {
-				Folder folder = fm.queryById(f.getFileParentFolder());
+				Folder folder = fm.selectById(f.getFileParentFolder());
 				if (folder == null) {
 					return;
 				}
@@ -262,7 +262,7 @@ public class LogUtil {
 			}
 			String a = account;
 			writerThread.execute(() -> {
-				Folder folder = fm.queryById(f.getFileParentFolder());
+				Folder folder = fm.selectById(f.getFileParentFolder());
 				List<Folder> l = fu.getParentList(folder.getFolderId());
 				String pl = new String();
 				for (Folder i : l) {
@@ -285,7 +285,7 @@ public class LogUtil {
 		if (ConfigureReader.instance().inspectLogLevel(LogLevel.Event)) {
 			String ip = idg.getIpAddr(request);
 			writerThread.execute(() -> {
-				Folder folder = fm.queryById(f.getFileParentFolder());
+				Folder folder = fm.selectById(f.getFileParentFolder());
 				List<Folder> l = fu.getParentList(folder.getFolderId());
 				String pl = new String();
 				for (Folder i : l) {
@@ -312,7 +312,7 @@ public class LogUtil {
 		if (ConfigureReader.instance().inspectLogLevel(LogLevel.Event)) {
 			String ip = idg.getIpAddr(request);
 			writerThread.execute(() -> {
-				Folder folder = fm.queryById(f.getFileParentFolder());
+				Folder folder = fm.selectById(f.getFileParentFolder());
 				List<Folder> l = fu.getParentList(folder.getFolderId());
 				String pl = new String();
 				for (Folder i : l) {
@@ -343,7 +343,7 @@ public class LogUtil {
 			String a = account;
 			String ip = idg.getIpAddr(request);
 			writerThread.execute(() -> {
-				Folder folder = fm.queryById(f.getFileParentFolder());
+				Folder folder = fm.selectById(f.getFileParentFolder());
 				List<Folder> l = fu.getParentList(folder.getFolderId());
 				String pl = new String();
 				for (Folder i : l) {
@@ -370,7 +370,7 @@ public class LogUtil {
 			}
 			String a = account;
 			writerThread.execute(() -> {
-				Folder folder = fm.queryById(parentFolderId);
+				Folder folder = fm.selectById(parentFolderId);
 				List<Folder> l = fu.getParentList(folder.getFolderId());
 				String pl = new String();
 				for (Folder i : l) {
@@ -487,13 +487,13 @@ public class LogUtil {
 				StringBuffer content = new StringBuffer(">IP [" + ip + "]\r\n>ACCOUNT [" + a
 						+ "]\r\n>OPERATE [Download package]\r\n----------------\r\n");
 				for (String fid : idList) {
-					Node f = fim.queryById(fid);
+					Node f = fim.selectById(fid);
 					if (f != null) {
 						content.append(">File [" + fbu.getNodePath(f) + "]\r\n");
 					}
 				}
 				for (String ffid : fidList) {
-					Folder fl = fm.queryById(ffid);
+					Folder fl = fm.selectById(ffid);
 					if (fl != null) {
 						content.append(">Folder [" + fu.getFolderPath(fl) + "]\r\n");
 					}

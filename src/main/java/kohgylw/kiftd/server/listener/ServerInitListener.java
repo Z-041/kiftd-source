@@ -90,7 +90,9 @@ public class ServerInitListener implements ServletContextListener {
 		}
 		// 清理临时文件
 		Printer.instance.print("清理临时文件...");
-		fbu.initTempDir();
+		if (fbu != null) {
+			fbu.initTempDir();
+		}
 	}
 
 	private void doWatch() {
@@ -138,7 +140,7 @@ public class ServerInitListener implements ServletContextListener {
 						List<String> invalidIdList = new ArrayList<>();
 						List<String> idList = ConfigureReader.instance().getAllAddedAuthFoldersId();
 						for (String id : idList) {
-							if (nm.queryById(id) == null) {
+							if (nm.selectById(id) == null) {
 								invalidIdList.add(id);
 								Printer.instance.print("文件夹ID：" + id + "对应的文件夹不存在或已被删除，相关的额外权限设置将被清理。");
 							}
@@ -152,7 +154,6 @@ public class ServerInitListener implements ServletContextListener {
 						Thread.sleep(CYVLE_TIME);
 					} catch (InterruptedException e) {
 						continueCheck = false;
-						lu.writeException(e);
 					}
 				}
 			});

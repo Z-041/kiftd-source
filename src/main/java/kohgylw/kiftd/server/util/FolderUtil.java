@@ -8,6 +8,7 @@ import kohgylw.kiftd.server.exception.FoldersTotalOutOfLimitException;
 import kohgylw.kiftd.server.mapper.*;
 import kohgylw.kiftd.server.model.*;
 
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -34,11 +35,11 @@ public class FolderUtil {
 	 *         指定文件夹的所有父级文件夹列表，以kohgylw.kiftd.server.model.Folder形式封装。
 	 */
 	public List<Folder> getParentList(final String fid) {
-		Folder f = this.fm.queryById(fid);
+		Folder f = this.fm.selectById(fid);
 		final List<Folder> folderList = new ArrayList<Folder>();
 		if (f != null) {
 			while (!f.getFolderParent().equals("null") && folderList.size() < Integer.MAX_VALUE) {
-				f = this.fm.queryById(f.getFolderParent());
+				f = this.fm.selectById(f.getFolderParent());
 				folderList.add(f);
 			}
 		}
@@ -91,7 +92,7 @@ public class FolderUtil {
 		if (folderName.equals(".") || folderName.equals("..")) {
 			return null;
 		}
-		final Folder parentFolder = this.fm.queryById(parentId);
+		final Folder parentFolder = this.fm.selectById(parentId);
 		if (parentFolder == null) {
 			return null;
 		}
@@ -101,7 +102,7 @@ public class FolderUtil {
 		if (fm.queryByParentId(parentId).stream().anyMatch((e) -> e.getFolderName().equals(folderName))) {
 			return null;
 		}
-		if (fm.countByParentId(parentId) >= FileNodeUtil.MAXIMUM_NUM_OF_SINGLE_FOLDER) {
+		if (fm.selectCount(Wrappers.<Folder>lambdaQuery().eq(Folder::getFolderParent, parentId)) >= FileNodeUtil.MAXIMUM_NUM_OF_SINGLE_FOLDER) {
 			throw new FoldersTotalOutOfLimitException();
 		}
 		Folder f = new Folder();
@@ -136,7 +137,7 @@ public class FolderUtil {
 		int i = 0;
 		while (true) {
 			try {
-				final int r = this.fm.insertNewFolder(f);
+				final int r = this.fm.insert(f);
 				if (r > 0) {
 					return f;
 				}
@@ -166,7 +167,7 @@ public class FolderUtil {
 	public boolean isValidFolder(Folder f) {
 		Folder[] repeats = fm.queryByParentId(f.getFolderParent()).stream()
 				.filter((e) -> e.getFolderName().equals(f.getFolderName())).toArray(Folder[]::new);
-		if (fm.queryById(f.getFolderParent()) == null || repeats.length > 1) {
+		if (fm.selectById(f.getFolderParent()) == null || repeats.length > 1) {
 			// 如果插入后存在：
 			// 1，该文件夹没有有效的父级文件夹（死节点）；
 			// 2，与同级的其他文件夹重名，
@@ -302,10 +303,9 @@ public class FolderUtil {
 		List<Folder> cfs = fm.queryByParentId(folderId);
 		for (Folder cf : cfs) {
 			if (cf.getFolderConstraint() < c) {
-				Map<String, Object> map = new HashMap<String, Object>();
-				map.put("newConstraint", c);
-				map.put("folderId", cf.getFolderId());
-				fm.updateFolderConstraintById(map);
+				fm.update(null, Wrappers.<Folder>lambdaUpdate()
+						.set(Folder::getFolderConstraint, c)
+						.eq(Folder::getFolderId, cf.getFolderId()));
 			}
 			changeChildFolderConstraint(cf.getFolderId(), c);
 		}

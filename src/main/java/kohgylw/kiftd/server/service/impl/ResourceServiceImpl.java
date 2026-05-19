@@ -84,11 +84,11 @@ public class ResourceServiceImpl implements ResourceService {
 	public void getResource(String fid, HttpServletRequest request, HttpServletResponse response) {
 		final String account = (String) request.getSession().getAttribute("ACCOUNT");
 		if (fid != null) {
-			Node n = nm.queryById(fid);
+			Node n = nm.selectById(fid);
 			if (n != null) {
 				if (ConfigureReader.instance().authorized(account, AccountAuth.DOWNLOAD_FILES,
 						fu.getAllFoldersId(n.getFileParentFolder()))
-						&& ConfigureReader.instance().accessFolder(fm.queryById(n.getFileParentFolder()), account)) {
+						&& ConfigureReader.instance().accessFolder(fm.selectById(n.getFileParentFolder()), account)) {
 					File file = fbu.getFileFromBlocks(n);
 					if (file != null && file.isFile()) {
 						String suffix = "";
@@ -208,15 +208,23 @@ public class ResourceServiceImpl implements ResourceService {
 			// 如果缓存过期或无缓存，则按请求参数返回数据
 			String range = request.getHeader("Range");
 			long start = 0, end = 0;
+			boolean hasExplicitEnd = false;
 			if (range != null && range.startsWith("bytes=")) {
-				String[] values = range.split("=")[1].split("-");
-				start = Long.parseLong(values[0]);
-				if (values.length > 1) {
-					end = Long.parseLong(values[1]);
+				try {
+					String[] values = range.split("=")[1].split("-");
+					start = Long.parseLong(values[0]);
+					if (values.length > 1 && values[1].length() > 0) {
+						end = Long.parseLong(values[1]);
+						hasExplicitEnd = true;
+					}
+				} catch (NumberFormatException e) {
+					start = 0;
+					end = 0;
+					hasExplicitEnd = false;
 				}
 			}
 			long requestSize = 0;
-			if (end != 0 && end > start) {
+			if (hasExplicitEnd && end > start) {
 				requestSize = end - start + 1;
 			} else {
 				requestSize = Long.MAX_VALUE;
@@ -235,16 +243,24 @@ public class ResourceServiceImpl implements ResourceService {
 				status = HttpServletResponse.SC_PARTIAL_CONTENT;
 				response.setStatus(status);// 206
 				long requestStart = 0, requestEnd = 0;
+				boolean hasRequestEnd = false;
 				String[] ranges = range.split("=");
 				if (ranges.length > 1) {
 					String[] rangeDatas = ranges[1].split("-");
-					requestStart = Long.parseLong(rangeDatas[0]);
-					if (rangeDatas.length > 1) {
-						requestEnd = Long.parseLong(rangeDatas[1]);
+					try {
+						requestStart = Long.parseLong(rangeDatas[0]);
+						if (rangeDatas.length > 1 && rangeDatas[1].length() > 0) {
+							requestEnd = Long.parseLong(rangeDatas[1]);
+							hasRequestEnd = true;
+						}
+					} catch (NumberFormatException e) {
+						requestStart = 0;
+						requestEnd = 0;
+						hasRequestEnd = false;
 					}
 				}
 				long length = 0;
-				if (requestEnd > 0) {
+				if (hasRequestEnd) {
 					length = requestEnd - requestStart + 1;
 					response.setHeader("Content-length", "" + length);
 					response.setHeader("Content-Range",
@@ -306,11 +322,11 @@ public class ResourceServiceImpl implements ResourceService {
 		final String ip = idg.getIpAddr(request);
 		// 权限检查
 		if (fileId != null) {
-			Node n = nm.queryById(fileId);
+			Node n = nm.selectById(fileId);
 			if (n != null) {
 				if (ConfigureReader.instance().authorized(account, AccountAuth.DOWNLOAD_FILES,
 						fu.getAllFoldersId(n.getFileParentFolder()))
-						&& ConfigureReader.instance().accessFolder(fm.queryById(n.getFileParentFolder()), account)) {
+						&& ConfigureReader.instance().accessFolder(fm.selectById(n.getFileParentFolder()), account)) {
 					File file = fbu.getFileFromBlocks(n);
 					if (file != null && file.isFile()) {
 						// 检查是否有可用缓存

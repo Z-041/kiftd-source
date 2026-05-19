@@ -13,6 +13,7 @@ import java.util.*;
 import kohgylw.kiftd.server.enumeration.*;
 import kohgylw.kiftd.server.util.*;
 import com.google.gson.*;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 
 /**
  *
@@ -49,7 +50,7 @@ public class FolderViewServiceImpl implements FolderViewService {
 		if (fid == null || fid.length() == 0) {
 			return "ERROR";
 		}
-		Folder vf = this.fm.queryById(fid);
+		Folder vf = this.fm.selectById(fid);
 		if (vf == null) {
 			return "NOT_FOUND";// 如果用户请求一个不存在的文件夹，则返回“NOT_FOUND”，令页面回到ROOT视图
 		}
@@ -62,7 +63,7 @@ public class FolderViewServiceImpl implements FolderViewService {
 		fv.setSelectStep(SELECT_STEP);// 返回查询步长
 		fv.setFolder(vf);
 		fv.setParentList(this.fu.getParentList(fid));
-		long foldersOffset = this.fm.countByParentId(fid);// 第一波文件夹数据按照最后的记录作为查询偏移量
+		long foldersOffset = this.fm.selectCount(Wrappers.<Folder>lambdaQuery().eq(Folder::getFolderParent, fid));// 第一波文件夹数据按照最后的记录作为查询偏移量
 		fv.setFoldersOffset(foldersOffset);
 		Map<String, Object> keyMap1 = new HashMap<>();
 		keyMap1.put("pid", fid);
@@ -77,7 +78,7 @@ public class FolderViewServiceImpl implements FolderViewService {
 			}
 		}
 		fv.setFolderList(fs);
-		long filesOffset = this.flm.countByParentFolderId(fid);// 文件的查询逻辑与文件夹基本相同
+		long filesOffset = this.flm.selectCount(Wrappers.<Node>lambdaQuery().eq(Node::getFileParentFolder, fid));// 文件的查询逻辑与文件夹基本相同
 		fv.setFilesOffset(filesOffset);
 		Map<String, Object> keyMap2 = new HashMap<>();
 		keyMap2.put("pfid", fid);
@@ -141,7 +142,7 @@ public class FolderViewServiceImpl implements FolderViewService {
 		if (keyWorld.length() == 0) {
 			return getFolderViewToJson(fid, request.getSession(), request);
 		}
-		Folder vf = this.fm.queryById(fid);
+		Folder vf = this.fm.selectById(fid);
 		final String account = (String) request.getSession().getAttribute("ACCOUNT");
 		// 检查访问文件夹视图请求是否合法
 		if (!ConfigureReader.instance().accessFolder(vf, account)) {
@@ -232,7 +233,7 @@ public class FolderViewServiceImpl implements FolderViewService {
 		if (fid == null || fid.length() == 0) {
 			return "ERROR";
 		}
-		Folder vf = this.fm.queryById(fid);
+		Folder vf = this.fm.selectById(fid);
 		if (vf == null) {
 			return "NOT_FOUND";// 如果用户请求一个不存在的文件夹，则返回“NOT_FOUND”，令页面回到ROOT视图
 		}

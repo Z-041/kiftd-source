@@ -500,7 +500,7 @@ public class FileBlockUtil {
 				if (!node.getFileSize().equals(correctSize)) {
 					// 如果记录的文件体积与实际体积不符，则更正文件体积
 					node.setFileSize(correctSize);
-					fm.update(node);
+					fm.updateById(node);
 				}
 			}
 		}
@@ -533,7 +533,7 @@ public class FileBlockUtil {
 			// 避免压缩时出现同名文件导致打不开：
 			final List<Folder> folders = new ArrayList<>();
 			for (String fid : fidList) {
-				Folder fo = flm.queryById(fid);
+				Folder fo = flm.selectById(fid);
 				if (ConfigureReader.instance().accessFolder(fo, account) && ConfigureReader.instance()
 						.authorized(account, AccountAuth.DOWNLOAD_FILES, fu.getAllFoldersId(fo.getFolderParent()))) {
 					if (fo != null) {
@@ -543,8 +543,8 @@ public class FileBlockUtil {
 			}
 			final List<Node> nodes = new ArrayList<>();
 			for (String id : idList) {
-				Node n = fm.queryById(id);
-				if (ConfigureReader.instance().accessFolder(flm.queryById(n.getFileParentFolder()), account)
+				Node n = fm.selectById(id);
+				if (ConfigureReader.instance().accessFolder(flm.selectById(n.getFileParentFolder()), account)
 						&& ConfigureReader.instance().authorized(account, AccountAuth.DOWNLOAD_FILES,
 								fu.getAllFoldersId(n.getFileParentFolder()))) {
 					if (n != null) {
@@ -567,7 +567,7 @@ public class FileBlockUtil {
 				addFoldersToZipEntrySourceArray(fo, zs, account, "");
 			}
 			for (Node node : nodes) {
-				if (ConfigureReader.instance().accessFolder(flm.queryById(node.getFileParentFolder()), account)) {
+				if (ConfigureReader.instance().accessFolder(flm.selectById(node.getFileParentFolder()), account)) {
 					int i = 1;
 					String fname = node.getFileName();
 					while (true) {
@@ -748,7 +748,7 @@ public class FileBlockUtil {
 	public boolean isValidNode(Node n) {
 		Node[] repeats = fm.queryByParentFolderId(n.getFileParentFolder()).stream()
 				.filter((e) -> e.getFileName().equals(n.getFileName())).toArray(Node[]::new);
-		if (flm.queryById(n.getFileParentFolder()) == null || repeats.length > 1) {
+		if (flm.selectById(n.getFileParentFolder()) == null || repeats.length > 1) {
 			// 如果插入后存在：
 			// 1，该节点没有有效的父级文件夹（死节点）；
 			// 2，与同级的其他节点重名，
@@ -773,7 +773,7 @@ public class FileBlockUtil {
 	 * @return java.lang.String 指定节点的逻辑路径，包含其完整的上级文件夹路径和自身的文件名，各级之间以“/”分割。
 	 */
 	public String getNodePath(Node n) {
-		Folder folder = flm.queryById(n.getFileParentFolder());
+		Folder folder = flm.selectById(n.getFileParentFolder());
 		List<Folder> l = fu.getParentList(folder.getFolderId());
 		StringBuffer pl = new StringBuffer();
 		for (Folder i : l) {

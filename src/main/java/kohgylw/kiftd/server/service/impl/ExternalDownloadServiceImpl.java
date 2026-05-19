@@ -62,12 +62,12 @@ public class ExternalDownloadServiceImpl extends RangeFileStreamWriter implement
 		// 找到要下载的文件节点
 		final String fileId = request.getParameter("fId");
 		if (fileId != null) {
-			final Node f = this.nm.queryById(fileId);
+			final Node f = this.nm.selectById(fileId);
 			if (f != null) {
 				// 权限检查
 				if (ConfigureReader.instance().authorized(account, AccountAuth.DOWNLOAD_FILES,
 						fu.getAllFoldersId(f.getFileParentFolder()))
-						&& ConfigureReader.instance().accessFolder(fm.queryById(f.getFileParentFolder()), account)) {
+						&& ConfigureReader.instance().accessFolder(fm.selectById(f.getFileParentFolder()), account)) {
 					// 获取凭证
 					synchronized (downloadKeyMap) {
 						// 查找该资源是否已经生成了一个凭证，如有，则直接使用，否则，新生成一个加入到凭证表。
@@ -98,10 +98,10 @@ public class ExternalDownloadServiceImpl extends RangeFileStreamWriter implement
 			// 找到要下载的文件节点
 			String fId = null;
 			synchronized (downloadKeyMap) {
-				fId = downloadKeyMap.get(dkey);
+				fId = downloadKeyMap.remove(dkey);
 			}
 			if (fId != null) {
-				Node f = this.nm.queryById(fId);
+				Node f = this.nm.selectById(fId);
 				if (f != null) {
 					File target = this.fbu.getFileFromBlocks(f);
 					if (target != null && target.isFile()) {

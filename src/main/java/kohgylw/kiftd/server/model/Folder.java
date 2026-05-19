@@ -1,5 +1,10 @@
 package kohgylw.kiftd.server.model;
 
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.FieldStrategy;
+
 /**
  *
  * <h2>文件夹数据模型</h2>
@@ -12,13 +17,20 @@ package kohgylw.kiftd.server.model;
  * @author 青阳龙野(kohgylw)
  * @version 1.0
  */
+@TableName("FOLDER")
 public class Folder
 {
+	@TableId("folder_id")
     private String folderId;
+	@TableField(insertStrategy = FieldStrategy.ALWAYS, updateStrategy = FieldStrategy.ALWAYS)
     private String folderName;
+	@TableField(insertStrategy = FieldStrategy.ALWAYS, updateStrategy = FieldStrategy.ALWAYS)
     private String folderCreationDate;
+	@TableField(insertStrategy = FieldStrategy.ALWAYS, updateStrategy = FieldStrategy.ALWAYS)
     private String folderCreator;
+	@TableField(insertStrategy = FieldStrategy.ALWAYS, updateStrategy = FieldStrategy.ALWAYS)
     private String folderParent;
+	@TableField(insertStrategy = FieldStrategy.ALWAYS, updateStrategy = FieldStrategy.ALWAYS)
     private int folderConstraint;
     
     public String getFolderId() {

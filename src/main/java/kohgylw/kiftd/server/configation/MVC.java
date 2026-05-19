@@ -1,11 +1,9 @@
 package kohgylw.kiftd.server.configation;
 
-import org.springframework.web.servlet.resource.*;
+import org.springframework.web.servlet.config.annotation.*;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-
-import org.springframework.web.servlet.config.annotation.*;
 
 import kohgylw.kiftd.server.util.*;
 
@@ -32,7 +30,7 @@ import org.springframework.context.annotation.*;
 @ComponentScan({ "kohgylw.kiftd.server.controller", "kohgylw.kiftd.server.service.impl", "kohgylw.kiftd.server.util" })
 @ServletComponentScan({ "kohgylw.kiftd.server.listener", "kohgylw.kiftd.server.filter" })
 @Import({ DataAccess.class })
-public class MVC extends ResourceHttpRequestHandler implements WebMvcConfigurer {
+public class MVC implements WebMvcConfigurer {
 	
 	// 注册DefaultServlet
 	@Bean
@@ -47,6 +45,7 @@ public class MVC extends ResourceHttpRequestHandler implements WebMvcConfigurer 
 	}
 
 	// 设置Web静态资源映射路径
+	@Override
 	public void addResourceHandlers(final ResourceHandlerRegistry registry) {
 		// 将静态页面资源所在文件夹加入至资源路径中
 		registry.addResourceHandler(new String[] { "/**" }).addResourceLocations(new String[] {

@@ -50,16 +50,11 @@
 		</dependency>
 		<!-- end file -->
 
-		<!-- h2内嵌数据库 + spring + mybatis -->
+		<!-- h2内嵌数据库 + spring + mybatis-plus -->
 		<dependency>
-			<groupId>org.mybatis</groupId>
-			<artifactId>mybatis</artifactId>
-			<version>3.5.16</version>
-		</dependency>
-		<dependency>
-			<groupId>org.mybatis</groupId>
-			<artifactId>mybatis-spring</artifactId>
-			<version>3.0.4</version>
+			<groupId>com.baomidou</groupId>
+			<artifactId>mybatis-plus-spring-boot3-starter</artifactId>
+			<version>3.5.9</version>
 		</dependency>
 		<dependency>
 			<groupId>com.h2database</groupId>

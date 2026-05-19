@@ -147,10 +147,10 @@ public class AccountServiceImpl implements AccountService {
 				VerificationCode vc = vcf.next(4);
 				session.setAttribute("VERCODE", vc.getCode());
 				response.setContentType("image/png");
-				OutputStream out = response.getOutputStream();
-				vc.saveTo(out);
-				out.flush();
-				out.close();
+				try (OutputStream out = response.getOutputStream()) {
+					vc.saveTo(out);
+					out.flush();
+				}
 			}
 		} catch (IOException e) {
 			try {

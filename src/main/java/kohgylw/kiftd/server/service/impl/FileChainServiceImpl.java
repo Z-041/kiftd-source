@@ -70,7 +70,7 @@ public class FileChainServiceImpl extends RangeFileStreamWriter implements FileC
 				if (keyProp != null) {
 					try {
 						String fid = cipher.decrypt(keyProp.getPropertieValue(), ckey);
-						Node f = this.nm.queryById(fid);
+						Node f = this.nm.selectById(fid);
 						if (f != null) {
 							File target = this.fbu.getFileFromBlocks(f);
 							if (target != null && target.isFile()) {
@@ -114,11 +114,11 @@ public class FileChainServiceImpl extends RangeFileStreamWriter implements FileC
 			String fid = request.getParameter("fid");
 			String account = (String) request.getSession().getAttribute("ACCOUNT");
 			if (fid != null) {
-				final Node f = this.nm.queryById(fid);
+				final Node f = this.nm.selectById(fid);
 				if (f != null) {
 					if (ConfigureReader.instance().authorized(account, AccountAuth.DOWNLOAD_FILES,
 							fu.getAllFoldersId(f.getFileParentFolder()))) {
-						Folder folder = flm.queryById(f.getFileParentFolder());
+						Folder folder = flm.selectById(f.getFileParentFolder());
 						if (ConfigureReader.instance().accessFolder(folder, account)) {
 							// 将指定的fid加密为ckey并返回。
 							try {

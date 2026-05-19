@@ -1,5 +1,10 @@
 package kohgylw.kiftd.server.model;
 
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.FieldStrategy;
+
 /**
  * 
  * <h2>文件节点模型</h2>
@@ -8,16 +13,22 @@ package kohgylw.kiftd.server.model;
  * @author 青阳龙野(kohgylw)
  * @version 1.0
  */
+@TableName("FILE")
 public class Node {
-	// 可返回前端的字段
+	@TableId("file_id")
 	private String fileId;
+	@TableField(insertStrategy = FieldStrategy.ALWAYS, updateStrategy = FieldStrategy.ALWAYS)
 	private String fileName;
+	@TableField(insertStrategy = FieldStrategy.ALWAYS, updateStrategy = FieldStrategy.ALWAYS)
 	private String fileSize;
+	@TableField(insertStrategy = FieldStrategy.ALWAYS, updateStrategy = FieldStrategy.ALWAYS)
 	private String fileParentFolder;
+	@TableField(insertStrategy = FieldStrategy.ALWAYS, updateStrategy = FieldStrategy.ALWAYS)
 	private String fileCreationDate;
+	@TableField(insertStrategy = FieldStrategy.ALWAYS, updateStrategy = FieldStrategy.ALWAYS)
 	private String fileCreator;
 
-	// 不需要返回前端、仅应在后端中使用的字段
+	@TableField(insertStrategy = FieldStrategy.ALWAYS, updateStrategy = FieldStrategy.ALWAYS)
 	private transient String filePath;
 
 	public String getFileId() {

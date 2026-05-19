@@ -52,13 +52,13 @@ public class PlayVideoServiceImpl implements PlayVideoService {
 	private VideoInfo foundVideo(final HttpServletRequest request) {
 		final String fileId = request.getParameter("fileId");
 		if (fileId != null && fileId.length() > 0) {
-			final Node f = this.fm.queryById(fileId);
-			final VideoInfo vi = new VideoInfo(f);
+			final Node f = this.fm.selectById(fileId);
 			if (f != null) {
+				final VideoInfo vi = new VideoInfo(f);
 				final String account = (String) request.getSession().getAttribute("ACCOUNT");
 				if (ConfigureReader.instance().authorized(account, AccountAuth.DOWNLOAD_FILES,
 						fu.getAllFoldersId(f.getFileParentFolder()))
-						&& ConfigureReader.instance().accessFolder(flm.queryById(f.getFileParentFolder()), account)) {
+						&& ConfigureReader.instance().accessFolder(flm.selectById(f.getFileParentFolder()), account)) {
 					final String fileName = f.getFileName();
 					// 检查视频格式
 					final String suffix = fileName.substring(fileName.lastIndexOf(".") + 1).toLowerCase();

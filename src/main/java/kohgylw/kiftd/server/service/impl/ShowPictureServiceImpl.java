@@ -51,11 +51,11 @@ public class ShowPictureServiceImpl implements ShowPictureService {
 		final String fileId = request.getParameter("fileId");
 		if (fileId != null && fileId.length() > 0) {
 			final String account = (String) request.getSession().getAttribute("ACCOUNT");
-			Node p = fm.queryById(fileId);
+			Node p = fm.selectById(fileId);
 			if (p != null) {
 				if (ConfigureReader.instance().authorized(account, AccountAuth.DOWNLOAD_FILES,
 						fu.getAllFoldersId(p.getFileParentFolder()))
-						&& ConfigureReader.instance().accessFolder(flm.queryById(p.getFileParentFolder()), account)) {
+						&& ConfigureReader.instance().accessFolder(flm.selectById(p.getFileParentFolder()), account)) {
 					final List<Node> nodes = this.fm.queryBySomeFolder(fileId);
 					final List<PictureInfo> pictureViewList = new ArrayList<>();
 					int index = 0;
@@ -71,7 +71,7 @@ public class ShowPictureServiceImpl implements ShowPictureService {
 								// 对于静态图片格式，如果体积超过2 MB则要进行压缩处理，以加快加载速度
 								PictureInfo pi = new PictureInfo();
 								pi.setFileName(fileName);
-								int pSize = Integer.parseInt(n.getFileSize());
+								long pSize = Long.parseLong(n.getFileSize());
 								File block = fbu.getFileFromBlocks(n);
 								long lastModified = block.lastModified();// 尽可能地让覆盖后的图片也能立即更新
 								if (pSize > 1 && !suffix.equals("gif")) {
@@ -114,16 +114,16 @@ public class ShowPictureServiceImpl implements ShowPictureService {
 		String fileId = request.getParameter("fileId");
 		String account = (String) request.getSession().getAttribute("ACCOUNT");
 		if (fileId != null) {
-			Node node = fm.queryById(fileId);
+			Node node = fm.selectById(fileId);
 			if (node != null) {
 				if (ConfigureReader.instance().authorized(account, AccountAuth.DOWNLOAD_FILES,
 						fu.getAllFoldersId(node.getFileParentFolder()))
-						&& ConfigureReader.instance().accessFolder(flm.queryById(node.getFileParentFolder()),
+						&& ConfigureReader.instance().accessFolder(flm.selectById(node.getFileParentFolder()),
 								account)) {
 					File pBlock = fbu.getFileFromBlocks(node);
 					if (pBlock != null && pBlock.exists()) {
 						try {
-							int pSize = Integer.parseInt(node.getFileSize());
+							long pSize = Long.parseLong(node.getFileSize());
 							String format = "JPG";// 压缩后的格式
 							if (pSize < 3) {
 								Thumbnails.of(pBlock).size(1080, 1080).outputFormat(format)

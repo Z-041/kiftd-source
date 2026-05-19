@@ -71,7 +71,7 @@ public class VideoTranscodeUtil {
 	public String getTranscodeProcess(String fId) throws Exception {
 		synchronized (videoTranscodeThreads) {
 			VideoTranscodeThread vtt = videoTranscodeThreads.get(fId);
-			Node n = nm.queryById(fId);
+			Node n = nm.selectById(fId);
 			File f = fbu.getFileFromBlocks(n);
 			if (vtt != null) {
 				if ("FIN".equals(vtt.getProgress())) {

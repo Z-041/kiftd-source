@@ -4,6 +4,7 @@ import kohgylw.kiftd.server.service.*;
 import org.springframework.stereotype.*;
 
 import com.google.gson.Gson;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 
 import kohgylw.kiftd.server.mapper.*;
 import jakarta.annotation.*;
@@ -58,7 +59,7 @@ public class FolderServiceImpl implements FolderService {
 		if (!TextFormateUtil.instance().matcherFolderName(folderName) || folderName.indexOf(".") == 0) {
 			return "errorParameter";
 		}
-		final Folder parentFolder = this.fm.queryById(parentId);
+		final Folder parentFolder = this.fm.selectById(parentId);
 		if (parentFolder == null || !ConfigureReader.instance().accessFolder(parentFolder, account)) {
 			return "errorParameter";
 		}
@@ -69,11 +70,10 @@ public class FolderServiceImpl implements FolderService {
 		if (fm.queryByParentId(parentId).stream().anyMatch((e) -> e.getFolderName().equals(folderName))) {
 			return "nameOccupied";
 		}
-		if (fm.countByParentId(parentId) >= FileNodeUtil.MAXIMUM_NUM_OF_SINGLE_FOLDER) {
+		if (fm.selectCount(Wrappers.<Folder>lambdaQuery().eq(Folder::getFolderParent, parentId)) >= FileNodeUtil.MAXIMUM_NUM_OF_SINGLE_FOLDER) {
 			return "foldersTotalOutOfLimit";
 		}
 		Folder f = new Folder();
-		// 设置子文件夹约束等级，不允许子文件夹的约束等级比父文件夹低
 		int pc = parentFolder.getFolderConstraint();
 		if (folderConstraint != null) {
 			try {
@@ -104,7 +104,7 @@ public class FolderServiceImpl implements FolderService {
 		int i = 0;
 		while (true) {
 			try {
-				final int r = this.fm.insertNewFolder(f);
+				final int r = this.fm.insert(f);
 				if (r > 0) {
 					if (fu.isValidFolder(f)) {
 						this.lu.writeCreateFolderEvent(account, idg.getIpAddr(request), f);
@@ -125,28 +125,23 @@ public class FolderServiceImpl implements FolderService {
 		return "cannotCreateFolder";
 	}
 
-	// 删除文件夹的实现方法
 	public String deleteFolder(final HttpServletRequest request) {
 		final String folderId = request.getParameter("folderId");
 		final String account = (String) request.getSession().getAttribute("ACCOUNT");
-		// 检查删除目标的ID参数是否正确
 		if (folderId == null || folderId.length() == 0 || "root".equals(folderId)) {
 			return "errorParameter";
 		}
-		final Folder folder = this.fm.queryById(folderId);
+		final Folder folder = this.fm.selectById(folderId);
 		if (folder == null) {
 			return "deleteFolderSuccess";
 		}
-		// 检查删除者是否具备删除目标的访问许可
 		if (!ConfigureReader.instance().accessFolder(folder, account)) {
 			return "noAuthorized";
 		}
-		// 检查权限
 		if (!ConfigureReader.instance().authorized(account, AccountAuth.DELETE_FILE_OR_FOLDER,
 				fu.getAllFoldersId(folder.getFolderParent()))) {
 			return "noAuthorized";
 		}
-		// 执行迭代删除
 		final List<Folder> l = this.fu.getParentList(folderId);
 		if (this.fm.deleteById(folderId) > 0) {
 			fu.deleteAllChildFolder(folderId);
@@ -157,7 +152,6 @@ public class FolderServiceImpl implements FolderService {
 		return "cannotDeleteFolder";
 	}
 
-	// 对编辑文件夹的实现
 	public String renameFolder(final HttpServletRequest request) {
 		final String folderId = request.getParameter("folderId");
 		final String newName = request.getParameter("newName");
@@ -170,7 +164,7 @@ public class FolderServiceImpl implements FolderService {
 		if (!TextFormateUtil.instance().matcherFolderName(newName) || newName.indexOf(".") == 0) {
 			return "errorParameter";
 		}
-		final Folder folder = this.fm.queryById(folderId);
+		final Folder folder = this.fm.selectById(folderId);
 		if (folder == null) {
 			return "errorParameter";
 		}
@@ -181,7 +175,7 @@ public class FolderServiceImpl implements FolderService {
 				fu.getAllFoldersId(folder.getFolderParent()))) {
 			return "noAuthorized";
 		}
-		final Folder parentFolder = this.fm.queryById(folder.getFolderParent());
+		final Folder parentFolder = this.fm.selectById(folder.getFolderParent());
 		int pc = parentFolder.getFolderConstraint();
 		if (folderConstraint != null) {
 			try {
@@ -192,20 +186,18 @@ public class FolderServiceImpl implements FolderService {
 				if (ifc < pc) {
 					return "errorParameter";
 				} else {
-					Map<String, Object> map = new HashMap<>();
-					map.put("newConstraint", ifc);
-					map.put("folderId", folderId);
-					fm.updateFolderConstraintById(map);
+					fm.update(null, Wrappers.<Folder>lambdaUpdate()
+							.set(Folder::getFolderConstraint, ifc)
+							.eq(Folder::getFolderId, folderId));
 					fu.changeChildFolderConstraint(folderId, ifc);
 					if (!folder.getFolderName().equals(newName)) {
 						if (fm.queryByParentId(parentFolder.getFolderId()).stream()
 							.anyMatch((e) -> e.getFolderName().equals(newName))) {
 							return "nameOccupied";
 						}
-						Map<String, String> map2 = new HashMap<String, String>();
-						map2.put("folderId", folderId);
-						map2.put("newName", newName);
-						if (this.fm.updateFolderNameById(map2) == 0) {
+						if (fm.update(null, Wrappers.<Folder>lambdaUpdate()
+								.set(Folder::getFolderName, newName)
+								.eq(Folder::getFolderId, folderId)) == 0) {
 							return "errorParameter";
 						}
 					}
@@ -229,7 +221,7 @@ public class FolderServiceImpl implements FolderService {
 		if (parentId == null || parentId.length() == 0) {
 			return "deleteError";
 		}
-		Folder p = fm.queryById(parentId);
+		Folder p = fm.selectById(parentId);
 		if (p == null) {
 			return "deleteError";
 		}
@@ -272,7 +264,7 @@ public class FolderServiceImpl implements FolderService {
 			cnfbnr.setResult("error");
 			return gson.toJson(cnfbnr);
 		}
-		final Folder parentFolder = this.fm.queryById(parentId);
+		final Folder parentFolder = this.fm.selectById(parentId);
 		if (parentFolder == null || !ConfigureReader.instance().accessFolder(parentFolder, account)) {
 			cnfbnr.setResult("error");
 			return gson.toJson(cnfbnr);
@@ -282,7 +274,7 @@ public class FolderServiceImpl implements FolderService {
 			cnfbnr.setResult("error");
 			return gson.toJson(cnfbnr);
 		}
-		if (fm.countByParentId(parentId) >= FileNodeUtil.MAXIMUM_NUM_OF_SINGLE_FOLDER) {
+		if (fm.selectCount(Wrappers.<Folder>lambdaQuery().eq(Folder::getFolderParent, parentId)) >= FileNodeUtil.MAXIMUM_NUM_OF_SINGLE_FOLDER) {
 			cnfbnr.setResult("foldersTotalOutOfLimit");
 			return gson.toJson(cnfbnr);
 		}
@@ -293,7 +285,6 @@ public class FolderServiceImpl implements FolderService {
 			cnfbnr.setResult("error");
 			return gson.toJson(cnfbnr);
 		}
-		// 设置子文件夹约束等级，不允许子文件夹的约束等级比父文件夹低
 		int pc = parentFolder.getFolderConstraint();
 		if (folderConstraint != null) {
 			try {
@@ -327,7 +318,7 @@ public class FolderServiceImpl implements FolderService {
 		int i = 0;
 		while (true) {
 			try {
-				final int r = this.fm.insertNewFolder(f);
+				final int r = this.fm.insert(f);
 				if (r > 0) {
 					if (fu.isValidFolder(f)) {
 						this.lu.writeCreateFolderEvent(account, idg.getIpAddr(request), f);
@@ -354,12 +345,11 @@ public class FolderServiceImpl implements FolderService {
 
 	@Override
 	public String getFolderCountResult(HttpServletRequest request) {
-		// 例行检查
 		final String folderId = request.getParameter("folderId");
 		if (folderId == null || folderId.length() == 0) {
 			return "ERROR";
 		}
-		Folder vf = this.fm.queryById(folderId);
+		Folder vf = this.fm.selectById(folderId);
 		final String account = (String) request.getSession().getAttribute("ACCOUNT");
 		if (!ConfigureReader.instance().accessFolder(vf, account)) {
 			return "ERROR";
@@ -369,9 +359,7 @@ public class FolderServiceImpl implements FolderService {
 		return gson.toJson(fcr);
 	}
 
-	// 迭代统计文件夹内容
 	private void countFoldersIterator(String fid, String account, FolderCountResult fcr) {
-		// 迭代统计可访问的文件夹数量
 		long folderSize = 0L;
 		for (Folder f : this.fm.queryByParentId(fid)) {
 			if (ConfigureReader.instance().accessFolder(f, account)) {
@@ -380,7 +368,6 @@ public class FolderServiceImpl implements FolderService {
 			}
 		}
 		fcr.setFolderNum(fcr.getFolderNum() + folderSize);
-		// 统计文件数量及其总体积
 		List<Node> nodes = this.nm.queryByParentFolderId(fid);
 		fcr.setFileNum(fcr.getFileNum() + nodes.size());
 		long fileSize = 0L;
