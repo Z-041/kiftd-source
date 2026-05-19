@@ -120,7 +120,7 @@ public class ExternalDownloadServiceImpl extends RangeFileStreamWriter implement
 			//  处理无法下载的资源
 			response.sendError(404);
 		} catch (IOException e) {
-
+			this.lu.writeException(e);
 		}
 	}
 

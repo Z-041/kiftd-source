@@ -116,6 +116,7 @@ public class FolderServiceImpl implements FolderService {
 				break;
 			} catch (Exception e) {
 				f.setFolderId(UUID.randomUUID().toString());
+				this.lu.writeException(e);
 				i++;
 			}
 			if (i >= 10) {

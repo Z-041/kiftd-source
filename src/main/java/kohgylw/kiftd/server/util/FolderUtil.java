@@ -37,9 +37,14 @@ public class FolderUtil {
 	public List<Folder> getParentList(final String fid) {
 		Folder f = this.fm.selectById(fid);
 		final List<Folder> folderList = new ArrayList<Folder>();
+		final Set<String> visited = new HashSet<>();
 		if (f != null) {
+			visited.add(f.getFolderId());
 			while (!f.getFolderParent().equals("null") && folderList.size() < Integer.MAX_VALUE) {
 				f = this.fm.selectById(f.getFolderParent());
+				if (f == null || !visited.add(f.getFolderId())) {
+					break;
+				}
 				folderList.add(f);
 			}
 		}

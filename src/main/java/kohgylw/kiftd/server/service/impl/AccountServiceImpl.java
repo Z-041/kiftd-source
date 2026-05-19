@@ -156,7 +156,7 @@ public class AccountServiceImpl implements AccountService {
 			try {
 				response.sendError(500);
 			} catch (IOException e1) {
-
+				this.lu.writeException(e1);
 			}
 		}
 	}

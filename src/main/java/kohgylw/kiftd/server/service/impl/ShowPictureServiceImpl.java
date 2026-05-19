@@ -143,9 +143,22 @@ public class ShowPictureServiceImpl implements ShowPictureService {
 								lu.writeException(e1);
 							}
 						}
+						return;
 					}
+				} else {
+					try {
+						response.sendError(HttpServletResponse.SC_FORBIDDEN);
+					} catch (IOException e) {
+						lu.writeException(e);
+					}
+					return;
 				}
 			}
+		}
+		try {
+			response.sendError(HttpServletResponse.SC_NOT_FOUND);
+		} catch (IOException e) {
+			lu.writeException(e);
 		}
 	}
 }

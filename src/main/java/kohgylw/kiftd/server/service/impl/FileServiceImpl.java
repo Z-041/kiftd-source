@@ -261,6 +261,7 @@ public class FileServiceImpl extends RangeFileStreamWriter implements FileServic
 		try {
 			response.sendError(404);
 		} catch (IOException e) {
+			this.lu.writeException(e);
 		}
 	}
 
@@ -458,6 +459,7 @@ public class FileServiceImpl extends RangeFileStreamWriter implements FileServic
 					countFolderFilesId(account, cFolder.getFolderId(), idList);
 				}
 			} catch (Exception e2) {
+				this.lu.writeException(e2);
 			}
 		}
 	}

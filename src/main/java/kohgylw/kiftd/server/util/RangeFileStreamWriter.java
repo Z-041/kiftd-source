@@ -3,10 +3,13 @@ package kohgylw.kiftd.server.util;
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.RandomAccessFile;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
+import kohgylw.kiftd.printer.Printer;
 
 /**
  * 
@@ -229,9 +232,9 @@ public class RangeFileStreamWriter {
 			byte[] buf = new byte[ConfigureReader.instance().getBuffSize()];
 			// 读取文件并写处至输出流
 			try (RandomAccessFile raf = new RandomAccessFile(fo, "r")) {
-				BufferedOutputStream out = maxRate >= 0
-						? new VariableSpeedBufferedOutputStream(response.getOutputStream(), maxRate,
-								request.getSession())
+				HttpSession session = request.getSession(false);
+				OutputStream out = maxRate > 0 && maxRate < Long.MAX_VALUE && session != null
+						? new VariableSpeedBufferedOutputStream(response.getOutputStream(), maxRate, session)
 						: new BufferedOutputStream(response.getOutputStream());
 				raf.seek(startOffset);
 				if (!hasEnd) {
@@ -260,6 +263,7 @@ public class RangeFileStreamWriter {
 				try {
 					response.sendError(status);
 				} catch (IOException e1) {
+					Printer.instance.print("写入错误响应时发生IO异常：" + e1.getMessage());
 				}
 			}
 		}

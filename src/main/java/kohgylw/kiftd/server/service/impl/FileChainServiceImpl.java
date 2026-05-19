@@ -104,7 +104,7 @@ public class FileChainServiceImpl extends RangeFileStreamWriter implements FileC
 			//  处理无法下载的资源
 			response.sendError(statusCode);
 		} catch (IOException e) {
-
+			this.lu.writeException(e);
 		}
 	}
 

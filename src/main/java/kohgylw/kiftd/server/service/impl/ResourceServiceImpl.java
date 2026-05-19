@@ -139,7 +139,9 @@ public class ResourceServiceImpl implements ResourceService {
 					try {
 						response.sendError(HttpServletResponse.SC_UNAUTHORIZED);
 					} catch (IOException e) {
+						this.lu.writeException(e);
 					}
+					return;
 				}
 			}
 		}
@@ -385,6 +387,7 @@ public class ResourceServiceImpl implements ResourceService {
 		try {
 			response.sendError(500);
 		} catch (Exception e1) {
+			this.lu.writeException(e1);
 		}
 	}
 

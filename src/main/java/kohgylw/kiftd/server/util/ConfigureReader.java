@@ -150,6 +150,7 @@ public class ConfigureReader {
 			}
 		} catch (Exception e) {
 			Printer.instance.print("错误：无法加载一个或多个配置文件（位于" + this.confdir + "路径下），请尝试删除旧的配置文件并重新启动本应用或查看安装路径的权限（必须可读写）。");
+			Printer.instance.print("详细错误：" + e.getMessage());
 		}
 	}
 

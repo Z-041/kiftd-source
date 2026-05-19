@@ -89,7 +89,11 @@ public class VideoTranscodeUtil {
 					return vtt.getProgress();
 				}
 			}
-			String suffix = n.getFileName().substring(n.getFileName().lastIndexOf(".") + 1).toLowerCase();
+			int dotIndex = n.getFileName().lastIndexOf(".");
+			if (dotIndex < 0 || dotIndex >= n.getFileName().length() - 1) {
+				return null;
+			}
+			String suffix = n.getFileName().substring(dotIndex + 1).toLowerCase();
 			switch (suffix) {
 			case "mp4":
 			case "webm":

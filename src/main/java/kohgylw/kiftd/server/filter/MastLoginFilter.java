@@ -37,22 +37,18 @@ public class MastLoginFilter implements Filter {
 		final boolean s = cr.mustLogin();
 		final HttpServletRequest hsq = (HttpServletRequest) request;
 		final HttpServletResponse hsr = (HttpServletResponse) response;
-		final String url = hsq.getServletPath();
+		final String url = hsq.getServletPath().replaceAll("/{2,}", "/");
 		final HttpSession session = hsq.getSession();
-		if (url.startsWith("/externalLinksController") || url.startsWith("//externalLinksController")
-				|| url.startsWith("/homeController/getNewVerCode.do")
-				|| url.startsWith("//homeController/getNewVerCode.do")) {
+		if (url.startsWith("/externalLinksController")
+				|| url.startsWith("/homeController/getNewVerCode.do")) {
 			chain.doFilter(request, response);// 对于外部链接控制器、验证码的请求直接放行。
 			return;
 		}
 		// 如果是无需登录的请求，那么直接放行（如果访问者已经登录，那么会被后面的过滤器重定向至主页，此处无需处理）
 		switch (url) {
 		case "/prv/login.html":
-		case "//prv/login.html":
 		case "/homeController/askForAllowSignUpOrNot.ajax":
-		case "//homeController/askForAllowSignUpOrNot.ajax":
 		case "/prv/signup.html":
-		case "//prv/signup.html":
 			chain.doFilter(request, response);
 			return;
 		default:

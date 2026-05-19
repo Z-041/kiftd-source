@@ -10,6 +10,7 @@ import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.lang.ref.Cleaner;
+import java.lang.ref.WeakReference;
 
 import kohgylw.kiftd.server.model.*;
 
@@ -49,19 +50,20 @@ public class LogUtil {
 	private static final Cleaner CLEANER = Cleaner.create();
 
 	private static class LogUtilCleanup implements Runnable {
-		private final FileWriter writerRef;
+		private final WeakReference<LogUtil> logUtilRef;
 		private final ExecutorService threadPoolRef;
 
-		LogUtilCleanup(FileWriter writerRef, ExecutorService threadPoolRef) {
-			this.writerRef = writerRef;
+		LogUtilCleanup(LogUtil logUtil, ExecutorService threadPoolRef) {
+			this.logUtilRef = new WeakReference<>(logUtil);
 			this.threadPoolRef = threadPoolRef;
 		}
 
 		@Override
 		public void run() {
-			if (writerRef != null) {
+			LogUtil logUtil = logUtilRef.get();
+			if (logUtil != null && logUtil.writer != null) {
 				try {
-					writerRef.close();
+					logUtil.writer.close();
 				} catch (IOException e) {
 				}
 			}
@@ -77,7 +79,7 @@ public class LogUtil {
 		sep = File.separator;
 		logs = ConfigureReader.instance().getPath() + sep + "logs";
 		writerThread = Executors.newSingleThreadExecutor();
-		this.cleanable = CLEANER.register(this, new LogUtilCleanup(writer, writerThread));
+		this.cleanable = CLEANER.register(this, new LogUtilCleanup(this, writerThread));
 		File l = new File(logs);
 		if (!l.exists()) {
 			l.mkdir();

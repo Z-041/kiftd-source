@@ -458,30 +458,35 @@ public class FileBlockUtil {
 	 */
 	public void checkFileBlocks() {
 		Thread checkThread = new Thread(() -> {
-			// 检查是否存在未正确对应文件块的文件节点信息，若有则删除，从而确保文件节点信息不出现遗留问题
-			checkNodes("root");
-			// 检查是否存在未正确对应文件节点的文件块，若有则删除，从而确保文件块不出现遗留问题
-			List<File> paths = new ArrayList<>();
-			paths.add(new File(ConfigureReader.instance().getFileBlockPath()));
-			for (ExtendStores es : ConfigureReader.instance().getExtendStores()) {
-				paths.add(es.getPath());
-			}
-			for (File path : paths) {
-				try (DirectoryStream<Path> ds = Files.newDirectoryStream(path.toPath())) {
-					Iterator<Path> blocks = ds.iterator();
-					while (blocks.hasNext()) {
-						File testBlock = blocks.next().toFile();
-						if (testBlock.isFile() && !testBlock.getName().startsWith(".")) {
-							List<Node> nodes = fm.queryByPath(testBlock.getName());
-							if (nodes == null || nodes.isEmpty()) {
-								testBlock.delete();
+			try {
+				// 检查是否存在未正确对应文件块的文件节点信息，若有则删除，从而确保文件节点信息不出现遗留问题
+				checkNodes("root");
+				// 检查是否存在未正确对应文件节点的文件块，若有则删除，从而确保文件块不出现遗留问题
+				List<File> paths = new ArrayList<>();
+				paths.add(new File(ConfigureReader.instance().getFileBlockPath()));
+				for (ExtendStores es : ConfigureReader.instance().getExtendStores()) {
+					paths.add(es.getPath());
+				}
+				for (File path : paths) {
+					try (DirectoryStream<Path> ds = Files.newDirectoryStream(path.toPath())) {
+						Iterator<Path> blocks = ds.iterator();
+						while (blocks.hasNext()) {
+							File testBlock = blocks.next().toFile();
+							if (testBlock.isFile() && !testBlock.getName().startsWith(".")) {
+								List<Node> nodes = fm.queryByPath(testBlock.getName());
+								if (nodes == null || nodes.isEmpty()) {
+									testBlock.delete();
+								}
 							}
 						}
+					} catch (IOException e) {
+						Printer.instance.print("警告：文件节点效验时发生意外错误，可能未能正确完成文件节点效验。错误信息：" + e.getMessage());
+						lu.writeException(e);
 					}
-				} catch (IOException e) {
-					Printer.instance.print("警告：文件节点效验时发生意外错误，可能未能正确完成文件节点效验。错误信息：" + e.getMessage());
-					lu.writeException(e);
 				}
+			} catch (Exception e) {
+				Printer.instance.print("警告：文件节点效验时发生意外错误，可能未能正确完成文件节点效验。错误信息：" + e.getMessage());
+				lu.writeException(e);
 			}
 		});
 		checkThread.start();

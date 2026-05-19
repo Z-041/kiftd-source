@@ -1,9 +1,11 @@
 package kohgylw.kiftd.server.controller;
 
 import jakarta.annotation.*;
+import jakarta.servlet.http.HttpServletResponse;
 import kohgylw.kiftd.server.util.*;
 import kohgylw.kiftd.printer.*;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 /**
  *
@@ -32,16 +34,33 @@ public class ErrorController {
 	 * 捕获应用中所有未处理的 Exception 类型异常，执行以下操作：
 	 * <ol>
 	 *   <li>将异常写入运行日志文件</li>
+	 *   <li>设置 HTTP 500 错误状态码</li>
 	 *   <li>检查文件块存储的完整性</li>
 	 *   <li>在控制台输出错误信息</li>
 	 * </ol>
 	 * </p>
 	 *
-	 * @param e Exception 捕获到的异常对象
+	 * @param e        Exception 捕获到的异常对象
+	 * @param response HttpServletResponse 响应对象，用于设置错误状态码
 	 */
 	@ExceptionHandler({ Exception.class })
-	public void handleException(final Exception e) {
+	public void handleException(final Exception e, final HttpServletResponse response) {
+		if (e instanceof NoResourceFoundException) {
+			try {
+				if (!response.isCommitted()) {
+					response.sendError(HttpServletResponse.SC_NOT_FOUND);
+				}
+			} catch (Exception ignored) {
+			}
+			return;
+		}
 		this.lu.writeException(e);
+		try {
+			if (!response.isCommitted()) {
+				response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+			}
+		} catch (Exception ignored) {
+		}
 		this.fbu.checkFileBlocks();
 		Printer.instance
 				.print("处理请求时发生错误：\n\r------信息------\n\r"
