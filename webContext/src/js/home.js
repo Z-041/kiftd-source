@@ -223,7 +223,7 @@ $(function() {
 							}
 						} else {
 							for (var i = 0; i < dt.files.length; i++) {
-								var dropFile = df.files[i];
+								var dropFile = dt.files[i];
 								if (dropFile.type) {
 
 								} else {
@@ -3329,9 +3329,15 @@ function getFileChain(fileId, fileName) {
 
 // 复制链接内容
 function copyFileChain() {
-	let node = document.getElementById('fileChainTextarea');// input框
+	let node = document.getElementById('fileChainTextarea');
 	node.select();
-	document.execCommand('copy');
+	if (navigator.clipboard) {
+		navigator.clipboard.writeText(node.value).catch(function() {
+			document.execCommand('copy');
+		});
+	} else {
+		document.execCommand('copy');
+	}
 }
 
 // 显示公告模态框
@@ -3596,12 +3602,13 @@ function replaceAllQuotationMarks(txt) {
 
 // 对所有可能进入html的字符串进行转义操作
 function html2Escape(sHtml) {
-	return sHtml.replace(/[<>&\']/g, function(c) {
+	return sHtml.replace(/[<>&\'\"]/g, function(c) {
 		return {
 			'<': '&lt;',
 			'>': '&gt;',
 			'&': '&amp;',
-			'\'': '&#39;'
+			'\'': '&#39;',
+			'"': '&quot;'
 		}[c];
 	});
 }

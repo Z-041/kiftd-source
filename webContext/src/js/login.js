@@ -7,7 +7,7 @@ $(function() {
 	$("body").keypress(function(e) {
 		var keyCode = e.keyCode ? e.keyCode : e.which ? e.which : e.charCode;
 		if (keyCode == 13) {
-			var g = $("#loginBtn").click();
+			$("#loginBtn").click();
 			return false;
 		}
 	});
