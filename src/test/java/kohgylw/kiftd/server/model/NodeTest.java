@@ -13,80 +13,47 @@ import com.baomidou.mybatisplus.annotation.TableName;
 class NodeTest {
 
     @Test
-    void testNodeFieldsExist() throws Exception {
-        Node node = new Node();
-        assertNotNull(node);
+    void testNodeIsMappedToFILE_Table() {
+        TableName annotation = Node.class.getAnnotation(TableName.class);
+        assertNotNull(annotation, "Node must be mapped to a database table via @TableName");
+        assertEquals("FILE", annotation.value(), "Node must map to FILE table");
     }
 
     @Test
-    void testSetAndGetFilePath() {
-        Node node = new Node();
-        String testPath = "file_uuid.block";
-        node.setFilePath(testPath);
-        assertEquals(testPath, node.getFilePath());
+    void testFileIdIsPrimaryKey() throws Exception {
+        java.lang.reflect.Field fileIdField = Node.class.getDeclaredField("fileId");
+        TableId annotation = fileIdField.getAnnotation(TableId.class);
+        assertNotNull(annotation, "fileId must be @TableId for MyBatis Plus primary key mapping");
     }
 
     @Test
-    void testFilePathIsNotNullByDefault() {
-        Node node = new Node();
-        assertNull(node.getFilePath());
-    }
-
-    @Test
-    void testFilePathFieldIsNotTransient() throws Exception {
+    void testFilePathIsPersistable() throws Exception {
         java.lang.reflect.Field filePathField = Node.class.getDeclaredField("filePath");
         int modifiers = filePathField.getModifiers();
         assertFalse(Modifier.isTransient(modifiers),
-                "filePath field must NOT be transient to allow MyBatis Plus to map it from database");
-    }
-
-    @Test
-    void testFilePathHasTableFieldAnnotation() throws Exception {
-        java.lang.reflect.Field filePathField = Node.class.getDeclaredField("filePath");
+                "filePath must NOT be transient - transient causes NullPointerException in getFilePath() after DB read");
         TableField annotation = filePathField.getAnnotation(TableField.class);
-        assertNotNull(annotation, "filePath field must have @TableField annotation");
+        assertNotNull(annotation, "filePath must have @TableField for column mapping");
     }
 
     @Test
-    void testFileIdHasTableIdAnnotation() throws Exception {
-        java.lang.reflect.Field fileIdField = Node.class.getDeclaredField("fileId");
-        TableId annotation = fileIdField.getAnnotation(TableId.class);
-        assertNotNull(annotation, "fileId field must have @TableId annotation");
-    }
-
-    @Test
-    void testNodeHasTableNameAnnotation() {
-        TableName annotation = Node.class.getAnnotation(TableName.class);
-        assertNotNull(annotation, "Node class must have @TableName annotation");
-        assertEquals("FILE", annotation.value());
-    }
-
-    @Test
-    void testAllFieldsAreAccessibleViaGettersAndSetters() {
+    void testFullDataRoundTripMatchesDatabaseColumns() {
         Node node = new Node();
-        String testId = "test-id";
-        String testName = "test.txt";
-        String testSize = "1024";
-        String testParent = "parent-id";
-        String testDate = "2026-01-01";
-        String testCreator = "admin";
-        String testPath = "file_test.block";
+        node.setFileId("ff123456-7890-4abc-def0-123456789abc");
+        node.setFileName("report.pdf");
+        node.setFileSize("2048576");
+        node.setFileParentFolder("root");
+        node.setFileCreationDate("2026-05-20 10:30:00");
+        node.setFileCreator("admin");
+        node.setFilePath("STORAGE/ff12/ff123456-7890-4abc-def0-123456789abc.block");
 
-        node.setFileId(testId);
-        node.setFileName(testName);
-        node.setFileSize(testSize);
-        node.setFileParentFolder(testParent);
-        node.setFileCreationDate(testDate);
-        node.setFileCreator(testCreator);
-        node.setFilePath(testPath);
-
-        assertEquals(testId, node.getFileId());
-        assertEquals(testName, node.getFileName());
-        assertEquals(testSize, node.getFileSize());
-        assertEquals(testParent, node.getFileParentFolder());
-        assertEquals(testDate, node.getFileCreationDate());
-        assertEquals(testCreator, node.getFileCreator());
-        assertEquals(testPath, node.getFilePath());
+        assertEquals("ff123456-7890-4abc-def0-123456789abc", node.getFileId());
+        assertEquals("report.pdf", node.getFileName());
+        assertEquals("2048576", node.getFileSize());
+        assertEquals("root", node.getFileParentFolder());
+        assertEquals("2026-05-20 10:30:00", node.getFileCreationDate());
+        assertEquals("admin", node.getFileCreator());
+        assertEquals("STORAGE/ff12/ff123456-7890-4abc-def0-123456789abc.block", node.getFilePath());
     }
 
 }
