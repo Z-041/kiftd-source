@@ -29,7 +29,7 @@ public class Node {
 	private String fileCreator;
 
 	@TableField(insertStrategy = FieldStrategy.ALWAYS, updateStrategy = FieldStrategy.ALWAYS)
-	private transient String filePath;
+	private String filePath;
 
 	public String getFileId() {
 		return this.fileId;

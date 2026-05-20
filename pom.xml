@@ -136,6 +136,14 @@
 		</dependency>
 		<!-- end Markdown解析器 -->
 
+		<!-- 测试依赖 -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<!-- end 测试依赖 -->
+
 	</dependencies>
 	<!-- end 外部资源 -->
 

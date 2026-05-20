@@ -123,7 +123,9 @@ public class ServerInitListener implements ServletContextListener {
 						}
 					}
 				} catch (Exception e) {
-					Printer.instance.print("错误：服务器文件自动更新失败，该功能已失效。某些文件将无法自动载入最新内容（请尝试重启程序以恢复该功能）。");
+					if (run) {
+						Printer.instance.print("错误：服务器文件自动更新失败，该功能已失效。某些文件将无法自动载入最新内容（请尝试重启程序以恢复该功能）。");
+					}
 				}
 			});
 			pathWatchServiceThread.start();

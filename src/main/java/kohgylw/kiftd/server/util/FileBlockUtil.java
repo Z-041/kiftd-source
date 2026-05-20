@@ -425,6 +425,9 @@ public class FileBlockUtil {
 		// 检查该节点对应的文件块存放于哪个位置（主文件系统/扩展存储区）
 		try {
 			File file = null;
+			if (f.getFilePath() == null) {
+				return null;
+			}
 			if (f.getFilePath().startsWith("file_")) {// 存放于主文件系统中
 				// 直接从主文件系统的文件块存放区获得对应的文件块
 				file = new File(ConfigureReader.instance().getFileBlockPath(), f.getFilePath());
