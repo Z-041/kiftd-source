@@ -44,7 +44,7 @@ function doSignUp(){
 		return;
 	}
 	// 确认密码检查
-	$("#accountid,#accountpwd,#repaccountpwd,#signupBtn,#vercode").attr('disabled', true);
+	$("#accountid,#accountpwd,#repaccountpwd,#signupBtn,#vercode").prop('disabled', true);
 	if (accountPwd+"" != repAccountPwd+"") {
 		showAlert("提示：两次输入的新密码不一致，请检查确认");
 		$("#accountpwdbox").addClass("has-error");
@@ -98,7 +98,7 @@ function sendSignUpInfo(encrypted){
 				$("#accountidbox").addClass("has-error");
 				break;
 			case "needvercode":
-				$("#accountid,#accountpwd,#repaccountpwd,#signupBtn,#vercode").attr('disabled', false);
+				$("#accountid,#accountpwd,#repaccountpwd,#signupBtn,#vercode").prop('disabled', false);
 				$("#vercodebox").removeClass("hidden");
 				$("#vercodebox").addClass("show");
 				getNewVerCode();
@@ -138,7 +138,7 @@ function sendSignUpInfo(encrypted){
 
 // 显示修改密码错误提示
 function showAlert(txt) {
-	$("#accountid,#accountpwd,#repaccountpwd,#signupBtn,#vercode").attr('disabled', false);
+	$("#accountid,#accountpwd,#repaccountpwd,#signupBtn,#vercode").prop('disabled', false);
 	$("#alertbox").removeClass("hidden");
 	$("#alertbox").addClass("show");
 	$("#alertbox").text(txt);

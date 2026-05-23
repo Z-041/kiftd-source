@@ -68,6 +68,7 @@ function dologin() {
 				sendLoginInfo(encrypted);
 			},
 			error : function() {
+				finishLogin();
 				showAlert("提示：登录请求失败，请检查网络或服务器运行状态");
 			}
 		});
@@ -140,17 +141,17 @@ function showAlert(text){
 }
 
 function startLogin(){
-	$("#loginBtn").attr('disabled','disabled');
-	$("#accountid").attr('disabled','disabled');
-	$("#accountpwd").attr('disabled','disabled');
-	$("#vercode").attr('disabled','disabled');
+	$("#loginBtn").prop('disabled', true);
+	$("#accountid").prop('disabled', true);
+	$("#accountpwd").prop('disabled', true);
+	$("#vercode").prop('disabled', true);
 	$("#loginBtn").val('正在登录...');
 }
 
 function finishLogin(){
-	$("#loginBtn").removeAttr('disabled');
-	$("#accountid").removeAttr('disabled');
-	$("#accountpwd").removeAttr('disabled');
-	$("#vercode").removeAttr('disabled');
+	$("#loginBtn").prop('disabled', false);
+	$("#accountid").prop('disabled', false);
+	$("#accountpwd").prop('disabled', false);
+	$("#vercode").prop('disabled', false);
 	$("#loginBtn").val('登录');
 }

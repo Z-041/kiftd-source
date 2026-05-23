@@ -43,7 +43,7 @@
 .uploadstatusbox {
   color: #9c9c9c;
   height: 48px;
-  overflow: auto;
+  overflow-y: auto;
 }
 
 html {
@@ -66,7 +66,6 @@ body {
   -moz-border-radius: 20px;
   -webkit-border-radius: 20px;
   border-radius: 20px;
-  filter: progid:DXImageTransform.Microsoft.Alpha(opacity=70);
 }
 
 .wordbreak {
@@ -74,7 +73,6 @@ body {
 }
 
 .filetableheaderstyle {
-  height: 40px;
   float: left;
   height: 100%;
   margin-top: 15px;
@@ -94,7 +92,6 @@ body {
   height: 35px;
   background-color: #fcfcfc;
   color: #104e8b;
-  filter: progid:DXImageTransform.Microsoft.Alpha(opacity=70);
   -moz-opacity: 0.7;
   opacity: 0.7;
 }
@@ -113,7 +110,6 @@ body {
   background-color: #fcfcfc;
   color: #104e8b;
   opacity: 0.7;
-  filter: progid:DXImageTransform.Microsoft.Alpha(opacity=70);
 }
 
 td {
@@ -136,5 +132,4 @@ td {
   line-height: 40px;
   color: #104e8b;
   opacity: 0.7;
-  filter: progid:DXImageTransform.Microsoft.Alpha(opacity=70);
 }

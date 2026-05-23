@@ -3,12 +3,12 @@
  */
 var tReq;
 var tTimer;
-var pingInt;
+var kplayerPingInt;
 $(function() {
 	window.onresize = function() {
 		showCloseBtn();
 	}
-	pingInt = setInterval(function() { ping(); }, 60000);
+	kplayerPingInt = setInterval(function() { ping(); }, 60000);
 	var fileId = getFileId();
 	$
 		.ajax({
@@ -20,7 +20,7 @@ $(function() {
 			},
 			success: function(result) {
 				if (result != "ERROR") {
-					f = JSON.parse(result);
+					var f = JSON.parse(result);
 					$("#vname").text(f.fileName);
 					$("#vcreator").text(f.fileCreator);
 					$("#vcdate").text(f.fileCreationDate);
@@ -146,11 +146,11 @@ function ping() {
 		data: {},
 		success: function(result) {
 			if (result != 'pong') {
-				window.clearInterval(pingInt);
+				window.clearInterval(kplayerPingInt);
 			}
 		},
 		error: function() {
-			window.clearInterval(pingInt);
+			window.clearInterval(kplayerPingInt);
 		}
 	});
 }

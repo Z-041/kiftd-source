@@ -70,7 +70,7 @@ $(function() {
 	});
 	// 关闭登陆模态框自动清空输入数据
 	$('#loginModal').on('hidden.bs.modal', function() {
-		if ($("#dologinButton").attr('disabled') !== 'disabled') {
+		if (!$("#dologinButton").prop('disabled')) {
 			$("#accountid").val('');
 			$("#accountpwd").val('');
 		}
@@ -329,18 +329,6 @@ $(function() {
 			$('#moveFilesBox').html("");
 		}
 	});
-	// IE内核浏览器内的startsWith方法的自实现
-	if (typeof String.prototype.startsWith != 'function') {
-		String.prototype.startsWith = function(prefix) {
-			return this.slice(0, prefix.length) === prefix;
-		};
-	}
-	if (typeof String.prototype.endsWith != 'function') {
-		String.prototype.endsWith = function(suffix) {
-			return this.indexOf(suffix, this.length - suffix.length) !== -1;
-		};
-	}
-	// 关闭下载提示模态框自动隐藏下载链接
 	$('#downloadModal').on('hidden.bs.modal', function(e) {
 		$('#downloadURLCollapse').collapse('hide');
 	});
@@ -368,7 +356,7 @@ $(function() {
 				if (!isChangingPassword) {
 					$(
 						"#changepassword_oldpwd,#changepassword_newpwd,#changepassword_reqnewpwd,#changePasswordButton,#changepassword_vercode")
-						.attr('disabled', false);
+						.prop('disabled', false);
 					$(
 						"#changepassword_oldepwdbox,#changepassword_newpwdbox,#changepassword_reqnewpwdbox")
 						.removeClass("has-error");
@@ -393,9 +381,9 @@ $(function() {
 			var cookieMd530 = document.cookie.match(new RegExp(
 				"(^| )notice_md5_30=([^;]*)(;|$)"));
 			if (cookieMd530) {
-				$("#dontShowSomeNoticeAt30Day").attr("checked", "checked");
+				$("#dontShowSomeNoticeAt30Day").prop("checked", true);
 			} else {
-				$("#dontShowSomeNoticeAt30Day").attr("checked", false);
+				$("#dontShowSomeNoticeAt30Day").prop("checked", false);
 			}
 		});
 	// 关闭公告信息模态框后根据是否已经勾选“30天不再显示”设置cookie
@@ -646,18 +634,18 @@ function endLoading() {
 
 // 开始登陆加载动画
 function startLogin() {
-	$("#accountid").attr('disabled', 'disabled');
-	$("#accountpwd").attr('disabled', 'disabled');
-	$("#dologinButton").attr('disabled', 'disabled');
-	$("#vercode").attr('disabled', 'disabled');
+	$("#accountid").prop('disabled', true);
+	$("#accountpwd").prop('disabled', true);
+	$("#dologinButton").prop('disabled', true);
+	$("#vercode").prop('disabled', true);
 }
 
 // 结束登陆加载动画
 function finishLogin() {
-	$("#accountid").removeAttr('disabled');
-	$("#accountpwd").removeAttr('disabled');
-	$("#dologinButton").removeAttr('disabled');
-	$("#vercode").removeAttr('disabled');
+	$("#accountid").prop('disabled', false);
+	$("#accountpwd").prop('disabled', false);
+	$("#dologinButton").prop('disabled', false);
+	$("#vercode").prop('disabled', false);
 }
 
 // 登录操作
@@ -1311,8 +1299,8 @@ function showDeleteFolderModel(folderId, folderName) {
 		.html(
 			"<button id='dmbutton' type='button' class='btn btn-danger' onclick='deleteFolder("
 			+ '"' + folderId + '"' + ")'>删除</button>");
-	$("#dmbutton").attr('disabled', false);
-	$("#cancelDeleteFolderBtn").attr('disabled', false);
+	$("#dmbutton").prop('disabled', false);
+	$("#cancelDeleteFolderBtn").prop('disabled', false);
 	$('#deleteFolderMessage').text(
 		"提示：确定要彻底删除文件夹：[" + folderName + "]及其全部内容么？该操作不可恢复");
 	$('#deleteFolderModal').modal('toggle');
@@ -1320,8 +1308,8 @@ function showDeleteFolderModel(folderId, folderName) {
 
 // 执行删除文件夹
 function deleteFolder(folderId) {
-	$("#dmbutton").attr('disabled', true);
-	$("#cancelDeleteFolderBtn").attr('disabled', true);
+	$("#dmbutton").prop('disabled', true);
+	$("#cancelDeleteFolderBtn").prop('disabled', true);
 	$('#deleteFolderMessage').text("提示：正在删除，请稍候...");
 	$.ajax({
 		type: "POST",
@@ -1336,30 +1324,30 @@ function deleteFolder(folderId) {
 			} else {
 				if (result == "noAuthorized") {
 					$('#deleteFolderMessage').text("提示：您的操作未被授权，删除文件夹失败");
-					$("#dmbutton").attr('disabled', false);
-					$("#cancelDeleteFolderBtn").attr('disabled', true);
+					$("#dmbutton").prop('disabled', false);
+					$("#cancelDeleteFolderBtn").prop('disabled', true);
 				} else if (result == "errorParameter") {
 					$('#deleteFolderMessage').text("提示：参数不正确，删除文件夹失败");
-					$("#dmbutton").attr('disabled', false);
-					$("#cancelDeleteFolderBtn").attr('disabled', true);
+					$("#dmbutton").prop('disabled', false);
+					$("#cancelDeleteFolderBtn").prop('disabled', true);
 				} else if (result == "cannotDeleteFolder") {
 					$('#deleteFolderMessage').text("提示：出现意外错误，可能未能删除文件夹");
-					$("#dmbutton").attr('disabled', false);
-					$("#cancelDeleteFolderBtn").attr('disabled', true);
+					$("#dmbutton").prop('disabled', false);
+					$("#cancelDeleteFolderBtn").prop('disabled', true);
 				} else if (result == "deleteFolderSuccess") {
 					$('#deleteFolderModal').modal('hide');
 					showFolderView(locationpath);
 				} else {
 					$('#deleteFolderMessage').text("提示：出现意外错误，可能未能删除文件夹");
-					$("#dmbutton").attr('disabled', false);
-					$("#cancelDeleteFolderBtn").attr('disabled', true);
+					$("#dmbutton").prop('disabled', false);
+					$("#cancelDeleteFolderBtn").prop('disabled', true);
 				}
 			}
 		},
 		error: function() {
 			$('#deleteFolderMessage').text("提示：出现意外错误，可能未能删除文件夹");
-			$("#dmbutton").attr('disabled', false);
-			$("#cancelDeleteFolderBtn").attr('disabled', true);
+			$("#dmbutton").prop('disabled', false);
+			$("#cancelDeleteFolderBtn").prop('disabled', true);
 		}
 	});
 }
@@ -1443,16 +1431,16 @@ function showUploadFileModel() {
 	$("#uploadFileAlert").hide();
 	$("#uploadFileAlert").text("");
 	if (isUpLoading == false) {
-		$("#filepath").removeAttr("disabled");
+		$("#filepath").prop("disabled", false);
 		$("#uploadfile").val("");
 		$("#filepath").val("");
 		$("#pros").width("0%");
 		$("#pros").attr('aria-valuenow', '0');
-		$("#umbutton").attr('disabled', false);
+		$("#umbutton").prop('disabled', false);
 		$("#filecount").text("");
 		$("#uploadstatus").html("");
 		$("#selectcount").text("");
-		$("#selectFileUpLoadModelAsAll").removeAttr("checked");
+		$("#selectFileUpLoadModelAsAll").prop("checked", false);
 		$("#selectFileUpLoadModelAlert").hide();
 	}
 	$('#uploadFileModal').modal('show');
@@ -1491,7 +1479,7 @@ function checkUploadFile() {
 	if (isUpLoading == false && isImporting == false) {
 		if (fs != null && fs.length > 0) {
 			$("#filepath").attr("disabled", "disabled");
-			$("#umbutton").attr('disabled', true);
+			$("#umbutton").prop('disabled', true);
 			isUpLoading = true;
 			repeModelList = null;
 			$("#uploadFileAlert").hide();
@@ -1617,8 +1605,8 @@ function doupload(count) {
 			$("#filecount").text("（" + count + "/" + fcount + "）");// 显示当前进度
 		}
 		$("#uploadstatus").prepend(
-			"<p>" + html2Escape(fname) + "<span id='uls_" + count
-			+ "'>[正在上传...]</span></p>");
+			"<p>" + html2Escape(fname) + " <span id='uls_" + count
+			+ "' class='text-info'>[正在上传...]</span></p>");
 		xhr = new XMLHttpRequest();// 这东西类似于servlet里面的request
 
 		var fd = new FormData();// 用于封装文件数据的对象
@@ -1627,19 +1615,18 @@ function doupload(count) {
 		fd.append("folderId", uploadTargetFolder);
 		if (repeModelList != null && repeModelList[fname] != null) {
 			if (repeModelList[fname] == 'skip') {
-				$("#uls_" + count).text("[已完成]");
+				$("#uls_" + count).html("<span class='text-success'>[已完成]</span>");
 				if (count < fcount) {
 					doupload(count + 1);
 					return;
 				} else {
-					// 清空所有提示信息，还原上传窗口
 					isUpLoading = false;
-					$("#filepath").removeAttr("disabled");
+					$("#filepath").prop("disabled", false);
 					$("#uploadfile").val("");
 					$("#filepath").val("");
 					$("#pros").width("0%");
 					$("#pros").attr('aria-valuenow', "0");
-					$("#umbutton").attr('disabled', false);
+					$("#umbutton").prop('disabled', false);
 					$("#filecount").text("");
 					$("#uploadstatus").text("");
 					$("#selectcount").text("");
@@ -1672,18 +1659,17 @@ function doupload(count) {
 				// 上传成功
 				var result = xhr.responseText;
 				if (result == "uploadsuccess") {
-					$("#uls_" + count).text("[已完成]");
+					$("#uls_" + count).html("<span class='text-success'>[已完成]</span>");
 					if (count < fcount) {
 						doupload(count + 1);
 					} else {
-						// 清空所有提示信息，还原上传窗口
 						isUpLoading = false;
-						$("#filepath").removeAttr("disabled");
+						$("#filepath").prop("disabled", false);
 						$("#uploadfile").val("");
 						$("#filepath").val("");
 						$("#pros").width("0%");
 						$("#pros").attr('aria-valuenow', "0");
-						$("#umbutton").attr('disabled', false);
+						$("#umbutton").prop('disabled', false);
 						$("#filecount").text("");
 						$("#uploadstatus").text("");
 						$("#selectcount").text("");
@@ -1693,25 +1679,25 @@ function doupload(count) {
 				} else if (result == "uploaderror") {
 					showUploadFileAlert("提示：出现意外错误，文件：[" + fname
 						+ "]上传失败，上传被中断。");
-					$("#uls_" + count).text("[失败]");
+					$("#uls_" + count).html("<span class='text-danger'>[失败]</span>");
 				} else if (result == 'filesTotalOutOfLimit') {
 					showUploadFileAlert("提示：该文件夹内存储的文件数量已达上限，文件：[" + fname
 						+ "]上传失败。您可以尝试将其上传至其他文件夹内。");
-					$("#uls_" + count).text("[失败]");
+					$("#uls_" + count).html("<span class='text-danger'>[失败]</span>");
 				} else {
 					showUploadFileAlert("提示：出现意外错误，文件：[" + fname
 						+ "]上传失败，上传被中断。");
-					$("#uls_" + count).text("[失败]");
+					$("#uls_" + count).html("<span class='text-danger'>[失败]</span>");
 				}
 			} else {
 				showUploadFileAlert("提示：出现意外错误，文件：[" + fname + "]上传失败，上传被中断。");
-				$("#uls_" + count).text("[失败]");
+				$("#uls_" + count).html("<span class='text-danger'>[失败]</span>");
 			}
 		};
 	} else {
 		showUploadFileAlert("提示：要上传的文件不存在。");
 		$("#uploadstatus").prepend(
-			"<p>未找到要上传的文件<span id='uls_" + count + "'>[失败]</span></p>");
+			"<p>未找到要上传的文件 <span id='uls_" + count + "' class='text-danger'>[失败]</span></p>");
 	}
 }
 
@@ -1729,10 +1715,10 @@ function uploadProgress(evt) {
 // 显示上传文件错误提示
 function showUploadFileAlert(txt) {
 	isUpLoading = false;
-	$("#filepath").removeAttr("disabled");
+	$("#filepath").prop("disabled", false);
 	$("#uploadFileAlert").show();
 	$("#uploadFileAlert").text(txt);
-	$("#umbutton").attr('disabled', false);
+	$("#umbutton").prop('disabled', false);
 }
 
 // 取消上传文件
@@ -1757,13 +1743,13 @@ function showDownloadModel(fileId, fileName) {
 		.html(
 			"<button id='dlmbutton' type='button' class='btn btn-primary' onclick='dodownload("
 			+ '"' + fileId + '"' + ")'>开始下载</button>");
-	$("#dlmbutton").attr('disabled', false);
+	$("#dlmbutton").prop('disabled', false);
 	$("#downloadModal").modal('show');
 }
 
 // 执行下载操作
 function dodownload(fileId) {
-	$("#dlmbutton").attr('disabled', true);
+	$("#dlmbutton").prop('disabled', true);
 	$("#downloadFileName").text("提示：准备开始下载，请稍候...");
 	var t = setTimeout("$('#downloadModal').modal('hide');", 800);
 	window.location.href = "homeController/downloadFile.do?fileId=" + fileId;
@@ -1775,16 +1761,16 @@ function showDeleteFileModel(fileId, fileName) {
 		.html(
 			"<button id='dfmbutton' type='button' class='btn btn-danger' onclick='deleteFile("
 			+ '"' + fileId + '"' + ")'>删除</button>");
-	$("#dfmbutton").attr('disabled', false);
-	$("#cancelDeleteFileBox").attr('disabled', false);
+	$("#dfmbutton").prop('disabled', false);
+	$("#cancelDeleteFileBox").prop('disabled', false);
 	$('#deleteFileMessage').text("提示：确定要彻底删除文件：[" + fileName + "]么？该操作不可恢复");
 	$('#deleteFileModal').modal('toggle');
 }
 
 // 执行删除文件操作
 function deleteFile(fileId) {
-	$("#dfmbutton").attr('disabled', true);
-	$("#cancelDeleteFileBox").attr('disabled', true);
+	$("#dfmbutton").prop('disabled', true);
+	$("#cancelDeleteFileBox").prop('disabled', true);
 	$('#deleteFileMessage').text("提示：正在删除，请稍候...");
 	$.ajax({
 		type: "POST",
@@ -1799,30 +1785,30 @@ function deleteFile(fileId) {
 			} else {
 				if (result == "noAuthorized") {
 					$('#deleteFileMessage').text("提示：您的操作未被授权，删除失败");
-					$("#dfmbutton").attr('disabled', false);
-					$("#cancelDeleteFileBox").attr('disabled', false);
+					$("#dfmbutton").prop('disabled', false);
+					$("#cancelDeleteFileBox").prop('disabled', false);
 				} else if (result == "errorParameter") {
 					$('#deleteFileMessage').text("提示：参数不正确，删除失败");
-					$("#dfmbutton").attr('disabled', false);
-					$("#cancelDeleteFileBox").attr('disabled', false);
+					$("#dfmbutton").prop('disabled', false);
+					$("#cancelDeleteFileBox").prop('disabled', false);
 				} else if (result == "cannotDeleteFile") {
 					$('#deleteFileMessage').text("提示：出现意外错误，可能未能删除文件");
-					$("#dfmbutton").attr('disabled', false);
-					$("#cancelDeleteFileBox").attr('disabled', false);
+					$("#dfmbutton").prop('disabled', false);
+					$("#cancelDeleteFileBox").prop('disabled', false);
 				} else if (result == "deleteFileSuccess") {
 					$('#deleteFileModal').modal('hide');
 					showFolderView(locationpath);
 				} else {
 					$('#deleteFileMessage').text("提示：出现意外错误，可能未能删除文件");
-					$("#dfmbutton").attr('disabled', false);
-					$("#cancelDeleteFileBox").attr('disabled', false);
+					$("#dfmbutton").prop('disabled', false);
+					$("#cancelDeleteFileBox").prop('disabled', false);
 				}
 			}
 		},
 		error: function() {
 			$('#deleteFileMessage').text("提示：出现意外错误，可能未能删除文件");
-			$("#dfmbutton").attr('disabled', false);
-			$("#cancelDeleteFileBox").attr('disabled', false);
+			$("#dfmbutton").prop('disabled', false);
+			$("#cancelDeleteFileBox").prop('disabled', false);
 		}
 	});
 }
@@ -2002,16 +1988,16 @@ function showDownloadAllCheckedModel() {
 		$("#downloadAllCheckedBox")
 			.html(
 				"<button id='dclmbutton' type='button' class='btn btn-primary' onclick='downloadAllChecked()'>开始下载</button>");
-		$("#dclmbutton").attr('disabled', false);
+		$("#dclmbutton").prop('disabled', false);
 	}
-	$("#cancelDownloadAllCheckedBtn").attr('disabled', false);
+	$("#cancelDownloadAllCheckedBtn").prop('disabled', false);
 	$("#downloadAllCheckedModal").modal('toggle');
 }
 
 // 下载选中的所有文件
 function downloadAllChecked() {
-	$("#dclmbutton").attr('disabled', true);
-	$("#cancelDownloadAllCheckedBtn").attr('disabled', true);
+	$("#dclmbutton").prop('disabled', true);
+	$("#cancelDownloadAllCheckedBtn").prop('disabled', true);
 	var faf = getCheckedFilesAndFolders();
 	$("#downloadAllCheckedName").text(
 		"提示：服务器正在对选中资源进行压缩（共" + faf.size
@@ -2064,8 +2050,8 @@ function downloadAllChecked() {
 			if (result == "ERROR") {
 				$("#downloadAllCheckedName")
 					.text("提示：压缩过程出错。无法完成压缩，请重试或告知管理员。");
-				$("#dclmbutton").attr('disabled', false);
-				$("#cancelDownloadAllCheckedBtn").attr('disabled', false);
+				$("#dclmbutton").prop('disabled', false);
+				$("#cancelDownloadAllCheckedBtn").prop('disabled', false);
 			} else {
 				$("#downloadAllCheckedLoad").text("");
 				$("#downloadAllCheckedName").text("提示：压缩完成！准备开始下载...");
@@ -2086,8 +2072,8 @@ function downloadAllChecked() {
 		},
 		error: function() {
 			$("#downloadAllCheckedName").text("提示：请求失败。无法完成压缩，请重试或告知管理员。");
-			$("#dclmbutton").attr('disabled', false);
-			$("#cancelDownloadAllCheckedBtn").attr('disabled', false);
+			$("#dclmbutton").prop('disabled', false);
+			$("#cancelDownloadAllCheckedBtn").prop('disabled', false);
 		}
 	});
 }
@@ -2096,8 +2082,8 @@ function downloadAllChecked() {
 function showDeleteAllCheckedModel() {
 	$('#deleteFileBox').html("");
 	var faf = getCheckedFilesAndFolders();
-	$("#dfmbutton").attr('disabled', false);
-	$("#cancelDeleteFileBox").attr('disabled', false);
+	$("#dfmbutton").prop('disabled', false);
+	$("#cancelDeleteFileBox").prop('disabled', false);
 	if (faf.size == 0) {
 		$('#deleteFileMessage').html(checkFilesTip);
 	} else {
@@ -2113,8 +2099,8 @@ function showDeleteAllCheckedModel() {
 function deleteAllChecked() {
 	// 提交全部删除请求
 	var faf = getCheckedFilesAndFolders();
-	$("#dfmbutton").attr('disabled', true);
-	$("#cancelDeleteFileBox").attr('disabled', true);
+	$("#dfmbutton").prop('disabled', true);
+	$("#cancelDeleteFileBox").prop('disabled', true);
 	$('#deleteFileMessage').text("提示：正在删除，请稍候...");
 	$.ajax({
 		type: "POST",
@@ -2130,30 +2116,30 @@ function deleteAllChecked() {
 			} else {
 				if (result == "noAuthorized") {
 					$('#deleteFileMessage').text("提示：您的操作未被授权，删除失败");
-					$("#dfmbutton").attr('disabled', false);
-					$("#cancelDeleteFileBox").attr('disabled', false);
+					$("#dfmbutton").prop('disabled', false);
+					$("#cancelDeleteFileBox").prop('disabled', false);
 				} else if (result == "errorParameter") {
 					$('#deleteFileMessage').text("提示：参数不正确，未能全部删除文件");
-					$("#dfmbutton").attr('disabled', false);
-					$("#cancelDeleteFileBox").attr('disabled', false);
+					$("#dfmbutton").prop('disabled', false);
+					$("#cancelDeleteFileBox").prop('disabled', false);
 				} else if (result == "cannotDeleteFile") {
 					$('#deleteFileMessage').text("提示：出现意外错误，可能未能删除全部文件");
-					$("#dfmbutton").attr('disabled', false);
-					$("#cancelDeleteFileBox").attr('disabled', false);
+					$("#dfmbutton").prop('disabled', false);
+					$("#cancelDeleteFileBox").prop('disabled', false);
 				} else if (result == "deleteFileSuccess") {
 					$('#deleteFileModal').modal('hide');
 					showFolderView(locationpath);
 				} else {
 					$('#deleteFileMessage').text("提示：出现意外错误，可能未能删除全部文件");
-					$("#dfmbutton").attr('disabled', false);
-					$("#cancelDeleteFileBox").attr('disabled', false);
+					$("#dfmbutton").prop('disabled', false);
+					$("#cancelDeleteFileBox").prop('disabled', false);
 				}
 			}
 		},
 		error: function() {
 			$('#deleteFileMessage').text("提示：出现意外错误，可能未能删除全部文件");
-			$("#dfmbutton").attr('disabled', false);
-			$("#cancelDeleteFileBox").attr('disabled', false);
+			$("#dfmbutton").prop('disabled', false);
+			$("#cancelDeleteFileBox").prop('disabled', false);
 		}
 	});
 }
@@ -2344,7 +2330,7 @@ function cutFile() {
 	if (checkedfiles == undefined || checkedfiles.size == 0) {
 		// 如果未选中任何文件，则提示用户要先选
 		$('#moveFilesMessage').html(checkFilesTip);
-		$("#selectFileMoveModelAsAll").removeAttr("checked");
+		$("#selectFileMoveModelAsAll").prop("checked", false);
 		$("#selectFileMoveModelAlert").hide();
 		$("#dmvfbutton").remove();
 		$('#moveFilesModal').modal('show');
@@ -2368,7 +2354,7 @@ function copyFile() {
 	if (checkedfiles == undefined || checkedfiles.size == 0) {
 		// 如果未选中任何文件，则提示用户要先选
 		$('#moveFilesMessage').html(checkFilesTip);
-		$("#selectFileMoveModelAsAll").removeAttr("checked");
+		$("#selectFileMoveModelAsAll").prop("checked", false);
 		$("#selectFileMoveModelAlert").hide();
 		$("#dmvfbutton").remove();
 		$('#moveFilesModal').modal('show');
@@ -2402,8 +2388,8 @@ function stickFile() {
 				.html(
 					"<button id='dmvfbutton' type='button' class='btn btn-danger' onclick='doMoveFiles()'>全部移动</button>");
 		}
-		$("#selectFileMoveModelAsAll").removeAttr("checked");
-		$("#cancelMoveFilesBtn").attr('disabled', false);
+		$("#selectFileMoveModelAsAll").prop("checked", false);
+		$("#cancelMoveFilesBtn").prop('disabled', false);
 		$("#selectFileMoveModelAlert").hide();
 		$('#moveFilesModal').modal('show');
 	}
@@ -2411,8 +2397,8 @@ function stickFile() {
 
 // 先行确认文件移动操作
 function doMoveFiles() {
-	$("#dmvfbutton").attr('disabled', true);
-	$("#cancelMoveFilesBtn").attr('disabled', true);
+	$("#dmvfbutton").prop('disabled', true);
+	$("#cancelMoveFilesBtn").prop('disabled', true);
 	var method = "MOVE";
 	if (isCopy) {
 		$('#moveFilesMessage').text("提示：正在复制，请稍候...");
@@ -2439,32 +2425,32 @@ function doMoveFiles() {
 					switch (result) {
 						case "noAuthorized":
 							$('#moveFilesMessage').text("提示：您的操作未被授权，操作失败");
-							$("#dmvfbutton").attr('disabled', false);
-							$("#cancelMoveFilesBtn").attr('disabled', false);
+							$("#dmvfbutton").prop('disabled', false);
+							$("#cancelMoveFilesBtn").prop('disabled', false);
 							break;
 						case "errorParameter":
 							$('#moveFilesMessage').text(
 								"提示：参数不正确，无法完成此操作，请刷新后重试");
-							$("#dmvfbutton").attr('disabled', false);
-							$("#cancelMoveFilesBtn").attr('disabled', false);
+							$("#dmvfbutton").prop('disabled', false);
+							$("#cancelMoveFilesBtn").prop('disabled', false);
 							break;
 						case "cannotMoveFiles":
 							$('#moveFilesMessage').text(
 								"提示：出现意外错误，可能未能完成此操作，请刷新后重试");
-							$("#dmvfbutton").attr('disabled', false);
-							$("#cancelMoveFilesBtn").attr('disabled', false);
+							$("#dmvfbutton").prop('disabled', false);
+							$("#cancelMoveFilesBtn").prop('disabled', false);
 							break;
 						case "filesTotalOutOfLimit":
 							$('#moveFilesMessage').text(
 								"提示：该文件夹内存储的文件数量已达上限，无法添加更多文件");
-							$("#dmvfbutton").attr('disabled', false);
-							$("#cancelMoveFilesBtn").attr('disabled', false);
+							$("#dmvfbutton").prop('disabled', false);
+							$("#cancelMoveFilesBtn").prop('disabled', false);
 							break;
 						case "foldersTotalOutOfLimit":
 							$('#moveFilesMessage').text(
 								"提示：该文件夹内存储的文件夹数量已达上限，无法添加更多文件夹");
-							$("#dmvfbutton").attr('disabled', false);
-							$("#cancelMoveFilesBtn").attr('disabled', false);
+							$("#dmvfbutton").prop('disabled', false);
+							$("#cancelMoveFilesBtn").prop('disabled', false);
 							break;
 						case "confirmMoveFiles":
 							strMoveOptMap = {};
@@ -2501,9 +2487,9 @@ function doMoveFiles() {
 							} else {
 								$('#moveFilesMessage').text(
 									"提示：出现意外错误，可能未能完成此操作，请刷新后重试");
-								$("#dmvfbutton").attr('disabled', false);
+								$("#dmvfbutton").prop('disabled', false);
 								$("#cancelMoveFilesBtn")
-									.attr('disabled', false);
+									.prop('disabled', false);
 							}
 							break;
 					}
@@ -2511,8 +2497,8 @@ function doMoveFiles() {
 			},
 			error: function() {
 				$('#moveFilesMessage').text("提示：出现意外错误，可能未能完成此操作，请刷新后重试");
-				$("#dmvfbutton").attr('disabled', false);
-				$("#cancelMoveFilesBtn").attr('disabled', false);
+				$("#dmvfbutton").prop('disabled', false);
+				$("#cancelMoveFilesBtn").prop('disabled', false);
 			}
 		});
 }
@@ -2581,52 +2567,52 @@ function sendMoveFilesReq() {
 					switch (result) {
 						case "noAuthorized":
 							$('#moveFilesMessage').text("提示：您的操作未被授权，操作失败");
-							$("#dmvfbutton").attr('disabled', false);
-							$("#cancelMoveFilesBtn").attr('disabled', false);
+							$("#dmvfbutton").prop('disabled', false);
+							$("#cancelMoveFilesBtn").prop('disabled', false);
 							break;
 						case "errorParameter":
 							$('#moveFilesMessage').text(
 								"提示：参数不正确，无法完成此操作，请刷新后重试");
-							$("#dmvfbutton").attr('disabled', false);
-							$("#cancelMoveFilesBtn").attr('disabled', false);
+							$("#dmvfbutton").prop('disabled', false);
+							$("#cancelMoveFilesBtn").prop('disabled', false);
 							break;
 						case "filesTotalOutOfLimit":
 							$('#moveFilesMessage').text(
 								"提示：该文件夹内存储的文件数量已达上限，无法添加更多文件");
-							$("#dmvfbutton").attr('disabled', false);
-							$("#cancelMoveFilesBtn").attr('disabled', false);
+							$("#dmvfbutton").prop('disabled', false);
+							$("#cancelMoveFilesBtn").prop('disabled', false);
 							break;
 						case "foldersTotalOutOfLimit":
 							$('#moveFilesMessage').text(
 								"提示：该文件夹内存储的文件夹数量已达上限，无法添加更多文件夹");
-							$("#dmvfbutton").attr('disabled', false);
-							$("#cancelMoveFilesBtn").attr('disabled', false);
+							$("#dmvfbutton").prop('disabled', false);
+							$("#cancelMoveFilesBtn").prop('disabled', false);
 							break;
 						case "cannotMoveFiles":
 							$('#moveFilesMessage').text(
 								"提示：出现意外错误，可能未能完成此操作，请刷新后重试");
-							$("#dmvfbutton").attr('disabled', false);
-							$("#cancelMoveFilesBtn").attr('disabled', false);
+							$("#dmvfbutton").prop('disabled', false);
+							$("#cancelMoveFilesBtn").prop('disabled', false);
 							break;
 						case "moveFilesSuccess":
 							checkedMovefiles = undefined;
 							$('#moveFilesModal').modal('hide');
-							$("#cancelMoveFilesBtn").attr('disabled', false);
+							$("#cancelMoveFilesBtn").prop('disabled', false);
 							showFolderView(locationpath);
 							break;
 						default:
 							$('#moveFilesMessage').text(
 								"提示：出现意外错误，可能未能完成此操作，请刷新后重试");
-							$("#dmvfbutton").attr('disabled', false);
-							$("#cancelMoveFilesBtn").attr('disabled', false);
+							$("#dmvfbutton").prop('disabled', false);
+							$("#cancelMoveFilesBtn").prop('disabled', false);
 							break;
 					}
 				}
 			},
 			error: function() {
 				$('#moveFilesMessage').text("提示：出现意外错误，可能未能完成此操作，请刷新后重试");
-				$("#dmvfbutton").attr('disabled', false);
-				$("#cancelMoveFilesBtn").attr('disabled', false);
+				$("#dmvfbutton").prop('disabled', false);
+				$("#cancelMoveFilesBtn").prop('disabled', false);
 			}
 		});
 }
@@ -2841,10 +2827,10 @@ function showUploadFolderModel() {
 		$("#importpros").width("0%");
 		$("#importpros").attr('aria-valuenow', '0');
 		$("#importstatus").html("");
-		$("#folderpath").attr("disabled", false);
-		$("#importFolderLevelBtn").attr("disabled", false);
+		$("#folderpath").prop("disabled", false);
+		$("#importFolderLevelBtn").prop("disabled", false);
 		$("#importcount").text("");
-		$("#importbutton").attr('disabled', false);
+		$("#importbutton").prop('disabled', false);
 		$("#importfoldertypelist").html("");
 		$("#selectFolderImportModelAlert").hide();
 		if (account != null) {
@@ -2884,9 +2870,9 @@ function getInputImport() {
 function checkImportFolder() {
 	if (isUpLoading == false && isImporting == false) {
 		if (ifs != null && ifs.length > 0) {// 必须选中文件
-			$("#folderpath").attr("disabled", true);
-			$("#importFolderLevelBtn").attr("disabled", true);
-			$("#importbutton").attr('disabled', true);
+			$("#folderpath").prop("disabled", true);
+			$("#importFolderLevelBtn").prop("disabled", true);
+			$("#importbutton").prop('disabled', true);
 			$("#importFolderAlert").hide();
 			$("#importFolderAlert").text("");
 			isImporting = true;
@@ -2965,11 +2951,11 @@ function checkImportFolder() {
 // 显示上传文件夹错误提示
 function showImportFolderAlert(txt) {
 	isImporting = false;
-	$("#folderpath").attr("disabled", false);
-	$("#importFolderLevelBtn").attr("disabled", false);
+	$("#folderpath").prop("disabled", false);
+	$("#importFolderLevelBtn").prop("disabled", false);
 	$("#importFolderAlert").show();
 	$("#importFolderAlert").text(txt);
-	$("#importbutton").attr('disabled', false);
+	$("#importbutton").prop('disabled', false);
 }
 
 // 显示上传文件夹进度
@@ -3085,20 +3071,19 @@ function iteratorImport(i, newFolderName) {
 				// TODO 上传成功
 				var result = xhr.responseText;
 				if (result == "uploadsuccess") {
-					$("#ils_" + i).text("[已完成]");
+					$("#ils_" + i).html("<span class='text-success'>[已完成]</span>");
 					var ni = i + 1;
 					if (ni < fcount) {
 						iteratorImport(ni, newFolderName);
 					} else {
-						// 完成全部上传后，清空所有提示信息，并还原上传窗口
 						isImporting = false;
-						$("#folderpath").removeAttr("disabled");
-						$("#importFolderLevelBtn").removeAttr("disabled");
+						$("#folderpath").prop("disabled", false);
+						$("#importFolderLevelBtn").prop("disabled", false);
 						$("#importfolder").val("");
 						$("#folderpath").val("");
 						$("#importpros").width("0%");
 						$("#importpros").attr('aria-valuenow', "0");
-						$("#importbutton").attr('disabled', false);
+						$("#importbutton").prop('disabled', false);
 						$("#importcount").text("");
 						$("#importstatus").text("");
 						$('#importFolderModal').modal('hide');
@@ -3107,29 +3092,29 @@ function iteratorImport(i, newFolderName) {
 				} else if (result == "uploaderror") {
 					showImportFolderAlert("提示：出现意外错误，文件：[" + fname
 						+ "]上传失败，上传被中断。");
-					$("#ils_" + i).text("[失败]");
+					$("#ils_" + i).html("<span class='text-danger'>[失败]</span>");
 				} else if (result == "foldersTotalOutOfLimit") {
 					showImportFolderAlert("提示：该文件夹内存储的文件夹数量已达上限，文件：[" + fname
 						+ "]上传失败，上传被中断。");
-					$("#ils_" + i).text("[失败]");
+					$("#ils_" + i).html("<span class='text-danger'>[失败]</span>");
 				} else if (result == "filesTotalOutOfLimit") {
 					showImportFolderAlert("提示：该文件夹内存储的文件数量已达上限，文件：[" + fname
 						+ "]上传失败，上传被中断。");
-					$("#ils_" + i).text("[失败]");
+					$("#ils_" + i).html("<span class='text-danger'>[失败]</span>");
 				} else {
 					showImportFolderAlert("提示：出现意外错误，文件：[" + fname
 						+ "]上传失败，上传被中断。");
-					$("#ils_" + i).text("[失败]");
+					$("#ils_" + i).html("<span class='text-danger'>[失败]</span>");
 				}
 			} else {
 				showImportFolderAlert("提示：出现意外错误，文件：[" + fname + "]上传失败，上传被中断。");
-				$("#ils_" + i).text("[失败]");
+				$("#ils_" + i).html("<span class='text-danger'>[失败]</span>");
 			}
 		};
 	} else {
 		showImportFolderAlert("提示：要上传的文件不存在。");
 		$("#importstatus").prepend(
-			"<p>未找到要上传的文件<span id='ils_" + i + "'>[失败]</span></p>");
+			"<p>未找到要上传的文件 <span id='ils_" + i + "' class='text-danger'>[失败]</span></p>");
 	}
 }
 
@@ -3181,7 +3166,7 @@ function doChangePassword() {
 	isChangingPassword = true;
 	$(
 		"#changepassword_oldpwd,#changepassword_newpwd,#changepassword_reqnewpwd,#changePasswordButton,#changepassword_vercode")
-		.attr('disabled', true);
+		.prop('disabled', true);
 	if (change_newPassword + "" != change_reqNewPassword + "") {
 		showChangePasswordAlert("提示：两次输入的新密码不一致，请检查确认");
 		$("#changepassword_newpwdbox").addClass("has-error");
@@ -3243,7 +3228,7 @@ function sendChangePasswordInfo(encrypted) {
 					case "needsubmitvercode":
 						$(
 							"#changepassword_oldpwd,#changepassword_newpwd,#changepassword_reqnewpwd,#changePasswordButton")
-							.attr('disabled', false);
+							.prop('disabled', false);
 						$("#changepassword_vccodebox")
 							.html(
 								"<label id='changepassword_vercodetitle' class='col-sm-5'><img id='changepassword_showvercode' class='vercodeimg' alt='点击获取验证码' src='homeController/getNewVerCode.do?s="
@@ -3277,7 +3262,7 @@ function showChangePasswordAlert(txt) {
 	isChangingPassword = false;
 	$(
 		"#changepassword_oldpwd,#changepassword_newpwd,#changepassword_reqnewpwd,#changePasswordButton,#changepassword_vercode")
-		.attr('disabled', false);
+		.prop('disabled', false);
 	$("#changepasswordalertbox").show();
 	$("#changepasswordalertbox").text(txt);
 }
@@ -3291,7 +3276,7 @@ function changePasswordGetNewVerCode() {
 // 获取永久资源链接
 function getFileChain(fileId, fileName) {
 	$("#fileChainTextarea").text("正在获取……");
-	$("#copyChainBtn").attr('disabled', true);
+	$("#copyChainBtn").prop('disabled', true);
 	$('#fileChainModal').modal('show');
 	$.ajax({
 		type: "POST",
@@ -3317,7 +3302,7 @@ function getFileChain(fileId, fileName) {
 						+ encodeURIComponent(fileName.replace(/\\/g,
 							"_")) + "?ckey="
 						+ encodeURIComponent(result));
-					$("#copyChainBtn").attr('disabled', false);
+					$("#copyChainBtn").prop('disabled', false);
 					break;
 			}
 		},
@@ -3332,11 +3317,7 @@ function copyFileChain() {
 	let node = document.getElementById('fileChainTextarea');
 	node.select();
 	if (navigator.clipboard) {
-		navigator.clipboard.writeText(node.value).catch(function() {
-			document.execCommand('copy');
-		});
-	} else {
-		document.execCommand('copy');
+		navigator.clipboard.writeText(node.value).catch(function() {});
 	}
 }
 
@@ -3513,7 +3494,7 @@ function showLoadingRemaininngBox() {
 	loadingComplete = false;
 	$("#loadingremaininngbox").addClass("show");
 	$("#loadingremaininngbox").removeClass("hidden");
-	$("#searchbtn").attr('disabled', 'disabled');
+	$("#searchbtn").prop('disabled', true);
 }
 
 // 隐藏“正在加载文件列表”提示栏
@@ -3521,7 +3502,7 @@ function hiddenLoadingRemaininngBox() {
 	loadingComplete = true;
 	$("#loadingremaininngbox").removeClass("show");
 	$("#loadingremaininngbox").addClass("hidden");
-	$("#searchbtn").removeAttr('disabled');
+	$("#searchbtn").prop('disabled', false);
 }
 
 // 将加载的后续文件夹视图数据更新至页面上显示
