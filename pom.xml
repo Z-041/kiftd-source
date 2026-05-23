@@ -28,12 +28,25 @@
 
 	<!-- 外部资源 -->
 	<dependencies>
-		<!-- SpringBoot web启动器 -->
+		<!-- SpringBoot web启动器（使用 Undertow 替代 Tomcat） -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-web</artifactId>
+			<exclusions>
+				<exclusion>
+					<groupId>org.springframework.boot</groupId>
+					<artifactId>spring-boot-starter-tomcat</artifactId>
+				</exclusion>
+			</exclusions>
 		</dependency>
 		<!-- end 启动器 -->
+
+		<!-- Undertow 嵌入式容器 -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-undertow</artifactId>
+		</dependency>
+		<!-- end Undertow -->
 
 		<!-- Gson json转化工具 -->
 		<dependency>

@@ -8,17 +8,15 @@ import org.springframework.context.*;
 import kohgylw.kiftd.printer.*;
 import kohgylw.kiftd.server.util.*;
 
-import org.apache.catalina.Context;
-import org.apache.catalina.connector.Connector;
-import org.apache.coyote.http11.Http11NioProtocol;
-import org.apache.tomcat.util.descriptor.web.SecurityCollection;
-import org.apache.tomcat.util.descriptor.web.SecurityConstraint;
-import org.apache.tomcat.util.net.SSLHostConfig;
-import org.apache.tomcat.util.net.SSLHostConfigCertificate;
 import org.springframework.boot.*;
 import org.springframework.http.*;
-import org.springframework.boot.web.embedded.tomcat.TomcatServletWebServerFactory;
+import org.springframework.boot.web.embedded.undertow.UndertowServletWebServerFactory;
 import org.springframework.boot.web.server.*;
+
+import io.undertow.UndertowOptions;
+import io.undertow.server.HttpHandler;
+import io.undertow.util.Headers;
+import io.undertow.util.StatusCodes;
 
 /**
  * 
@@ -42,15 +40,6 @@ public class KiftdCtl {
 		KiftdCtl.run = false;
 	}
 
-	/**
-	 * 
-	 * <h2>启动服务器</h2>
-	 * <p>
-	 * 该方法将启动SpringBoot服务器引擎并返回启动结果。该过程较为耗时，为了不阻塞主线程，请在额外线程中执行该方法。
-	 * </p>
-	 * 
-	 * @return boolean 启动结果
-	 */
 	public synchronized boolean start() {
 		Printer.instance.print("正在初始化服务器设置...");
 		if (!KiftdCtl.run) {
@@ -77,15 +66,6 @@ public class KiftdCtl {
 		return true;
 	}
 
-	/**
-	 * 
-	 * <h2>停止服务器</h2>
-	 * <p>
-	 * 该方法将关闭服务器引擎并清理缓存文件。该方法较为耗时。
-	 * </p>
-	 * 
-	 * @return boolean 关闭结果
-	 */
 	public synchronized boolean stop() {
 		Printer.instance.print("正在关闭服务器...");
 		if (KiftdCtl.context != null) {
@@ -105,78 +85,69 @@ public class KiftdCtl {
 		return true;
 	}
 
-	/**
-	 * 
-	 * <h2>获取服务器运行状态</h2>
-	 * <p>
-	 * 该方法返回服务器引擎的运行状态，该状态由内置属性记录，且唯一。
-	 * </p>
-	 * 
-	 * @return boolean 服务器是否启动
-	 */
 	public synchronized boolean started() {
 		return KiftdCtl.run;
 	}
 
 	@Bean
 	public ServletWebServerFactory servletContainer() {
-		TomcatServletWebServerFactory tomcat = null;
-		if (ConfigureReader.instance().openHttps()) {
-			tomcat = new TomcatServletWebServerFactory() {
-				@Override
-				protected void customizeConnector(Connector connector) {
-					connector.setScheme("http");
-					connector.setPort(ConfigureReader.instance().getPort());
-					connector.setSecure(false);
-					connector.setRedirectPort(ConfigureReader.instance().getHttpsPort());
-				}
+		UndertowServletWebServerFactory factory = new UndertowServletWebServerFactory();
 
-				@Override
-				protected void postProcessContext(Context context) {
-					SecurityConstraint constraint = new SecurityConstraint();
-					constraint.setUserConstraint("CONFIDENTIAL");
-					SecurityCollection collection = new SecurityCollection();
-					collection.addPattern("/*");
-					constraint.addCollection(collection);
-					context.addConstraint(constraint);
-				}
-			};
-			tomcat.addAdditionalTomcatConnectors(createHttpsConnector());
+		if (ConfigureReader.instance().openHttps()) {
+			final int httpPort = ConfigureReader.instance().getPort();
+			final int httpsPort = ConfigureReader.instance().getHttpsPort();
+
+			factory.setPort(httpsPort);
+
+			Ssl ssl = new Ssl();
+			ssl.setKeyStore(ConfigureReader.instance().getHttpsKeyFile());
+			ssl.setKeyStorePassword(ConfigureReader.instance().getHttpsKeyPass());
+			ssl.setKeyStoreType(ConfigureReader.instance().getHttpsKeyType());
+			factory.setSsl(ssl);
+
+			factory.addBuilderCustomizers(builder -> {
+				builder.addHttpListener(httpPort, "0.0.0.0");
+				builder.setServerOption(UndertowOptions.RECORD_REQUEST_START_TIME, true);
+			});
+
+			factory.addDeploymentInfoCustomizers(deploymentInfo -> {
+				deploymentInfo.addInitialHandlerChainWrapper(this::httpToHttpsRedirect);
+			});
 		} else {
-			tomcat = new TomcatServletWebServerFactory();
-			tomcat.setPort(ConfigureReader.instance().getPort());
+			factory.setPort(ConfigureReader.instance().getPort());
 		}
-		tomcat.addErrorPages(new ErrorPage[] { new ErrorPage(HttpStatus.NOT_FOUND, "/prv/error.html"),
+
+		factory.addErrorPages(new ErrorPage[] { new ErrorPage(HttpStatus.NOT_FOUND, "/prv/error.html"),
 				new ErrorPage(HttpStatus.INTERNAL_SERVER_ERROR, "/prv/error.html"),
 				new ErrorPage(HttpStatus.UNAUTHORIZED, "/prv/error.html"),
 				new ErrorPage(HttpStatus.FORBIDDEN, "/prv/forbidden.html") });
-		tomcat.addConnectorCustomizers(connector -> {
-			Http11NioProtocol protocol = (Http11NioProtocol) connector.getProtocolHandler();
-			protocol.setMaxThreads(200);
-			protocol.setMaxConnections(10000);
-			protocol.setConnectionTimeout(30000);
-			protocol.setMinSpareThreads(10);
-			connector.setProperty("compression", "on");
-			connector.setProperty("compressibleMimeType",
-					"text/html,text/xml,text/plain,text/css,text/javascript,application/json,application/javascript");
+
+		factory.addBuilderCustomizers(builder -> {
+			builder.setWorkerThreads(200);
+			builder.setIoThreads(Math.max(Runtime.getRuntime().availableProcessors(), 2));
+			builder.setServerOption(UndertowOptions.ENABLE_HTTP2, true);
+			builder.setServerOption(UndertowOptions.NO_REQUEST_TIMEOUT, 30000);
 		});
-		return tomcat;
+
+		return factory;
 	}
 
-	private Connector createHttpsConnector() {
-		Connector connector = new Connector("org.apache.coyote.http11.Http11NioProtocol");
-		connector.setScheme("https");
-		connector.setPort(ConfigureReader.instance().getHttpsPort());
-		connector.setSecure(true);
-		Http11NioProtocol protocol = (Http11NioProtocol) connector.getProtocolHandler();
-		protocol.setSSLEnabled(true);
-		SSLHostConfig sslHostConfig = new SSLHostConfig();
-		SSLHostConfigCertificate certificate = new SSLHostConfigCertificate(sslHostConfig, SSLHostConfigCertificate.Type.UNDEFINED);
-		certificate.setCertificateKeystoreFile(ConfigureReader.instance().getHttpsKeyFile());
-		certificate.setCertificateKeystoreType(ConfigureReader.instance().getHttpsKeyType());
-		certificate.setCertificateKeystorePassword(ConfigureReader.instance().getHttpsKeyPass());
-		sslHostConfig.addCertificate(certificate);
-		protocol.addSslHostConfig(sslHostConfig);
-		return connector;
+	private HttpHandler httpToHttpsRedirect(HttpHandler next) {
+		return exchange -> {
+			if ("http".equals(exchange.getRequestScheme())) {
+				int httpsPort = ConfigureReader.instance().getHttpsPort();
+				String host = exchange.getHostName();
+				String path = exchange.getRequestURI();
+				String query = exchange.getQueryString();
+				String location = "https://" + host + ":" + httpsPort + path;
+				if (query != null && !query.isEmpty()) {
+					location += "?" + query;
+				}
+				exchange.setStatusCode(StatusCodes.FOUND);
+				exchange.getResponseHeaders().put(Headers.LOCATION, location);
+				return;
+			}
+			next.handleRequest(exchange);
+		};
 	}
 }
