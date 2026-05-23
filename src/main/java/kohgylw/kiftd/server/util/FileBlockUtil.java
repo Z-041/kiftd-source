@@ -106,20 +106,19 @@ public class FileBlockUtil {
 						// 则尝试在该存储区中生成一个空文件块
 						file = createNewBlock(es.getIndex() + "_", es.getPath());
 						if (file != null) {
-							// 生成成功，尝试存入数据
-							f.transferTo(file);
+							try (InputStream in = f.getInputStream()) {
+								Files.copy(in, file.toPath(), StandardCopyOption.REPLACE_EXISTING);
+							}
 							return file;
 						} else {
-							continue;// 如果本处无法生成新文件块，那么在其他路径下继续尝试
+							continue;
 						}
 					} catch (IOException e) {
-						// 出现IO异常，则删除残留文件并继续尝试其他扩展存储区
 						if (file != null) {
 							file.delete();
 						}
 						continue;
 					} catch (Exception e) {
-						// 出现其他异常则记录日志
 						lu.writeException(e);
 						Printer.instance.print(e.getMessage());
 						continue;
@@ -127,13 +126,13 @@ public class FileBlockUtil {
 				}
 			}
 		}
-		// 如果不存在扩展存储区或者最大的扩展存储区的剩余容量依旧小于指定大小，则尝试在主文件系统路径下生成新文件块
 		File file = null;
 		try {
 			file = createNewBlock("file_", new File(ConfigureReader.instance().getFileBlockPath()));
 			if (file != null) {
-				// 生成成功，则尝试存入数据
-				f.transferTo(file);
+				try (InputStream in = f.getInputStream()) {
+					Files.copy(in, file.toPath(), StandardCopyOption.REPLACE_EXISTING);
+				}
 				return file;
 			}
 		} catch (Exception e) {
