@@ -6,6 +6,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.io.RandomAccessFile;
@@ -34,6 +35,7 @@ import kohgylw.kiftd.server.util.LogUtil;
 import kohgylw.kiftd.server.util.NoticeUtil;
 import kohgylw.kiftd.server.util.ServerTimeUtil;
 import kohgylw.kiftd.server.util.TxtCharsetGetter;
+import kohgylw.kiftd.server.util.VariableSpeedBufferedOutputStream;
 import kohgylw.kiftd.server.util.VideoTranscodeUtil;
 
 /**
@@ -276,7 +278,10 @@ public class ResourceServiceImpl implements ResourceService {
 			} else {
 				response.setHeader("Content-length", contentLength + "");
 			}
-			ServletOutputStream out = response.getOutputStream();
+			ServletOutputStream rawOut = response.getOutputStream();
+			long maxRate = ConfigureReader.instance().getDownloadMaxRate(
+					(String) request.getSession().getAttribute("ACCOUNT"));
+			OutputStream out = new VariableSpeedBufferedOutputStream(rawOut, maxRate, request.getSession());
 			long needSize = requestSize;
 			randomFile.seek(start);
 			while (needSize > 0) {

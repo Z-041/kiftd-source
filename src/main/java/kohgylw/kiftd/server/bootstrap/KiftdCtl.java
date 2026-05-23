@@ -92,10 +92,12 @@ public class KiftdCtl {
 			Printer.instance.print("正在终止服务器引擎...");
 			try {
 				int exitCode = SpringApplication.exit(KiftdCtl.context, new ExitCodeGenerator[0]);
-				KiftdCtl.run = (exitCode != 0);
+				KiftdCtl.run = false;
+				KiftdCtl.context = null;
 				Printer.instance.print("服务器引擎已终止。");
-				return !KiftdCtl.run;
+				return exitCode == 0;
 			} catch (Exception e) {
+				Printer.instance.print("出现错误，服务器引擎关闭失败：" + e.toString());
 				return false;
 			}
 		}
@@ -112,7 +114,7 @@ public class KiftdCtl {
 	 * 
 	 * @return boolean 服务器是否启动
 	 */
-	public boolean started() {
+	public synchronized boolean started() {
 		return KiftdCtl.run;
 	}
 
@@ -148,6 +150,16 @@ public class KiftdCtl {
 				new ErrorPage(HttpStatus.INTERNAL_SERVER_ERROR, "/prv/error.html"),
 				new ErrorPage(HttpStatus.UNAUTHORIZED, "/prv/error.html"),
 				new ErrorPage(HttpStatus.FORBIDDEN, "/prv/forbidden.html") });
+		tomcat.addConnectorCustomizers(connector -> {
+			Http11NioProtocol protocol = (Http11NioProtocol) connector.getProtocolHandler();
+			protocol.setMaxThreads(200);
+			protocol.setMaxConnections(10000);
+			protocol.setConnectionTimeout(30000);
+			protocol.setMinSpareThreads(10);
+			connector.setProperty("compression", "on");
+			connector.setProperty("compressibleMimeType",
+					"text/html,text/xml,text/plain,text/css,text/javascript,application/json,application/javascript");
+		});
 		return tomcat;
 	}
 

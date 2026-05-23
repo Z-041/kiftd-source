@@ -153,6 +153,9 @@ public class ConsoleRunner {
 			Printer.instance.print("服务器已关闭，停止所有访问。");
 		}
 		worker.shutdown();
+		if (reader != null) {
+			reader.close();
+		}
 		Printer.instance.print("退出应用。");
 		System.exit(0);
 	}

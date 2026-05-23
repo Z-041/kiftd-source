@@ -121,6 +121,7 @@ public class AccountServiceImpl implements AccountService {
 			}
 			return "accountpwderror";
 		} catch (Exception e) {
+			lu.writeException(e);
 			return "error";
 		}
 	}
@@ -217,7 +218,7 @@ public class AccountServiceImpl implements AccountService {
 				if (newPassword != null && newPassword.length() >= 3 && newPassword.length() <= 32
 						&& ios8859_1Encoder.canEncode(newPassword)) {
 					if (ConfigureReader.instance().changePassword(account, newPassword)) {
-						lu.writeChangePasswordEvent(request, account, newPassword);
+						lu.writeChangePasswordEvent(request, account);
 						return "success";
 					}
 				}
@@ -283,7 +284,7 @@ public class AccountServiceImpl implements AccountService {
 					if (password != null && password.length() >= 3 && password.length() <= 32
 							&& ios8859_1Encoder.canEncode(password)) {
 						if (ConfigureReader.instance().createNewAccount(account, password)) {
-							lu.writeSignUpEvent(request, account, password);
+							lu.writeSignUpEvent(request, account);
 							session.invalidate();
 							HttpSession newSession = request.getSession(true);
 							newSession.setAttribute("ACCOUNT", account);

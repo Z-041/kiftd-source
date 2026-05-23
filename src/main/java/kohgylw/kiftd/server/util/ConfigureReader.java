@@ -4,6 +4,7 @@ import java.util.*;
 
 import kohgylw.kiftd.printer.*;
 import kohgylw.kiftd.server.enumeration.*;
+import kohgylw.kiftd.server.mapper.FolderMapper;
 import kohgylw.kiftd.server.model.Folder;
 import kohgylw.kiftd.server.pojo.*;
 import java.io.*;
@@ -29,7 +30,7 @@ import java.sql.DriverManager;
 public class ConfigureReader {
 
 	public static final int INVALID_DOWNLOAD_ZIP_SETTING = 15;
-	private static ConfigureReader cr;// 自体实体
+	private static volatile ConfigureReader cr;
 	private KiftdProperties serverp;// 配置设置
 	private KiftdProperties accountp;// 账户设置
 	private int propertiesStatus;// 当前配置检查结果
@@ -156,7 +157,11 @@ public class ConfigureReader {
 
 	public static ConfigureReader instance() {
 		if (ConfigureReader.cr == null) {
-			ConfigureReader.cr = new ConfigureReader();
+			synchronized (ConfigureReader.class) {
+				if (ConfigureReader.cr == null) {
+					ConfigureReader.cr = new ConfigureReader();
+				}
+			}
 		}
 		return ConfigureReader.cr;
 	}
@@ -182,7 +187,30 @@ public class ConfigureReader {
 
 	public boolean checkAccountPwd(final String account, final String pwd) {
 		final String apwd = this.accountp.getProperty(account + ".pwd");
-		return apwd != null && apwd.equals(pwd);
+		if (apwd == null) {
+			return false;
+		}
+		if (PasswordUtil.verifyPassword(pwd, apwd)) {
+			if (!PasswordUtil.isPasswordHashed(apwd)) {
+				upgradePasswordHash(account, pwd);
+			}
+			return true;
+		}
+		return false;
+	}
+
+	private void upgradePasswordHash(String account, String password) {
+		try {
+			synchronized (accountp) {
+				accountp.setProperty(account + ".pwd", PasswordUtil.hashPassword(password));
+				try (FileOutputStream accountSettingOut = new FileOutputStream(
+						this.confdir + ACCOUNT_PROPERTIES_FILE)) {
+					accountp.store(accountSettingOut, null);
+				}
+			}
+		} catch (Exception e) {
+			Printer.instance.print("警告：密码哈希升级失败，将在下次登录时重试。");
+		}
 	}
 
 	/**
@@ -204,7 +232,7 @@ public class ConfigureReader {
 			return true;// 对于具备超级权限的账户，判定其在任何文件夹内具备任何权限
 		}
 		if (account != null && account.length() > 0) {
-			final StringBuffer auths = new StringBuffer();
+			final StringBuilder auths = new StringBuilder();
 			for (String id : folders) {
 				String addedAuth = accountp.getProperty(account + ".auth." + id);
 				if (addedAuth != null) {
@@ -271,6 +299,18 @@ public class ConfigureReader {
 			}
 			}
 		}
+	}
+
+	public boolean authorized(AccountAuth auth, String account, String folderId, FolderUtil folderUtil,
+			FolderMapper folderMapper) {
+		if (!authorized(account, auth, folderUtil.getAllFoldersId(folderId))) {
+			return false;
+		}
+		Folder folder = folderMapper.selectById(folderId);
+		if (folder == null) {
+			return false;
+		}
+		return accessFolder(folder, account);
 	}
 
 	public int getBuffSize() {
@@ -904,7 +944,7 @@ public class ConfigureReader {
 	private void createDefaultAccountPropertiesFile() {
 		Printer.instance.print("正在生成初始账户配置文件（" + this.confdir + ACCOUNT_PROPERTIES_FILE + "）...");
 		final Properties dap = new Properties();
-		dap.setProperty(DEFAULT_ACCOUNT_ID + ".pwd", DEFAULT_ACCOUNT_PWD);
+		dap.setProperty(DEFAULT_ACCOUNT_ID + ".pwd", PasswordUtil.hashPassword(DEFAULT_ACCOUNT_PWD));
 		dap.setProperty(DEFAULT_ACCOUNT_ID + ".auth", DEFAULT_ACCOUNT_AUTH);
 		dap.setProperty("authOverall", DEFAULT_AUTH_OVERALL);
 
@@ -1390,7 +1430,7 @@ public class ConfigureReader {
 		if (account != null && newPassword != null) {
 			if (accountp.getProperty(account + ".pwd") != null) {
 				synchronized (accountp) {
-					accountp.setProperty(account + ".pwd", newPassword);
+					accountp.setProperty(account + ".pwd", PasswordUtil.hashPassword(newPassword));
 					try (FileOutputStream accountSettingOut = new FileOutputStream(
 							this.confdir + ACCOUNT_PROPERTIES_FILE)) {
 						accountp.store(accountSettingOut, null);
@@ -1485,7 +1525,7 @@ public class ConfigureReader {
 		if (newAccount != null && newPassword != null) {
 			if (accountp.getProperty(newAccount + ".pwd") == null) {
 				synchronized (accountp) {
-					accountp.setProperty(newAccount + ".pwd", newPassword);
+					accountp.setProperty(newAccount + ".pwd", PasswordUtil.hashPassword(newPassword));
 					if (signUpAuth != null) {
 						accountp.setProperty(newAccount + ".auth", signUpAuth);
 					}

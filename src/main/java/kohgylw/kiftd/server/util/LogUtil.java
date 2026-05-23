@@ -11,6 +11,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.lang.ref.Cleaner;
 import java.lang.ref.WeakReference;
+import java.nio.charset.StandardCharsets;
 
 import kohgylw.kiftd.server.model.*;
 
@@ -41,7 +42,7 @@ public class LogUtil {
 	private FileBlockUtil fbu;
 
 	private ExecutorService writerThread;
-	private FileWriter writer;
+	private Writer writer;
 	private String logName;
 
 	private String sep = "";
@@ -458,7 +459,7 @@ public class LogUtil {
 				if (writer != null) {
 					writer.close();
 				}
-				writer = new FileWriter(f, true);
+				writer = new OutputStreamWriter(new FileOutputStream(f, true), StandardCharsets.UTF_8);
 				writer.write(finalContent);
 				writer.flush();
 			}
@@ -512,12 +513,12 @@ public class LogUtil {
 	 * 写入修改密码的信息
 	 * </p>
 	 */
-	public void writeChangePasswordEvent(HttpServletRequest request, String account, String newPassword) {
+	public void writeChangePasswordEvent(HttpServletRequest request, String account) {
 		if (ConfigureReader.instance().inspectLogLevel(LogLevel.Event)) {
 			String ip = idg.getIpAddr(request);
 			writerThread.execute(() -> {
 				String content = ">IP [" + ip + "]\r\n>ACCOUNT [" + account
-						+ "]\r\n>OPERATE [Change Password]\r\n>NEW PASSWORD [" + newPassword + "]";
+						+ "]\r\n>OPERATE [Change Password]";
 				writeToLog("Event", content);
 			});
 		}
@@ -529,12 +530,11 @@ public class LogUtil {
 	 * 写入新账户的注册信息
 	 * </p>
 	 */
-	public void writeSignUpEvent(HttpServletRequest request, String account, String password) {
+	public void writeSignUpEvent(HttpServletRequest request, String account) {
 		if (ConfigureReader.instance().inspectLogLevel(LogLevel.Event)) {
 			String ip = idg.getIpAddr(request);
 			writerThread.execute(() -> {
-				String content = ">IP [" + ip + "]\r\n>OPERATE [Sign Up]\r\n>NEW ACCOUNT [" + account
-						+ "]\r\n>PASSWORD [" + password + "]";
+				String content = ">IP [" + ip + "]\r\n>OPERATE [Sign Up]\r\n>NEW ACCOUNT [" + account + "]";
 				writeToLog("Event", content);
 			});
 		}

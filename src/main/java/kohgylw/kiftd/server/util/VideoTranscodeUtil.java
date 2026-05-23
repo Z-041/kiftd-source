@@ -40,6 +40,8 @@ public class VideoTranscodeUtil {
 
 	public static Map<String, VideoTranscodeThread> videoTranscodeThreads = new HashMap<>();
 
+	private static final int MAX_CONCURRENT_TRANSCODES = 3;
+
 	{
 		AudioAttributes audio = new AudioAttributes();
 		audio.setCodec("libmp3lame");
@@ -105,6 +107,15 @@ public class VideoTranscodeUtil {
 				break;
 			default:
 				throw new IllegalArgumentException();
+			}
+			int activeCount = 0;
+			for (VideoTranscodeThread t : videoTranscodeThreads.values()) {
+				if (!"FIN".equals(t.getProgress())) {
+					activeCount++;
+				}
+			}
+			if (activeCount >= MAX_CONCURRENT_TRANSCODES) {
+				return "WAIT";
 			}
 			videoTranscodeThreads.put(fId, new VideoTranscodeThread(f, ea, kfl));
 			return "0.0";
