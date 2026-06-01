@@ -342,6 +342,7 @@ public class ConfigureReader {
 		}
 		case Runtime_Exception: {
 			m = 1;
+			break;
 		}
 		case Event: {
 			m = 2;
@@ -802,7 +803,7 @@ public class ConfigureReader {
 				testConn.close();
 			} catch (Exception e) {
 				Printer.instance.print(
-						"错误：无法连接至自定义数据库：" + dbURL + "（user=" + dbUser + ",password=" + dbPwd + "），请确重新配置MySQL数据库相关项。");
+						"错误：无法连接至自定义数据库：" + dbURL + "（user=" + dbUser + "），请确重新配置MySQL数据库相关项。");
 				return CANT_CONNECT_DB;
 			}
 		} else {
@@ -1107,11 +1108,12 @@ public class ConfigureReader {
 		if (accountPropertiesUpdateDaemonThread == null) {
 			Path confPath = Paths.get(confdir);// 获取配置文件存放路径以对其中的变动进行监听
 			accountPropertiesUpdateDaemonThread = new Thread(() -> {
+				WatchService ws = null;
 				try {
+					ws = confPath.getFileSystem().newWatchService();
+					confPath.register(ws, StandardWatchEventKinds.ENTRY_MODIFY,
+							StandardWatchEventKinds.ENTRY_DELETE, StandardWatchEventKinds.ENTRY_CREATE);
 					while (true) {
-						WatchService ws = confPath.getFileSystem().newWatchService();
-						confPath.register(ws, StandardWatchEventKinds.ENTRY_MODIFY,
-								StandardWatchEventKinds.ENTRY_DELETE, StandardWatchEventKinds.ENTRY_CREATE);
 						WatchKey wk = ws.take();
 						List<WatchEvent<?>> es = wk.pollEvents();
 						for (WatchEvent<?> we : es) {
@@ -1133,9 +1135,19 @@ public class ConfigureReader {
 								}
 							}
 						}
+						if (!wk.reset()) {
+							break;
+						}
 					}
 				} catch (Exception e) {
 					Printer.instance.print("错误：用户配置文件更改监听失败，该功能已失效，kiftd无法实时更新用户配置（可尝试重启程序以恢复该功能）。");
+				} finally {
+					if (ws != null) {
+						try {
+							ws.close();
+						} catch (Exception ignored) {
+						}
+					}
 				}
 			});
 			accountPropertiesUpdateDaemonThread.setDaemon(true);

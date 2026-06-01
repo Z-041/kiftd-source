@@ -37,7 +37,7 @@ public class PasswordUtil {
 				byte[] salt = DECODER.decode(parts[0]);
 				byte[] expectedHash = DECODER.decode(parts[1]);
 				byte[] actualHash = deriveKey(password, salt);
-				return MessageDigest.isEqual(expectedHash, actualHash);
+				return ConstantTimeComparator.isEqual(expectedHash, actualHash);
 			}
 			return false;
 		}
@@ -58,7 +58,7 @@ public class PasswordUtil {
 		}
 	}
 
-	private static class MessageDigest {
+	private static class ConstantTimeComparator {
 		static boolean isEqual(byte[] a, byte[] b) {
 			if (a.length != b.length) {
 				return false;

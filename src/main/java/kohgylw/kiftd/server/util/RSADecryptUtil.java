@@ -1,7 +1,7 @@
 package kohgylw.kiftd.server.util;
 
 import java.util.*;
-import java.nio.charset.*;
+import java.nio.charset.StandardCharsets;
 import java.security.spec.*;
 import java.security.*;
 import javax.crypto.*;
@@ -26,13 +26,13 @@ public class RSADecryptUtil {
 
 	public static String dncryption(final String context, final String privateKey) {
 		final byte[] b = RSADecryptUtil.decoder.decode(privateKey);
-		final byte[] s = RSADecryptUtil.decoder.decode(context.getBytes(StandardCharsets.UTF_8));
+		final byte[] s = RSADecryptUtil.decoder.decode(context);
 		final PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(b);
 		try {
 			final PrivateKey key = RSADecryptUtil.kf.generatePrivate(spec);
-			RSADecryptUtil.c.init(2, key);
+			RSADecryptUtil.c.init(Cipher.DECRYPT_MODE, key);
 			final byte[] f = RSADecryptUtil.c.doFinal(s);
-			return new String(f);
+			return new String(f, StandardCharsets.UTF_8);
 		} catch (Exception e) {
 			Printer.instance.print(e.getMessage());
 			Printer.instance.print("错误：RSA解密失败。");

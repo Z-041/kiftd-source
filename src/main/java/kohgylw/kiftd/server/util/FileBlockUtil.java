@@ -60,10 +60,9 @@ public class FileBlockUtil {
 	public void initTempDir() {
 		final File f = new File(ConfigureReader.instance().getTemporaryfilePath());
 		if (f.isDirectory()) {
-			try {
-				Iterator<Path> listFiles = Files.newDirectoryStream(f.toPath()).iterator();
-				while (listFiles.hasNext()) {
-					File tempFile = listFiles.next().toFile();
+			try (DirectoryStream<Path> ds = Files.newDirectoryStream(f.toPath())) {
+				for (Path path : ds) {
+					File tempFile = path.toFile();
 					if (tempFile.isFile()) {
 						if (!tempFile.getName().startsWith(".")) {
 							tempFile.delete();

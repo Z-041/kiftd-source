@@ -28,7 +28,7 @@ public class ServerInfoServiceImpl implements ServerInfoService
     @Override
     public String getServerTime() {
         final Date d = new Date();
-        final DateFormat df = new SimpleDateFormat("YYYY\u5e74MM\u6708dd\u65e5 hh:mm");
+        final DateFormat df = new SimpleDateFormat("yyyy\u5e74MM\u6708dd\u65e5 HH:mm");
         return df.format(d);
     }
 }

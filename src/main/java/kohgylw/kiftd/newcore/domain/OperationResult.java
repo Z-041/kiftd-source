@@ -42,6 +42,7 @@ public class OperationResult {
 
 	@Override
 	public String toString() {
-		return success ? code : code;
+		return (success ? "SUCCESS:" : "FAILURE:") + code
+				+ (message != null ? " - " + message : "");
 	}
 }

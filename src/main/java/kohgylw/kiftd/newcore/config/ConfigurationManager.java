@@ -1069,11 +1069,12 @@ public class ConfigurationManager {
 		if (accountUpdateDaemon == null) {
 			Path confPath = Paths.get(confDir);
 			accountUpdateDaemon = new Thread(() -> {
+				WatchService ws = null;
 				try {
+					ws = confPath.getFileSystem().newWatchService();
+					confPath.register(ws, StandardWatchEventKinds.ENTRY_MODIFY,
+							StandardWatchEventKinds.ENTRY_DELETE, StandardWatchEventKinds.ENTRY_CREATE);
 					while (true) {
-						WatchService ws = confPath.getFileSystem().newWatchService();
-						confPath.register(ws, StandardWatchEventKinds.ENTRY_MODIFY,
-								StandardWatchEventKinds.ENTRY_DELETE, StandardWatchEventKinds.ENTRY_CREATE);
 						WatchKey wk = ws.take();
 						List<WatchEvent<?>> es = wk.pollEvents();
 						for (WatchEvent<?> we : es) {
@@ -1095,10 +1096,20 @@ public class ConfigurationManager {
 								}
 							}
 						}
+						if (!wk.reset()) {
+							break;
+						}
 					}
 				} catch (Exception e) {
 					Printer.instance.print(
 							"错误：用户配置文件更改监听失败，该功能已失效，kiftd无法实时更新用户配置（可尝试重启程序以恢复该功能）。");
+				} finally {
+					if (ws != null) {
+						try {
+							ws.close();
+						} catch (Exception ignored) {
+						}
+					}
 				}
 			});
 			accountUpdateDaemon.setDaemon(true);
