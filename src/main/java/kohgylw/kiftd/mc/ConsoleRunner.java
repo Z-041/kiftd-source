@@ -1,6 +1,7 @@
 package kohgylw.kiftd.mc;
 
-import kohgylw.kiftd.server.bootstrap.KiftdCtl;
+import kohgylw.kiftd.newcore.KiftdApplication;
+import kohgylw.kiftd.newcore.config.ConfigurationManager;
 import kohgylw.kiftd.server.exception.FilesTotalOutOfLimitException;
 import kohgylw.kiftd.server.exception.FoldersTotalOutOfLimitException;
 import kohgylw.kiftd.server.model.Node;
@@ -32,7 +33,7 @@ import kohgylw.kiftd.util.file_system_manager.pojo.FolderView;
  */
 public class ConsoleRunner {
 	private static ConsoleRunner cs;
-	private static KiftdCtl ctl;
+	private static KiftdApplication ctl;
 	private static String commandTips;
 	private static String fsCommandTips;
 	private static FolderView currentFolder;
@@ -42,7 +43,7 @@ public class ConsoleRunner {
 
 	private ConsoleRunner() {
 		Printer.init(false);
-		ConsoleRunner.ctl = new KiftdCtl();
+		ConsoleRunner.ctl = new KiftdApplication();
 		worker = Executors.newSingleThreadExecutor();
 		ConsoleRunner.commandTips = "kiftd:您可以输入以下指令以控制服务器：\r\n-start 启动服务器\r\n-stop 停止服务器\r\n-exit 停止服务器并退出应用\r\n-restart 重启服务器\r\n-files 文件管理\r\n-status 查看服务器状态\r\n-help 显示帮助文本";
 		ConsoleRunner.fsCommandTips = "kiftd files:您可以输入以下指令进行文件管理：\r\nls 显示当前文件夹内容（可使用参数 “-l” 显示所有项目的详细信息）\r\ncd {“文件夹名称” 或 “--文件夹序号”} 进入指定文件夹（示例：“cd foo” 或 “cd --1”，如需返回上一级请输入“cd ../”）\r\nimport {要导入的本地文件（必须使用完整路径）} 将本地文件或文件夹导入至此\r\nexport {“目标名称” 或 “--目标序号”（省略该项则导出当前文件夹的全部内容）} {要导出至本地的路径（必须使用完整路径）} 将指定文件或文件夹导出本地\r\nrm {“目标名称” 或 “--目标序号”} 删除指定文件或文件夹\r\nexit 退出文件管理并返回kiftd控制台\r\nhelp 显示帮助文本";
@@ -105,7 +106,7 @@ public class ConsoleRunner {
 		Printer.instance.print("Character encoding with UTF-8");
 		final Thread t = new Thread(() -> {
 			Printer.instance.print("正在初始化服务器...");
-			if (ConfigureReader.instance().getPropertiesStatus() == 0) {
+			if (ConfigurationManager.instance().getStatus() == 0) {
 				this.awaiting();
 			}
 			return;
@@ -115,26 +116,26 @@ public class ConsoleRunner {
 
 	private void startServer() {
 		Printer.instance.print("执行命令：启动服务器...");
-		if (ConsoleRunner.ctl.started()) {
+		if (ConsoleRunner.ctl.isRunning()) {
 			Printer.instance.print("错误：服务器已经启动了。您可以使用 -status 命令查看服务器运行状态或使用 -stop 命令停止服务器。");
 		} else if (ConsoleRunner.ctl.start()) {
 			Printer.instance.print("kiftd服务器已启动，可以正常访问了，您可以使用 -status 指令查看运行状态。");
 		} else {
-			if (ConfigureReader.instance().getPropertiesStatus() != 0) {
-				switch (ConfigureReader.instance().getPropertiesStatus()) {
-				case ConfigureReader.INVALID_PORT:
+			if (ConfigurationManager.instance().getStatus() != 0) {
+				switch (ConfigurationManager.instance().getStatus()) {
+				case ConfigurationManager.INVALID_PORT:
 					Printer.instance.print("错误：kiftd服务器未能启动，端口设置无效。");
 					break;
-				case ConfigureReader.INVALID_BUFFER_SIZE:
-					Printer.instance.print("错误：kiftd服务器未能启动，缓存设置无效。");
+				case ConfigurationManager.INVALID_BUFFER_SIZE:
+					Printer.instance.print("错误：kiftd服务器未能启动，缓冲区设置无效。");
 					break;
-				case ConfigureReader.INVALID_FILE_SYSTEM_PATH:
+				case ConfigurationManager.INVALID_FILE_SYSTEM_PATH:
 					Printer.instance.print("错误：kiftd服务器未能启动，文件系统路径或某一扩展存储区设置无效。");
 					break;
-				case ConfigureReader.INVALID_LOG:
-					Printer.instance.print("错误：kiftd服务器未能启动，日志设置无效。");
+				case ConfigurationManager.INVALID_LOG:
+					Printer.instance.print("错误：kiftd服务器未能启动，日志等级设置无效。");
 					break;
-				case ConfigureReader.INVALID_VC:
+				case ConfigurationManager.INVALID_VC:
 					Printer.instance.print("错误：kiftd服务器未能启动，登录验证码设置无效。");
 					break;
 				default:
@@ -149,7 +150,7 @@ public class ConsoleRunner {
 
 	private void exit() {
 		Printer.instance.print("执行命令：停止服务器并退出kiftd...");
-		if (ConsoleRunner.ctl.started() && ConsoleRunner.ctl.stop()) {
+		if (ConsoleRunner.ctl.isRunning() && ConsoleRunner.ctl.stop()) {
 			Printer.instance.print("服务器已关闭，停止所有访问。");
 		}
 		worker.shutdown();
@@ -162,7 +163,7 @@ public class ConsoleRunner {
 
 	private void restartServer() {
 		Printer.instance.print("执行命令：重启服务器...");
-		if (ConsoleRunner.ctl.started()) {
+		if (ConsoleRunner.ctl.isRunning()) {
 			if (ConsoleRunner.ctl.stop()) {
 				if (ConsoleRunner.ctl.start()) {
 					Printer.instance.print("服务器重启成功，可以正常访问了。");
@@ -179,7 +180,7 @@ public class ConsoleRunner {
 
 	private void stopServer() {
 		Printer.instance.print("执行命令：停止服务器...");
-		if (ConsoleRunner.ctl.started()) {
+		if (ConsoleRunner.ctl.isRunning()) {
 			if (ConsoleRunner.ctl.stop()) {
 				Printer.instance.print("服务器已关闭，停止所有访问。");
 			} else {
@@ -240,11 +241,11 @@ public class ConsoleRunner {
 
 	// 打印服务器状态
 	private void printServerStatus() {
-		Printer.instance.print("服务器状态：\r\n<Port>端口号:" + ConfigureReader.instance().getPort() + "\r\n<LogLevel>日志等级:"
-				+ ConfigureReader.instance().getLogLevel() + "\r\n<BufferSize>缓冲区大小:"
-				+ ConfigureReader.instance().getBuffSize() + " B\r\n<FileSystemPath>文件系统存储路径："
-				+ ConfigureReader.instance().getFileSystemPath() + "\r\n<MustLogin>是否必须登录："
-				+ ConfigureReader.instance().mustLogin() + "\r\n<Running>运行状态：" + ConsoleRunner.ctl.started());
+		Printer.instance.print("服务器状态：\r\n<Port>端口号:" + ConfigurationManager.instance().getPort() + "\r\n<LogLevel>日志等级:"
+				+ ConfigurationManager.instance().getLogLevel() + "\r\n<BufferSize>缓冲区大小:"
+				+ ConfigurationManager.instance().getBuffSize() + " B\r\n<FileSystemPath>文件系统存储路径："
+				+ ConfigurationManager.instance().getFileSystemPath() + "\r\n<MustLogin>是否必须登录："
+				+ ConfigurationManager.instance().mustLogin() + "\r\n<Running>运行状态：" + ConsoleRunner.ctl.isRunning());
 	}
 
 	// 进入文件管理模式（航天飞机模式）

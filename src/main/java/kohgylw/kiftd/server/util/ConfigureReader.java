@@ -109,13 +109,17 @@ public class ConfigureReader {
 
 	private ConfigureReader() {
 		this.propertiesStatus = -1;
-		this.path = System.getProperty("user.dir");// 开发环境下使用项目工程路径
+		this.path = System.getProperty("user.dir");
 		String classPath = System.getProperty("java.class.path");
 		if (classPath.indexOf(File.pathSeparator) < 0) {
 			File f = new File(classPath);
 			classPath = f.getAbsolutePath();
 			if (classPath.endsWith(".jar")) {
-				this.path = classPath.substring(0, classPath.lastIndexOf(File.separator));// 使用环境下使用程序主目录
+				String jarDir = classPath.substring(0, classPath.lastIndexOf(File.separator));
+				File confInJarDir = new File(jarDir, "conf");
+				if (confInJarDir.isDirectory()) {
+					this.path = jarDir;
+				}
 			}
 		}
 		this.DEFAULT_FILE_SYSTEM_PATH = this.path + File.separator + "filesystem" + File.separator;

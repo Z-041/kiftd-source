@@ -1,58 +1,53 @@
-package kohgylw.kiftd.server.bootstrap;
+package kohgylw.kiftd.newcore;
 
-import org.springframework.boot.web.servlet.server.*;
-import org.springframework.boot.autoconfigure.*;
-import org.springframework.context.annotation.*;
-import kohgylw.kiftd.server.configation.*;
-import org.springframework.context.*;
-import kohgylw.kiftd.printer.*;
-import kohgylw.kiftd.server.util.*;
+import kohgylw.kiftd.newcore.config.WebMvcConfig;
+import kohgylw.kiftd.newcore.config.DataSourceConfig;
+import kohgylw.kiftd.printer.Printer;
+import kohgylw.kiftd.newcore.config.ConfigurationManager;
 
-import org.springframework.boot.*;
-import org.springframework.http.*;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.web.embedded.undertow.UndertowServletWebServerFactory;
-import org.springframework.boot.web.server.*;
+import org.springframework.boot.web.server.ErrorPage;
+import org.springframework.boot.web.server.Ssl;
+import org.springframework.boot.web.server.WebServerFactoryCustomizer;
+import org.springframework.boot.web.servlet.server.ConfigurableServletWebServerFactory;
+import org.springframework.boot.web.servlet.server.ServletWebServerFactory;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpStatus;
 
 import io.undertow.UndertowOptions;
 import io.undertow.server.HttpHandler;
 import io.undertow.util.Headers;
 import io.undertow.util.StatusCodes;
 
-/**
- * 
- * <h2>服务器引导类</h2>
- * <p>
- * 该类为SpringBoot框架应用入口，负责初始化SpringBoot容器。同时作为服务器引擎的控制层，
- * 负责连接服务器内核与用户操作界面，用于控制服务器行为，包括启动、关闭、重启等。
- * </p>
- * 
- * @author 青阳龙野(kohgylw)
- * @version 1.0
- */
 @SpringBootApplication
-@Import({ MVC.class })
-public class KiftdCtl {
+@Import({ WebMvcConfig.class, DataSourceConfig.class, ConfigurationManager.class })
+public class KiftdApplication {
+
 	private static ApplicationContext context;
-	private static boolean run;
+	private static boolean running;
 
 	static {
 		System.setProperty("logging.level.root", "ERROR");
-		KiftdCtl.run = false;
+		running = false;
 	}
 
 	public synchronized boolean start() {
 		Printer.instance.print("正在初始化服务器设置...");
-		if (!KiftdCtl.run) {
-			ConfigureReader.instance().reTestServerPropertiesAndEffect();
-			if (ConfigureReader.instance().getPropertiesStatus() == 0) {
+		if (!running) {
+			ConfigurationManager.instance().revalidate();
+			if (ConfigurationManager.instance().getStatus() == 0) {
 				try {
 					Printer.instance.print("正在开启服务器引擎...");
-					SpringApplication springApplication = new SpringApplication(KiftdCtl.class);
-					springApplication.setBannerMode(Banner.Mode.OFF);
-					KiftdCtl.context = springApplication.run();
-					KiftdCtl.run = (KiftdCtl.context != null);
+					SpringApplication app = new SpringApplication(KiftdApplication.class);
+					app.setBannerMode(org.springframework.boot.Banner.Mode.OFF);
+					context = app.run();
+					running = (context != null);
 					Printer.instance.print("服务器引擎已启动。");
-					return KiftdCtl.run;
+					return running;
 				} catch (Exception e) {
 					Printer.instance.print(e.toString());
 					Printer.instance.print("出现错误，服务器引擎启动失败。");
@@ -68,12 +63,12 @@ public class KiftdCtl {
 
 	public synchronized boolean stop() {
 		Printer.instance.print("正在关闭服务器...");
-		if (KiftdCtl.context != null) {
+		if (context != null) {
 			Printer.instance.print("正在终止服务器引擎...");
 			try {
-				int exitCode = SpringApplication.exit(KiftdCtl.context, new ExitCodeGenerator[0]);
-				KiftdCtl.run = false;
-				KiftdCtl.context = null;
+				int exitCode = SpringApplication.exit(context, () -> 0);
+				running = false;
+				context = null;
 				Printer.instance.print("服务器引擎已终止。");
 				return exitCode == 0;
 			} catch (Exception e) {
@@ -85,24 +80,24 @@ public class KiftdCtl {
 		return true;
 	}
 
-	public synchronized boolean started() {
-		return KiftdCtl.run;
+	public synchronized boolean isRunning() {
+		return running;
 	}
 
 	@Bean
-	public ServletWebServerFactory servletContainer() {
+	public ServletWebServerFactory servletContainer(ConfigurationManager cm) {
 		UndertowServletWebServerFactory factory = new UndertowServletWebServerFactory();
 
-		if (ConfigureReader.instance().openHttps()) {
-			final int httpPort = ConfigureReader.instance().getPort();
-			final int httpsPort = ConfigureReader.instance().getHttpsPort();
+		if (cm.isHttpsEnabled()) {
+			final int httpPort = cm.getPort();
+			final int httpsPort = cm.getHttpsPort();
 
 			factory.setPort(httpsPort);
 
 			Ssl ssl = new Ssl();
-			ssl.setKeyStore(ConfigureReader.instance().getHttpsKeyFile());
-			ssl.setKeyStorePassword(ConfigureReader.instance().getHttpsKeyPass());
-			ssl.setKeyStoreType(ConfigureReader.instance().getHttpsKeyType());
+			ssl.setKeyStore(cm.getHttpsKeyFile());
+			ssl.setKeyStorePassword(cm.getHttpsKeyPass());
+			ssl.setKeyStoreType(cm.getHttpsKeyType());
 			factory.setSsl(ssl);
 
 			factory.addBuilderCustomizers(builder -> {
@@ -111,16 +106,17 @@ public class KiftdCtl {
 			});
 
 			factory.addDeploymentInfoCustomizers(deploymentInfo -> {
-				deploymentInfo.addInitialHandlerChainWrapper(this::httpToHttpsRedirect);
+				deploymentInfo.addInitialHandlerChainWrapper(handler -> httpToHttpsRedirect(handler, cm));
 			});
 		} else {
-			factory.setPort(ConfigureReader.instance().getPort());
+			factory.setPort(cm.getPort());
 		}
 
-		factory.addErrorPages(new ErrorPage[] { new ErrorPage(HttpStatus.NOT_FOUND, "/prv/error.html"),
+		factory.addErrorPages(
+				new ErrorPage(HttpStatus.NOT_FOUND, "/prv/error.html"),
 				new ErrorPage(HttpStatus.INTERNAL_SERVER_ERROR, "/prv/error.html"),
 				new ErrorPage(HttpStatus.UNAUTHORIZED, "/prv/error.html"),
-				new ErrorPage(HttpStatus.FORBIDDEN, "/prv/forbidden.html") });
+				new ErrorPage(HttpStatus.FORBIDDEN, "/prv/forbidden.html"));
 
 		factory.addBuilderCustomizers(builder -> {
 			builder.setWorkerThreads(200);
@@ -132,10 +128,10 @@ public class KiftdCtl {
 		return factory;
 	}
 
-	private HttpHandler httpToHttpsRedirect(HttpHandler next) {
+	private HttpHandler httpToHttpsRedirect(HttpHandler next, ConfigurationManager cm) {
 		return exchange -> {
 			if ("http".equals(exchange.getRequestScheme())) {
-				int httpsPort = ConfigureReader.instance().getHttpsPort();
+				int httpsPort = cm.getHttpsPort();
 				String host = exchange.getHostName();
 				String path = exchange.getRequestURI();
 				String query = exchange.getQueryString();

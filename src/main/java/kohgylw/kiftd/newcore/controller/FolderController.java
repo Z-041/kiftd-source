@@ -1,0 +1,59 @@
+package kohgylw.kiftd.newcore.controller;
+
+import jakarta.annotation.Resource;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
+import kohgylw.kiftd.newcore.service.FolderService;
+import kohgylw.kiftd.newcore.service.FolderViewService;
+
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseBody;
+
+@Controller
+@RequestMapping({ "/homeController" })
+public class FolderController {
+
+	private static final String CHARSET_BY_AJAX = "text/html; charset=utf-8";
+
+	@Resource
+	private FolderViewService folderViewService;
+	@Resource
+	private FolderService folderService;
+
+	@RequestMapping(value = { "/getFolderView.ajax" }, produces = { CHARSET_BY_AJAX })
+	@ResponseBody
+	public String getFolderView(final String fid, final HttpSession session, final HttpServletRequest request) {
+		return folderViewService.getFolderViewJson(fid, session, request);
+	}
+
+	@RequestMapping(value = { "/getRemainingFolderView.ajax" }, produces = { CHARSET_BY_AJAX })
+	@ResponseBody
+	public String getRemainingFolderView(final HttpServletRequest request) {
+		return folderViewService.getRemainingFolderViewJson(request);
+	}
+
+	@RequestMapping({ "/newFolder.ajax" })
+	@ResponseBody
+	public String newFolder(final HttpServletRequest request) {
+		return this.folderService.newFolder(request);
+	}
+
+	@RequestMapping({ "/deleteFolder.ajax" })
+	@ResponseBody
+	public String deleteFolder(final HttpServletRequest request) {
+		return this.folderService.deleteFolder(request);
+	}
+
+	@RequestMapping({ "/renameFolder.ajax" })
+	@ResponseBody
+	public String renameFolder(final HttpServletRequest request) {
+		return this.folderService.renameFolder(request);
+	}
+
+	@RequestMapping(value = { "/countFolderContent.ajax" }, produces = { CHARSET_BY_AJAX })
+	@ResponseBody
+	public String countFolderContent(final HttpServletRequest request) {
+		return folderService.getFolderCountResult(request);
+	}
+}
