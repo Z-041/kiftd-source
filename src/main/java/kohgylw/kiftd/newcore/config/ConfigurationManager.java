@@ -919,7 +919,7 @@ public class ConfigurationManager {
 				Connection testConn = DriverManager.getConnection(dbURL, dbUser, dbPwd);
 				testConn.close();
 			} catch (Exception e) {
-				Printer.instance.print("错误：无法连接至自定义数据库：" + dbURL + "（user=" + dbUser + ",password=" + dbPwd
+				Printer.instance.print("错误：无法连接至自定义数据库：" + dbURL + "（user=" + dbUser
 						+ "），请确重新配置MySQL数据库相关项。");
 				return CANT_CONNECT_DB;
 			}

@@ -59,14 +59,14 @@ public class FileSystemManager {
 	/**
 	 * 正在进行的操作进度，请只读勿改
 	 */
-	public static int per;
+	public static volatile int per;
 	/**
 	 * 正在进行的操作提示，请只读勿改
 	 */
-	public static String message;
+	public static volatile String message;
 
 	// 用于中途取消操作的标识
-	private boolean gono;
+	private volatile boolean gono;
 
 	// 缓存各式各样的、基本的查询语句，功能见名称
 	private PreparedStatement selectFolderById;
@@ -318,10 +318,11 @@ public class FileSystemManager {
 	 */
 	public List<Folder> getFoldersByParentId(String folderId) throws SQLException {
 		selectFoldersByParentFolderId.setString(1, folderId);
-		ResultSet r = selectFoldersByParentFolderId.executeQuery();
 		List<Folder> folders = new ArrayList<>();
-		while (r.next()) {
-			folders.add(resultSetAccessFolder(r));
+		try (ResultSet r = selectFoldersByParentFolderId.executeQuery()) {
+			while (r.next()) {
+				folders.add(resultSetAccessFolder(r));
+			}
 		}
 		return folders;
 	}
@@ -329,9 +330,10 @@ public class FileSystemManager {
 	// 根据ID查询文件夹对象，无符合对象则返回null
 	public Folder selectFolderById(String folderId) throws SQLException {
 		selectFolderById.setString(1, folderId);
-		ResultSet r = selectFolderById.executeQuery();
-		if (r.next()) {
-			return resultSetAccessFolder(r);
+		try (ResultSet r = selectFolderById.executeQuery()) {
+			if (r.next()) {
+				return resultSetAccessFolder(r);
+			}
 		}
 		return null;
 	}
@@ -339,9 +341,10 @@ public class FileSystemManager {
 	// 根据ID查询文件节点对象，无符合对象则返回null
 	private Node selectNodeById(String nodeId) throws SQLException {
 		selectNodeById.setString(1, nodeId);
-		ResultSet r = selectNodeById.executeQuery();
-		if (r.next()) {
-			return resultSetAccessNode(r);
+		try (ResultSet r = selectNodeById.executeQuery()) {
+			if (r.next()) {
+				return resultSetAccessNode(r);
+			}
 		}
 		return null;
 	}
@@ -350,9 +353,10 @@ public class FileSystemManager {
 	public List<Node> selectNodesByFolderId(String folderId) throws SQLException {
 		List<Node> nodes = new ArrayList<>();
 		selectNodesByFolderId.setString(1, folderId);
-		ResultSet r = selectNodesByFolderId.executeQuery();
-		while (r.next()) {
-			nodes.add(resultSetAccessNode(r));
+		try (ResultSet r = selectNodesByFolderId.executeQuery()) {
+			while (r.next()) {
+				nodes.add(resultSetAccessNode(r));
+			}
 		}
 		return nodes;
 	}
@@ -362,9 +366,10 @@ public class FileSystemManager {
 		List<Node> nodes = new ArrayList<>();
 		selectNodesByPathExcludeById.setString(1, path);
 		selectNodesByPathExcludeById.setString(2, fileId);
-		ResultSet r = selectNodesByPathExcludeById.executeQuery();
-		while (r.next()) {
-			nodes.add(resultSetAccessNode(r));
+		try (ResultSet r = selectNodesByPathExcludeById.executeQuery()) {
+			while (r.next()) {
+				nodes.add(resultSetAccessNode(r));
+			}
 		}
 		return nodes;
 	}
@@ -772,8 +777,8 @@ public class FileSystemManager {
 		Folder folder = selectFolderById(folderId);
 		File target = null;
 		per = 0;
-		message = "正在导出文件夹：" + folder.getFolderName();
 		if (folder != null && path != null && path.isDirectory()) {
+			message = "正在导出文件夹：" + folder.getFolderName();
 			if (Arrays.stream(path.listFiles()).parallel().filter((e) -> e.isDirectory())
 					.anyMatch((f) -> f.getName().equals(folder.getFolderName()))) {
 				switch (type) {
@@ -971,9 +976,10 @@ public class FileSystemManager {
 	public long getFilesTotalNumByFoldersId(String pfId) throws SQLException {
 		if (pfId != null) {
 			countNodesByFolderId.setString(1, pfId);
-			ResultSet rs = countNodesByFolderId.executeQuery();
-			if (rs.next()) {
-				return rs.getLong(1);
+			try (ResultSet rs = countNodesByFolderId.executeQuery()) {
+				if (rs.next()) {
+					return rs.getLong(1);
+				}
 			}
 		}
 		return 0L;
@@ -994,9 +1000,10 @@ public class FileSystemManager {
 	public long getFoldersTotalNumByFoldersId(String pfId) throws SQLException {
 		if (pfId != null) {
 			countFoldersByParentFolderId.setString(1, pfId);
-			ResultSet rs = countFoldersByParentFolderId.executeQuery();
-			if (rs.next()) {
-				return rs.getLong(1);
+			try (ResultSet rs = countFoldersByParentFolderId.executeQuery()) {
+				if (rs.next()) {
+					return rs.getLong(1);
+				}
 			}
 		}
 		return 0L;
@@ -1063,9 +1070,10 @@ public class FileSystemManager {
 
 	private long countNodesByExtendStoreIndex(short index) throws SQLException {
 		countNodesByExtendStoreIndex.setString(1, index + "\\_%");
-		ResultSet rs = countNodesByExtendStoreIndex.executeQuery();
-		if (rs.first()) {
-			return rs.getLong(1);
+		try (ResultSet rs = countNodesByExtendStoreIndex.executeQuery()) {
+			if (rs.first()) {
+				return rs.getLong(1);
+			}
 		}
 		return 0L;
 	}
@@ -1073,9 +1081,10 @@ public class FileSystemManager {
 	private List<Node> selectNodesByExtendStoreIndex(short index) throws SQLException {
 		selectNodesByExtendStoreIndex.setString(1, index + "\\_%");
 		List<Node> nodes = new ArrayList<>();
-		ResultSet rs = selectNodesByExtendStoreIndex.executeQuery();
-		while (rs.next()) {
-			nodes.add(resultSetAccessNode(rs));
+		try (ResultSet rs = selectNodesByExtendStoreIndex.executeQuery()) {
+			while (rs.next()) {
+				nodes.add(resultSetAccessNode(rs));
+			}
 		}
 		return nodes;
 	}
@@ -1098,5 +1107,20 @@ public class FileSystemManager {
 			np.append(File.separator);
 		}
 		return np.toString();
+	}
+
+	private static String validateFilename(String name, File parentDir) throws IllegalArgumentException {
+		if (name == null || name.contains("..") || name.contains("/") || name.contains("\\")) {
+			throw new IllegalArgumentException("非法文件名: " + name);
+		}
+		File target = new File(parentDir, name);
+		try {
+			if (!target.getCanonicalPath().startsWith(parentDir.getCanonicalPath())) {
+				throw new IllegalArgumentException("路径穿越检测: " + name);
+			}
+		} catch (java.io.IOException e) {
+			throw new IllegalArgumentException("无法验证路径", e);
+		}
+		return name;
 	}
 }

@@ -59,7 +59,8 @@ public class ServerUIModule extends KiftdDynamicWindow {
 	protected static final String L_ALL = "记录全部(ALL)";
 	protected static final String L_EXCEPTION = "仅异常(EXCEPTION)";
 	protected static final String L_NONE = "不记录(NONE)";
-	private SimpleDateFormat sdf;
+	private static final ThreadLocal<SimpleDateFormat> SDF_HOLDER = ThreadLocal
+			.withInitial(() -> new SimpleDateFormat("yyyy-MM-dd hh:mm:ss"));
 	private final int OriginSize_Width = 520;
 	private final int OriginSize_Height = 600;
 	private MenuItem filesViewer;
@@ -661,14 +662,14 @@ public class ServerUIModule extends KiftdDynamicWindow {
 	}
 
 	private String getFormateDate() {
-		if (null == sdf) {
-			sdf = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss");
-		}
 		if (ti != null) {
 			final Date d = ti.get();
-			return sdf.format(d);
+			if (d == null) {
+				return "";
+			}
+			return SDF_HOLDER.get().format(d);
 		}
-		return sdf.format(new Date());
+		return SDF_HOLDER.get().format(new Date());
 	}
 
 	public static void setGetServerTime(final GetServerTime ti) {

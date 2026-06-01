@@ -24,7 +24,7 @@ import java.util.Random;
 public class VerificationCodeFactory {
 
 	private char[] alternative;
-	private static final Random RANDOM = new Random();
+	private static final Random RANDOM = new java.security.SecureRandom();
 	private int width;
 	private int height;
 	private int maxLine;

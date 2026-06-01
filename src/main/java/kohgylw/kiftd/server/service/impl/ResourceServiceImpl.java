@@ -282,24 +282,27 @@ public class ResourceServiceImpl implements ResourceService {
 			long maxRate = ConfigureReader.instance().getDownloadMaxRate(
 					(String) request.getSession().getAttribute("ACCOUNT"));
 			OutputStream out = new VariableSpeedBufferedOutputStream(rawOut, maxRate, request.getSession());
-			long needSize = requestSize;
-			randomFile.seek(start);
-			while (needSize > 0) {
-				int len = randomFile.read(buffer);
-				if (len <= 0) {
-					break;
-				}
-				if (needSize < buffer.length) {
-					out.write(buffer, 0, (int) needSize);
-				} else {
-					out.write(buffer, 0, len);
-					if (len < buffer.length) {
+			try {
+				long needSize = requestSize;
+				randomFile.seek(start);
+				while (needSize > 0) {
+					int len = randomFile.read(buffer);
+					if (len <= 0) {
 						break;
 					}
+					if (needSize < buffer.length) {
+						out.write(buffer, 0, (int) needSize);
+					} else {
+						out.write(buffer, 0, len);
+						if (len < buffer.length) {
+							break;
+						}
+					}
+					needSize -= buffer.length;
 				}
-				needSize -= buffer.length;
+			} finally {
+				out.close();
 			}
-			out.close();
 			return status;
 		} catch (Exception e) {
 			status = HttpServletResponse.SC_INTERNAL_SERVER_ERROR;

@@ -144,8 +144,7 @@ public class FolderViewServiceImpl implements FolderViewService {
 		}
 		Folder vf = this.fm.selectById(fid);
 		final String account = (String) request.getSession().getAttribute("ACCOUNT");
-		// 检查访问文件夹视图请求是否合法
-		if (!ConfigureReader.instance().accessFolder(vf, account)) {
+		if (vf == null || !ConfigureReader.instance().accessFolder(vf, account)) {
 			return "notAccess";// 如无访问权限则直接返回该字段，令页面回到ROOT视图。
 		}
 		final SreachView sv = new SreachView();

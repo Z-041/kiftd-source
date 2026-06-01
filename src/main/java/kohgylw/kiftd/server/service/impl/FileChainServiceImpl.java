@@ -119,7 +119,7 @@ public class FileChainServiceImpl extends RangeFileStreamWriter implements FileC
 					if (ConfigureReader.instance().authorized(account, AccountAuth.DOWNLOAD_FILES,
 							fu.getAllFoldersId(f.getFileParentFolder()))) {
 						Folder folder = flm.selectById(f.getFileParentFolder());
-						if (ConfigureReader.instance().accessFolder(folder, account)) {
+						if (folder != null && ConfigureReader.instance().accessFolder(folder, account)) {
 							// 将指定的fid加密为ckey并返回。
 							try {
 								Propertie keyProp = pm.selectByKey("chain_aes_key");

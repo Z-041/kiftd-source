@@ -241,7 +241,7 @@ public class FileServiceImpl extends RangeFileStreamWriter implements FileServic
 				if (ConfigureReader.instance().authorized(account, AccountAuth.DOWNLOAD_FILES,
 						fu.getAllFoldersId(f.getFileParentFolder()))) {
 					Folder folder = flm.selectById(f.getFileParentFolder());
-					if (ConfigureReader.instance().accessFolder(folder, account)) {
+					if (folder != null && ConfigureReader.instance().accessFolder(folder, account)) {
 						final File fo = this.fbu.getFileFromBlocks(f);
 						final String ip = idg.getIpAddr(request);
 						final String range = request.getHeader("Range");
@@ -318,7 +318,7 @@ public class FileServiceImpl extends RangeFileStreamWriter implements FileServic
 					continue;
 				}
 				final Folder folder = flm.selectById(file.getFileParentFolder());
-				if (!ConfigureReader.instance().accessFolder(folder, account)) {
+				if (folder == null || !ConfigureReader.instance().accessFolder(folder, account)) {
 					return NO_AUTHORIZED;
 				}
 				if (!ConfigureReader.instance().authorized(account, AccountAuth.DELETE_FILE_OR_FOLDER,
@@ -387,7 +387,8 @@ public class FileServiceImpl extends RangeFileStreamWriter implements FileServic
 			throws Exception {
 		final String zipname = request.getParameter("zipId");
 		final String account = (String) request.getSession().getAttribute("ACCOUNT");
-		if (zipname != null && !zipname.equals("ERROR")) {
+		if (zipname != null && !zipname.equals("ERROR") && !zipname.contains("..")
+				&& !zipname.contains("/") && !zipname.contains("\\")) {
 			final String tfPath = ConfigureReader.instance().getTemporaryfilePath();
 			final File zip = new File(tfPath, zipname);
 			String fname = "kiftd_" + ServerTimeUtil.accurateToDay() + "_\u6253\u5305\u4e0b\u8f7d.zip";

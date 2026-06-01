@@ -311,7 +311,7 @@ public class FSViewer extends KiftdDynamicWindow {
 							}
 						}
 					}
-					enableAllButtons();
+					javax.swing.SwingUtilities.invokeLater(() -> enableAllButtons());
 				});
 			}
 		});

@@ -267,7 +267,7 @@ public class SettingWindow extends KiftdDynamicWindow {
 
 	protected void show() {
 		getServerStatus();
-		window.setVisible(true);
+		javax.swing.SwingUtilities.invokeLater(() -> window.setVisible(true));
 	}
 
 	public JDialog getWindow() {

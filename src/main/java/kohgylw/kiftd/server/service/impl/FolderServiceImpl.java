@@ -352,7 +352,7 @@ public class FolderServiceImpl implements FolderService {
 		}
 		Folder vf = this.fm.selectById(folderId);
 		final String account = (String) request.getSession().getAttribute("ACCOUNT");
-		if (!ConfigureReader.instance().accessFolder(vf, account)) {
+		if (vf == null || !ConfigureReader.instance().accessFolder(vf, account)) {
 			return "ERROR";
 		}
 		FolderCountResult fcr = new FolderCountResult();
