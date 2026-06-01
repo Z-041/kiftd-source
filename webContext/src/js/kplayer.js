@@ -65,13 +65,8 @@ $(function() {
 });
 // 获取URL上的视频id参数，它必须是第一个参数。
 function getFileId() {
-	var url = location.search;
-	if (url.indexOf("?") != -1) {
-		var str = url.substr(1);
-		strs = str.split("=");
-		return strs[1];
-	}
-	return "";
+	var params = new URLSearchParams(location.search);
+	return params.get("fileId") || "";
 }
 // 显示视频信息并播放视频
 function playVideo() {

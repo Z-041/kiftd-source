@@ -60,8 +60,11 @@ function dologin() {
 			data : {},
 			success : function(result) {
 				var publicKeyInfo = JSON.parse(result);
-				var loginInfo = '{accountId:"' + accountId + '",accountPwd:"'
-						+ accountPwd + '",time:"' + publicKeyInfo.time + '"}';
+				var loginInfo = JSON.stringify({
+					accountId: accountId,
+					accountPwd: accountPwd,
+					time: publicKeyInfo.time
+				});
 				var encrypt = new JSEncrypt();// 加密插件对象
 				encrypt.setPublicKey(publicKeyInfo.publicKey);// 设置公钥
 				var encrypted = encrypt.encrypt(loginInfo);// 进行加密

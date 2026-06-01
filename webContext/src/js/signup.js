@@ -61,8 +61,11 @@ function doSignUp(){
 			// 获取公钥
 			var signup_publicKeyInfo=JSON.parse(result);
 			// 生成JSON对象格式的信息
-			var signUpInfo = '{account:"' + accountId + '",pwd:"'
-			+ accountPwd + '",time:"' + signup_publicKeyInfo.time + '"}';
+			var signUpInfo = JSON.stringify({
+				account: accountId,
+				pwd: accountPwd,
+				time: signup_publicKeyInfo.time
+			});
 			var encrypt = new JSEncrypt();// 加密插件对象
 			encrypt.setPublicKey(signup_publicKeyInfo.publicKey);// 设置公钥
 			var encrypted = encrypt.encrypt(signUpInfo);// 进行加密

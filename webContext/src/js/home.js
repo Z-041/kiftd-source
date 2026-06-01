@@ -558,7 +558,7 @@ function showFolderView(fid, targetId) {
 					// 记录当前获取的文件夹视图的ID号，便于其他操作使用
 					locationpath = folderView.folder.folderId;
 					// 存储打开的文件夹路径至Cookie中，以便下次打开时直接显示
-					document.cookie = "folder_id=" + escape(locationpath);
+					document.cookie = "folder_id=" + escape(locationpath) + "; SameSite=Lax";
 					// 记录上级目录ID，方便返回上一级
 					parentpath = folderView.folder.folderParent;
 					// 记录本文件夹的访问级别，便于在新建文件夹时判断应该从哪一个级别开始供用户选择
@@ -676,8 +676,11 @@ function dologin() {
 			success: function(result) {
 				var publicKeyInfo = JSON.parse(result);
 				var date = new Date();// 这个是客户浏览器上的当前时间
-				var loginInfo = '{accountId:"' + accountId + '",accountPwd:"'
-					+ accountPwd + '",time:"' + publicKeyInfo.time + '"}';
+				var loginInfo = JSON.stringify({
+			accountId: accountId,
+			accountPwd: accountPwd,
+			time: publicKeyInfo.time
+		});
 				var encrypt = new JSEncrypt();// 加密插件对象
 				encrypt.setPublicKey(publicKeyInfo.publicKey);// 设置公钥
 				var encrypted = encrypt.encrypt(loginInfo);// 进行加密
@@ -797,7 +800,7 @@ function showParentList(folderView) {
 		$.each(folderView.parentList, function(n, val) {
 			$("#parentFolderList").append(
 				"<li><a href='#' onclick='event.preventDefault(); entryFolder("
-				+ '"' + val.folderId + '"' + ")'>" + val.folderName
+				+ '"' + val.folderId + '"' + ")'>" + html2Escape(val.folderName)
 				+ "</a></li>");
 		});
 	} else {
@@ -832,12 +835,12 @@ function showAccountView(folderView) {
 		$("#tb")
 			.append(
 				"<button class='btn btn-link rightbtn hidden-xs' data-toggle='modal' data-target='#logoutModal'>注销 ["
-				+ folderView.account
-				+ "] <span class='glyphicon glyphicon-off' aria-hidden='true'></span></button>");
-		$("#tb2")
-			.append(
-				"<button class='btn btn-link' data-toggle='modal' data-target='#logoutModal'>注销 ["
-				+ folderView.account
+				+ html2Escape(folderView.account)
+			+ "] <span class='glyphicon glyphicon-off' aria-hidden='true'></span></button>");
+	$("#tb2")
+		.append(
+			"<button class='btn btn-link' data-toggle='modal' data-target='#logoutModal'>注销 ["
+			+ html2Escape(folderView.account)
 				+ "] <span class='glyphicon glyphicon-off' aria-hidden='true'></span></button>");
 		if (folderView.allowChangePassword == 'true') {
 			$("#tb")
@@ -1751,7 +1754,7 @@ function showDownloadModel(fileId, fileName) {
 function dodownload(fileId) {
 	$("#dlmbutton").prop('disabled', true);
 	$("#downloadFileName").text("提示：准备开始下载，请稍候...");
-	var t = setTimeout("$('#downloadModal').modal('hide');", 800);
+	var t = setTimeout(function() {$('#downloadModal').modal('hide');}, 800);
 	window.location.href = "homeController/downloadFile.do?fileId=" + fileId;
 }
 
@@ -3183,9 +3186,11 @@ function doChangePassword() {
 			// 获取公钥
 			var changepwd_publicKeyInfo = JSON.parse(result);
 			// 生成JSON对象格式的信息
-			var changePasswordInfo = '{oldPwd:"' + change_oldPassword
-				+ '",newPwd:"' + change_newPassword + '",time:"'
-				+ changepwd_publicKeyInfo.time + '"}';
+			var changePasswordInfo = JSON.stringify({
+			oldPwd: change_oldPassword,
+			newPwd: change_newPassword,
+			time: changepwd_publicKeyInfo.time
+		});
 			var encrypt = new JSEncrypt();// 加密插件对象
 			encrypt.setPublicKey(changepwd_publicKeyInfo.publicKey);// 设置公钥
 			var encrypted = encrypt.encrypt(changePasswordInfo);// 进行加密
