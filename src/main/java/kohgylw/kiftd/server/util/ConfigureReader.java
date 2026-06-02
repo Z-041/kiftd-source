@@ -111,7 +111,7 @@ public class ConfigureReader {
 		this.propertiesStatus = -1;
 		this.path = System.getProperty("user.dir");
 		String classPath = System.getProperty("java.class.path");
-		if (classPath.indexOf(File.pathSeparator) < 0) {
+		if (classPath != null && classPath.indexOf(File.pathSeparator) < 0) {
 			File f = new File(classPath);
 			classPath = f.getAbsolutePath();
 			if (classPath.endsWith(".jar")) {
@@ -120,6 +120,25 @@ public class ConfigureReader {
 				if (confInJarDir.isDirectory()) {
 					this.path = jarDir;
 				}
+			}
+		}
+		if (!new File(this.path, "conf").isDirectory()) {
+			try {
+				java.net.URL location = getClass().getProtectionDomain().getCodeSource().getLocation();
+				String locPath = new File(location.toURI()).getPath();
+				File jarOrClassesDir = new File(locPath);
+				if (!jarOrClassesDir.isDirectory()) {
+					jarOrClassesDir = jarOrClassesDir.getParentFile();
+				} else if (locPath.endsWith(File.separator + "classes") || locPath.endsWith("/classes")) {
+					jarOrClassesDir = jarOrClassesDir.getParentFile();
+				}
+				if (jarOrClassesDir != null) {
+					File confInJarDir = new File(jarOrClassesDir, "conf");
+					if (confInJarDir.isDirectory()) {
+						this.path = jarOrClassesDir.getAbsolutePath();
+					}
+				}
+			} catch (Exception ignored) {
 			}
 		}
 		this.DEFAULT_FILE_SYSTEM_PATH = this.path + File.separator + "filesystem" + File.separator;
