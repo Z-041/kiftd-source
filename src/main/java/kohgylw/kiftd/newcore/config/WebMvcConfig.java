@@ -34,18 +34,15 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
 	@Override
 	public void addResourceHandlers(final ResourceHandlerRegistry registry) {
-		final String webContextPath = "file:" + ConfigurationManager.instance().getBasePath() + File.separator
-				+ "webContext" + File.separator;
-		registry.addResourceHandler(
-				"/favicon.ico",
-				"/css/**",
-				"/js/**",
-				"/fonts/**",
-				"/prv/**",
-				"/quickview/**",
-				"/src/**",
-				"/home.html")
-				.addResourceLocations(webContextPath);
+		final String webContextPath = "file:///" + ConfigurationManager.instance().getBasePath().replace(File.separatorChar, '/')
+				+ "/webContext/";
+		registry.addResourceHandler("/css/**").addResourceLocations(webContextPath + "css/");
+		registry.addResourceHandler("/js/**").addResourceLocations(webContextPath + "js/");
+		registry.addResourceHandler("/fonts/**").addResourceLocations(webContextPath + "fonts/");
+		registry.addResourceHandler("/prv/**").addResourceLocations(webContextPath + "prv/");
+		registry.addResourceHandler("/quickview/**").addResourceLocations(webContextPath + "quickview/");
+		registry.addResourceHandler("/src/**").addResourceLocations(webContextPath + "src/");
+		registry.addResourceHandler("/favicon.ico", "/home.html").addResourceLocations(webContextPath);
 	}
 
 	@Bean

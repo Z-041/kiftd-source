@@ -141,6 +141,12 @@ public class ConfigureReader {
 			} catch (Exception ignored) {
 			}
 		}
+		if (!new File(this.path, "webContext").isDirectory()) {
+			String userDir = System.getProperty("user.dir");
+			if (new File(userDir, "webContext").isDirectory()) {
+				this.path = userDir;
+			}
+		}
 		this.DEFAULT_FILE_SYSTEM_PATH = this.path + File.separator + "filesystem" + File.separator;
 		this.confdir = this.path + File.separator + "conf" + File.separator;
 		this.serverp = new KiftdProperties();

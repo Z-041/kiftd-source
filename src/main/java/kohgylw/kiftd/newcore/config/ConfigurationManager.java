@@ -133,6 +133,12 @@ public class ConfigurationManager {
 			} catch (Exception ignored) {
 			}
 		}
+		if (!new File(this.basePath, "webContext").isDirectory()) {
+			String userDir = System.getProperty("user.dir");
+			if (new File(userDir, "webContext").isDirectory()) {
+				this.basePath = userDir;
+			}
+		}
 		this.defaultFileSystemPath = this.basePath + File.separator + "filesystem" + File.separator;
 		this.confDir = this.basePath + File.separator + "conf" + File.separator;
 		this.serverp = new KiftdProperties();
