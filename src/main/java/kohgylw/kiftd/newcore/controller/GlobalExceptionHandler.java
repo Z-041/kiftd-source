@@ -38,7 +38,6 @@ public class GlobalExceptionHandler {
 		} catch (Exception ignored) {
 		}
 		this.fbu.checkFileBlocks();
-		Printer.instance.print("处理请求时发生错误：\n\r------信息------\n\r"
-				+ e.getMessage() + "\n\r------信息------");
+		Printer.instance.print("处理请求时发生错误：" + e.getClass().getName());
 	}
 }

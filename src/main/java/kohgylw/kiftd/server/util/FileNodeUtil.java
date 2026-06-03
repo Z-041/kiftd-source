@@ -35,7 +35,7 @@ public class FileNodeUtil {
 	/**
 	 * 单文件夹内允许存放的最大文件和文件夹数目
 	 */
-	public static final int MAXIMUM_NUM_OF_SINGLE_FOLDER = Integer.MAX_VALUE;
+	public static final int MAXIMUM_NUM_OF_SINGLE_FOLDER = 10000;
 
 	/**
 	 * 

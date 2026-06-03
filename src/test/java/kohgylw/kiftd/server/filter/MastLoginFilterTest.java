@@ -178,7 +178,7 @@ class MastLoginFilterTest {
     }
 
     @Test
-    void testStaticResourcePassesWithoutAuth() throws Exception {
+    void testStaticResourceRedirectsToLoginWhenMustLogin() throws Exception {
         MastLoginFilter filter = new MastLoginFilter();
         when(request.getSession()).thenReturn(session);
         when(request.getServletPath()).thenReturn("/css/style.css");
@@ -190,7 +190,7 @@ class MastLoginFilterTest {
 
             filter.doFilter(request, response, chain);
 
-            verify(chain, times(1)).doFilter(request, response);
+            verify(response, times(1)).sendRedirect("/prv/login.html");
         }
     }
 

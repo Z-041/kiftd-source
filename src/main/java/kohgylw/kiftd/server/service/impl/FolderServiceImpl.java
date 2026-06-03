@@ -283,8 +283,7 @@ public class FolderServiceImpl implements FolderService {
 		if (fm.queryByParentId(parentId).stream().anyMatch((e) -> e.getFolderName().equals(folderName))) {
 			f.setFolderName(FileNodeUtil.getNewFolderName(folderName, fm.queryByParentId(parentId)));
 		} else {
-			cnfbnr.setResult("error");
-			return gson.toJson(cnfbnr);
+			f.setFolderName(folderName);
 		}
 		int pc = parentFolder.getFolderConstraint();
 		if (folderConstraint != null) {

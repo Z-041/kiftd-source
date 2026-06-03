@@ -14,7 +14,7 @@ class FileNodeUtilTest {
 
     @Test
     void testMaxNumConstant() {
-        assertEquals(Integer.MAX_VALUE, FileNodeUtil.MAXIMUM_NUM_OF_SINGLE_FOLDER);
+        assertEquals(10000, FileNodeUtil.MAXIMUM_NUM_OF_SINGLE_FOLDER);
     }
 
     @Test

@@ -86,8 +86,15 @@ public class MastLoginFilter implements Filter {
 					pw2.print("mustLogin");
 					pw2.flush();
 				}
+			} else if (session.getAttribute("ACCOUNT") != null) {
+				final String account = (String) session.getAttribute("ACCOUNT");
+				if (cr.foundAccount(account)) {
+					chain.doFilter(request, response);
+				} else {
+					hsr.sendRedirect("/prv/login.html");
+				}
 			} else {
-				chain.doFilter(request, response);
+				hsr.sendRedirect("/prv/login.html");
 			}
 		} else {
 			chain.doFilter(request, response);

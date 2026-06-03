@@ -69,7 +69,7 @@ public class ConfigureReader {
 	private final String DEFAULT_ACCOUNT_PWD = "000000";
 	private final String DEFAULT_ACCOUNT_AUTH = "cudrm";
 	private final String DEFAULT_AUTH_OVERALL = "l";
-	private final String DEFAULT_PASSWORD_CHANGE_SETTING = "N";
+	private final String DEFAULT_PASSWORD_CHANGE_SETTING = "Y";
 	private final String DEFAULT_FILE_CHAIN_SETTING = "CLOSE";
 	public static final int INVALID_PORT = 1;// 端口无效
 	public static final int INVALID_LOG = 2;// 日志设置无效
@@ -210,7 +210,10 @@ public class ConfigureReader {
 		if (getImportAccount().equals(account)) {
 			return true;
 		}
-		final String accountPwd = this.accountp.getProperty(account + ".pwd");
+		final String accountPwd;
+		synchronized (accountp) {
+			accountPwd = this.accountp.getProperty(account + ".pwd");
+		}
 		return accountPwd != null && accountPwd.length() > 0;
 	}
 
@@ -262,19 +265,21 @@ public class ConfigureReader {
 		}
 		if (account != null && account.length() > 0) {
 			final StringBuilder auths = new StringBuilder();
-			for (String id : folders) {
-				String addedAuth = accountp.getProperty(account + ".auth." + id);
-				if (addedAuth != null) {
-					auths.append(addedAuth);
+			synchronized (accountp) {
+				for (String id : folders) {
+					String addedAuth = accountp.getProperty(account + ".auth." + id);
+					if (addedAuth != null) {
+						auths.append(addedAuth);
+					}
 				}
-			}
-			final String accauth = this.accountp.getProperty(account + ".auth");
-			final String overall = this.accountp.getProperty("authOverall");
-			if (accauth != null) {
-				auths.append(accauth);
-			}
-			if (overall != null) {
-				auths.append(overall);
+				final String accauth = this.accountp.getProperty(account + ".auth");
+				final String overall = this.accountp.getProperty("authOverall");
+				if (accauth != null) {
+					auths.append(accauth);
+				}
+				if (overall != null) {
+					auths.append(overall);
+				}
 			}
 			switch (auth) {
 			case CREATE_NEW_FOLDER: {
@@ -300,7 +305,10 @@ public class ConfigureReader {
 			}
 			}
 		} else {
-			final String overall2 = this.accountp.getProperty("authOverall");
+			final String overall2;
+			synchronized (accountp) {
+				overall2 = this.accountp.getProperty("authOverall");
+			}
 			if (overall2 == null) {
 				return false;
 			}

@@ -233,11 +233,11 @@ public class RangeFileStreamWriter {
 			// 读取文件并写处至输出流
 			try (RandomAccessFile raf = new RandomAccessFile(fo, "r")) {
 				HttpSession session = request.getSession(false);
-				OutputStream out = maxRate > 0 && maxRate < Long.MAX_VALUE && session != null
+				try (OutputStream out = maxRate > 0 && maxRate < Long.MAX_VALUE && session != null
 						? new VariableSpeedBufferedOutputStream(response.getOutputStream(), maxRate, session)
-						: new BufferedOutputStream(response.getOutputStream());
-				raf.seek(startOffset);
-				if (!hasEnd) {
+						: new BufferedOutputStream(response.getOutputStream())) {
+					raf.seek(startOffset);
+					if (!hasEnd) {
 					// 无结束偏移量时，将其从起始偏移量开始写到文件整体结束，如果从头开始下载，起始偏移量为0
 					int n = 0;
 					while ((n = raf.read(buf)) != -1) {
@@ -254,7 +254,7 @@ public class RangeFileStreamWriter {
 					}
 				}
 				out.flush();
-				out.close();
+				}
 			} catch (IOException | IndexOutOfBoundsException ex) {
 				// 针对任何IO异常忽略，传输失败不处理
 				status = HttpServletResponse.SC_INTERNAL_SERVER_ERROR;

@@ -3,6 +3,8 @@ package kohgylw.kiftd.newcore.controller;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
+
 import kohgylw.kiftd.server.service.ResourceService;
 
 import org.springframework.stereotype.Controller;
@@ -19,13 +21,13 @@ public class ResourceController {
 
 	@RequestMapping("/getResource/{fileId}")
 	public void getResource(@PathVariable("fileId") String fileId, HttpServletRequest request,
-			HttpServletResponse response) {
+			HttpServletResponse response, HttpSession session) {
 		rs.getResource(fileId, request, response);
 	}
 
 	@RequestMapping("/getLRContext/{fileId}")
 	public void getLRContext(@PathVariable("fileId") String fileId, HttpServletRequest request,
-			HttpServletResponse response) {
+			HttpServletResponse response, HttpSession session) {
 		rs.getLRContextByUTF8(fileId, request, response);
 	}
 
