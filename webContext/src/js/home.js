@@ -1061,14 +1061,27 @@ function createFileRow(fi, aL, aD, aR, aO) {
 						+ ")' class='btn btn-link btn-xs'><span class='glyphicon glyphicon-play'></span> 播放</button>";
 				}
 				break;
-			case "jpg":
-			case "jpeg":
-			case "gif":
-			case "png":
-			case "bmp":
-				break;
-			default:
-				break;
+			case "pdf":
+		case "docx":
+		case "xlsx":
+		case "pptx":
+			fileRow = fileRow
+				+ "<button onclick='openPreview("
+				+ '"'
+				+ fi.fileId
+				+ '","'
+				+ replaceAllQuotationMarks(fi.fileName)
+				+ '"'
+				+ ")' class='btn btn-link btn-xs'><span class='glyphicon glyphicon-eye-open'></span> 预览</button>";
+			break;
+		case "jpg":
+		case "jpeg":
+		case "gif":
+		case "png":
+		case "bmp":
+			break;
+		default:
+			break;
 		}
 	}
 	if (aD) {
@@ -1898,6 +1911,11 @@ function getSuffix(filename) {
 // 播放指定格式的视频
 function playVideo(fileId) {
 	window.open("quickview/video.html?fileId=" + fileId);
+}
+
+// 预览Office/PDF文档
+function openPreview(fileId, fileName) {
+	window.open("quickview/preview.html?fileId=" + fileId + "&name=" + encodeURIComponent(fileName));
 }
 
 // 兼容Chrome、IE、FF的Shift判定
