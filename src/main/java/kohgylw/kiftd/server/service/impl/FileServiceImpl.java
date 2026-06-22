@@ -19,6 +19,7 @@ import java.io.*;
 
 import kohgylw.kiftd.server.util.*;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import com.google.gson.*;
 import com.google.gson.reflect.TypeToken;
@@ -97,12 +98,14 @@ public class FileServiceImpl extends RangeFileStreamWriter implements FileServic
 			return ERROR_PARAMETER;
 		}
 		final List<String> pereFileNameList = new ArrayList<>();
+		final List<Node> files = this.fm.queryByParentFolderId(folderId);
+		final Set<String> existingNames = files == null ? Collections.emptySet()
+				: files.stream().map(Node::getFileName).collect(Collectors.toSet());
 		for (final String fileName : namelistObj) {
-			if (folderId == null || folderId.length() <= 0 || fileName == null || fileName.length() <= 0) {
+			if (fileName == null || fileName.length() <= 0) {
 				return ERROR_PARAMETER;
 			}
-			final List<Node> files = this.fm.queryByParentFolderId(folderId);
-			if (files.stream().parallel().anyMatch((n) -> n.getFileName().equals(fileName))) {
+			if (existingNames.contains(fileName)) {
 				pereFileNameList.add(fileName);
 			}
 		}
@@ -148,6 +151,9 @@ public class FileServiceImpl extends RangeFileStreamWriter implements FileServic
 		String fileName = originalFileName;
 		final String repeType = request.getParameter("repeType");
 		if (folderId == null || folderId.length() <= 0 || originalFileName == null || originalFileName.length() <= 0) {
+			return UPLOADERROR;
+		}
+		if (!TextFormateUtil.instance().matcherFileName(originalFileName) || originalFileName.indexOf(".") == 0) {
 			return UPLOADERROR;
 		}
 		Folder folder = flm.selectById(folderId);
@@ -903,24 +909,22 @@ public class FileServiceImpl extends RangeFileStreamWriter implements FileServic
 			return gson.toJson(cifr);
 		}
 		final List<Folder> folders = flm.queryByParentId(folderId);
-		try {
-			Folder testFolder = folders.stream().parallel().filter((n) -> n.getFolderName().equals(folderName))
-					.findAny().get();
+		Folder testFolder = folders == null ? null
+				: folders.stream().filter((n) -> n.getFolderName().equals(folderName)).findAny().orElse(null);
+		if (testFolder != null) {
 			if (ConfigureReader.instance().accessFolder(testFolder, account) && ConfigureReader.instance()
 					.authorized(account, AccountAuth.DELETE_FILE_OR_FOLDER, fu.getAllFoldersId(folderId))) {
 				cifr.setResult("repeatFolder_coverOrBoth");
 			} else {
 				cifr.setResult("repeatFolder_Both");
 			}
-			return gson.toJson(cifr);
-		} catch (NoSuchElementException e) {
-			if (flm.selectCount(Wrappers.<Folder>lambdaQuery().eq(Folder::getFolderParent, folderId)) >= FileNodeUtil.MAXIMUM_NUM_OF_SINGLE_FOLDER) {
-				cifr.setResult(FOLDERS_TOTAL_OUT_OF_LIMIT);
-			} else {
-				cifr.setResult("permitUpload");
-			}
-			return gson.toJson(cifr);
+		} else if (flm.selectCount(
+				Wrappers.<Folder>lambdaQuery().eq(Folder::getFolderParent, folderId)) >= FileNodeUtil.MAXIMUM_NUM_OF_SINGLE_FOLDER) {
+			cifr.setResult(FOLDERS_TOTAL_OUT_OF_LIMIT);
+		} else {
+			cifr.setResult("permitUpload");
 		}
+		return gson.toJson(cifr);
 	}
 
 	@Override
@@ -995,6 +999,11 @@ public class FileServiceImpl extends RangeFileStreamWriter implements FileServic
 			}
 		}
 		String fileName = getFileNameFormPath(originalFileName);
+		if (fileName == null || fileName.length() <= 0
+				|| !TextFormateUtil.instance().matcherFileName(fileName)
+				|| fileName.indexOf(".") == 0) {
+			return UPLOADERROR;
+		}
 		final List<Node> files = this.fm.queryByParentFolderId(folderId);
 		if (files.stream().anyMatch((e) -> e.getFileName().equals(fileName))) {
 			return UPLOADERROR;
@@ -1019,7 +1028,8 @@ public class FileServiceImpl extends RangeFileStreamWriter implements FileServic
 
 	private String[] getParentPath(String path) {
 		if (path != null) {
-			String[] paths = path.split("/");
+			String normalizedPath = path.replace('\\', '/');
+			String[] paths = normalizedPath.split("/");
 			List<String> result = new ArrayList<String>();
 			for (int i = 0; i < paths.length - 1; i++) {
 				if (paths[i].length() > 0) {
@@ -1033,7 +1043,8 @@ public class FileServiceImpl extends RangeFileStreamWriter implements FileServic
 
 	private String getFileNameFormPath(String path) {
 		if (path != null) {
-			String[] paths = path.split("/");
+			String normalizedPath = path.replace('\\', '/');
+			String[] paths = normalizedPath.split("/");
 			if (paths.length > 0) {
 				return paths[paths.length - 1];
 			}

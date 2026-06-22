@@ -79,7 +79,7 @@ public class AccountServiceImpl implements AccountService {
 		final String encrypted = request.getParameter("encrypted");
 		try {
 			final String loginInfoStr = RSADecryptUtil.dncryption(encrypted, ku.getPrivateKey());
-			final LoginInfoPojo info = gson.fromJson(loginInfoStr.replaceAll("\\\\", "\\\\\\\\"), LoginInfoPojo.class);
+			final LoginInfoPojo info = gson.fromJson(loginInfoStr.replace("\\", "\\\\"), LoginInfoPojo.class);
 			if (System.currentTimeMillis() - Long.parseLong(info.getTime()) > TIME_OUT) {
 				return "error";
 			}
@@ -187,7 +187,7 @@ public class AccountServiceImpl implements AccountService {
 		final String encrypted = request.getParameter("encrypted");
 		try {
 			final String changePasswordInfoStr = RSADecryptUtil.dncryption(encrypted, ku.getPrivateKey());
-			final ChangePasswordInfoPojo info = gson.fromJson(changePasswordInfoStr.replaceAll("\\\\", "\\\\\\\\"),
+			final ChangePasswordInfoPojo info = gson.fromJson(changePasswordInfoStr.replace("\\", "\\\\"),
 					ChangePasswordInfoPojo.class);
 			if (System.currentTimeMillis() - Long.parseLong(info.getTime()) > TIME_OUT) {
 				return "error";
@@ -267,7 +267,7 @@ public class AccountServiceImpl implements AccountService {
 		final String encrypted = request.getParameter("encrypted");
 		try {
 			final String signUpInfoStr = RSADecryptUtil.dncryption(encrypted, ku.getPrivateKey());
-			final SignUpInfoPojo info = gson.fromJson(signUpInfoStr.replaceAll("\\\\", "\\\\\\\\"),
+			final SignUpInfoPojo info = gson.fromJson(signUpInfoStr.replace("\\", "\\\\"),
 					SignUpInfoPojo.class);
 			if (System.currentTimeMillis() - Long.parseLong(info.getTime()) > TIME_OUT) {
 				return "error";

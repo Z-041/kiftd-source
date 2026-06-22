@@ -260,10 +260,10 @@ public class ConsoleRunner {
 			Printer.instance.print("错误：无法打开文件系统，该文件系统可能正在被另一个kiftd占用。");
 			return;
 		}
-		System.out.println("命令帮助：\r\n" + fsCommandTips + "\r\n");
+		Printer.instance.print("命令帮助：\r\n" + fsCommandTips);
 		try {
 			while (true) {
-				System.out.println("kiftd: " + currentFolder.getCurrent().getFolderName() + "$ ");
+				Printer.instance.print("kiftd: " + currentFolder.getCurrent().getFolderName() + "$ ");
 				String command = reader.nextLine().trim();
 				// 若未输入任何命令，则直接跳过
 				if (command.length() == 0) {
@@ -329,7 +329,7 @@ public class ConsoleRunner {
 			String folderId = currentFolder.getCurrent().getFolderId();
 			if (Math.max(FileSystemManager.getInstance().getFilesTotalNumByFoldersId(folderId),
 					FileSystemManager.getInstance().getFoldersTotalNumByFoldersId(folderId)) > Integer.MAX_VALUE) {
-				System.out.println("警告：文件夹列表长度超过最大限值，只能显示前" + Integer.MAX_VALUE + "行。");
+				Printer.instance.print("警告：文件夹列表长度超过最大限值，只能显示前" + Integer.MAX_VALUE + "行。");
 			}
 			currentFolder = FileSystemManager.getInstance().getFolderView(folderId);
 		} catch (SQLException e) {
@@ -339,7 +339,7 @@ public class ConsoleRunner {
 		List<Folder> fls = currentFolder.getFolders();
 		int index = 1;
 		for (Folder f : fls) {
-			StringBuffer row = new StringBuffer();
+			StringBuilder row = new StringBuilder();
 			row.append("--" + index);
 			row.append("\t");
 			row.append("[文件夹]");
@@ -353,12 +353,12 @@ public class ConsoleRunner {
 				row.append("\t");
 				row.append(f.getFolderCreator());
 			}
-			System.out.println(row.toString());
+			Printer.instance.print(row.toString());
 			index++;
 		}
 		List<Node> fs = currentFolder.getFiles();
 		for (Node f : fs) {
-			StringBuffer row = new StringBuffer();
+			StringBuilder row = new StringBuilder();
 			row.append("--" + index);
 			row.append("\t");
 			row.append("[文件]");
@@ -372,10 +372,10 @@ public class ConsoleRunner {
 				row.append("\t");
 				row.append(f.getFileCreator());
 			}
-			System.out.println(row.toString());
+			Printer.instance.print(row.toString());
 			index++;
 		}
-		System.out.println();
+		Printer.instance.print("");
 	}
 
 	// 将以Byte为单位表示的文件字符转换为以合适单位表示的字符串
@@ -595,7 +595,7 @@ public class ConsoleRunner {
 		ProgressListener pl = null;
 		try {
 			if (FileSystemManager.getInstance().hasExistsFilesOrFolders(importFiles, targetFolder) > 0) {
-				System.out.println("提示：该路径下已经存在同名文件或文件夹（" + f.getName() + "），您希望？[C]取消 [V]覆盖 [B]保留两者");
+				Printer.instance.print("提示：该路径下已经存在同名文件或文件夹（" + f.getName() + "），您希望？[C]取消 [V]覆盖 [B]保留两者");
 				q: while (true) {
 					String command = reader.nextLine().trim();
 					switch (command) {
@@ -609,7 +609,7 @@ public class ConsoleRunner {
 						type = FileSystemManager.BOTH;
 						break q;
 					default:
-						System.out.println("请输入C、V或B：");
+						Printer.instance.print("请输入C、V或B：");
 						break;
 					}
 				}
@@ -755,7 +755,7 @@ public class ConsoleRunner {
 					return;
 				}
 				if (FileSystemManager.getInstance().hasExistsFilesOrFolders(foldersId, filesId, targetPath) > 0) {
-					System.out.println("提示：该路径下已经存在同名文件或文件夹（" + targetPath.getName() + "），您希望？[C]取消 [V]覆盖 [B]保留两者");
+					Printer.instance.print("提示：该路径下已经存在同名文件或文件夹（" + targetPath.getName() + "），您希望？[C]取消 [V]覆盖 [B]保留两者");
 					q: while (true) {
 						String command2 = reader.nextLine().trim();
 						switch (command2) {
@@ -769,7 +769,7 @@ public class ConsoleRunner {
 							type = FileSystemManager.BOTH;
 							break q;
 						default:
-							System.out.println("请输入C、V或B：");
+							Printer.instance.print("请输入C、V或B：");
 							break;
 						}
 					}
@@ -880,7 +880,7 @@ public class ConsoleRunner {
 
 	// 对于关键操作（主要就是删除）进行进一步确认，避免误操作。
 	private boolean confirmOpt(String tip) {
-		System.out.println("提示：" + tip + " [Y/N]");
+		Printer.instance.print("提示：" + tip + " [Y/N]");
 		while (true) {
 			System.out.print("> ");
 			String command = reader.nextLine().trim();
@@ -890,7 +890,7 @@ public class ConsoleRunner {
 			case "N":
 				return false;
 			default:
-				System.out.println("必须正确输入Y或N：");
+				Printer.instance.print("必须正确输入Y或N：");
 				break;
 			}
 		}
@@ -908,8 +908,8 @@ public class ConsoleRunner {
 			} catch (InterruptedException e) {
 			}
 			while (c) {
-				System.out.println(FileSystemManager.message);
-				System.out.println("当前进度：" + FileSystemManager.per + "%");
+				Printer.instance.print(FileSystemManager.message);
+				Printer.instance.print("当前进度：" + FileSystemManager.per + "%");
 				try {
 					Thread.sleep(1000);
 				} catch (InterruptedException e) {
@@ -936,7 +936,7 @@ public class ConsoleRunner {
 			case "N":
 				return;
 			default:
-				System.out.println("请输入Y或N：");
+				Printer.instance.print("请输入Y或N：");
 				break;
 			}
 		}

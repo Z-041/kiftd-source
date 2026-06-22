@@ -11,6 +11,7 @@ import javax.swing.event.*;
 import javax.swing.*;
 import java.text.*;
 import java.util.*;
+import java.util.prefs.*;
 
 import kohgylw.kiftd.printer.Printer;
 import kohgylw.kiftd.server.util.ConfigureReader;
@@ -43,10 +44,12 @@ public class ServerUIModule extends KiftdDynamicWindow {
 	private GetServerTime ti;
 	private JButton start;
 	private JButton stop;
-	private JButton resatrt;
+	private JButton restart;
 	private JButton setting;
 	private JButton fileIOUtil;
 	private JButton exit;
+	private JCheckBox autoScrollBox;
+	private Preferences prefs;
 	private JLabel serverStatusLab;
 	private JLabel portStatusLab;
 	private JLabel logLevelLab;
@@ -69,13 +72,42 @@ public class ServerUIModule extends KiftdDynamicWindow {
 	private static final Color LED_ORANGE = new Color(0xf39c12);
 	private static final Color LABEL_COLOR = new Color(0x555555);
 	private static final Color BUTTON_BG = new Color(0xf8f9fa);
+	private static final Color BTN_START = new Color(0x2ecc71);
+	private static final Color BTN_STOP = new Color(0xe74c3c);
+	private static final Color BTN_RESTART = new Color(0xf39c12);
+	private static final Color BTN_NORMAL = new Color(0xf8f9fa);
+	private static final Color BTN_NORMAL_TEXT = new Color(0x2c3e50);
+	private static final String PREFS_NODE = "kohgylw/kiftd/server/ui";
+	private static final String KEY_WIN_X = "windowX";
+	private static final String KEY_WIN_Y = "windowY";
+	private static final String KEY_WIN_W = "windowWidth";
+	private static final String KEY_WIN_H = "windowHeight";
+	private static final String KEY_AUTO_SCROLL = "autoScroll";
 
 	private ServerUIModule() throws Exception {
 		setUIFont();
+		prefs = Preferences.userRoot().node(PREFS_NODE);
 		window = new JFrame("Cloudflow \u2014 \u63a7\u5236\u53f0");
 		window.setSize(OriginSize_Width, OriginSize_Height);
 		window.setLocation(100, 100);
+		restoreWindowBounds();
 		window.setMinimumSize(new Dimension(450, 500));
+		window.addComponentListener(new ComponentAdapter() {
+			@Override
+			public void componentResized(ComponentEvent e) {
+				saveWindowBounds();
+			}
+
+			@Override
+			public void componentMoved(ComponentEvent e) {
+				saveWindowBounds();
+			}
+
+			@Override
+			public void componentHidden(ComponentEvent e) {
+				saveWindowBounds();
+			}
+		});
 		try {
 			window.setIconImage(
 					ImageIO.read(this.getClass().getResourceAsStream("/kohgylw/kiftd/ui/resource/icon.png")));
@@ -252,16 +284,16 @@ public class ServerUIModule extends KiftdDynamicWindow {
 		JPanel outer = new JPanel(new FlowLayout(FlowLayout.CENTER, 6, 2));
 		outer.setOpaque(false);
 
-		start = createButton("\u25b6 \u542f\u52a8");
-		stop = createButton("\u25a0 \u505c\u6b62");
-		resatrt = createButton("\u21bb \u91cd\u542f");
-		fileIOUtil = createButton("\uD83D\uDCC1 \u6587\u4ef6");
-		setting = createButton("\u2699 \u8bbe\u7f6e");
-		exit = createButton("\u2715 \u9000\u51fa");
+		start = createStyledButton("\u25b6 \u542f\u52a8", BTN_START, Color.WHITE);
+		stop = createStyledButton("\u25a0 \u505c\u6b62", BTN_STOP, Color.WHITE);
+		restart = createStyledButton("\u21bb \u91cd\u542f", BTN_RESTART, Color.WHITE);
+		fileIOUtil = createStyledButton("\uD83D\uDCC1 \u6587\u4ef6", BTN_NORMAL, BTN_NORMAL_TEXT);
+		setting = createStyledButton("\u2699 \u8bbe\u7f6e", BTN_NORMAL, BTN_NORMAL_TEXT);
+		exit = createStyledButton("\u2715 \u9000\u51fa", BTN_NORMAL, BTN_NORMAL_TEXT);
 
 		outer.add(start);
 		outer.add(stop);
-		outer.add(resatrt);
+		outer.add(restart);
 		outer.add(fileIOUtil);
 		outer.add(setting);
 		outer.add(exit);
@@ -269,12 +301,42 @@ public class ServerUIModule extends KiftdDynamicWindow {
 		return outer;
 	}
 
-	private JButton createButton(String text) {
+	private JButton createStyledButton(String text, Color bg, Color fg) {
 		JButton btn = new JButton(text);
 		btn.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, (int) (12 * proportion)));
 		btn.setFocusPainted(false);
 		btn.setMargin(new Insets(4, 8, 4, 8));
+		btn.setBackground(bg);
+		btn.setForeground(fg);
+		btn.setOpaque(true);
+		btn.setContentAreaFilled(true);
+		btn.setBorder(BorderFactory.createEmptyBorder(6, 12, 6, 12));
+		btn.addMouseListener(new MouseAdapter() {
+			@Override
+			public void mouseEntered(MouseEvent e) {
+				btn.setBackground(bg.brighter());
+			}
+
+			@Override
+			public void mouseExited(MouseEvent e) {
+				btn.setBackground(bg);
+			}
+
+			@Override
+			public void mousePressed(MouseEvent e) {
+				btn.setBackground(bg.darker());
+			}
+
+			@Override
+			public void mouseReleased(MouseEvent e) {
+				btn.setBackground(bg.brighter());
+			}
+		});
 		return btn;
+	}
+
+	private JButton createButton(String text) {
+		return createStyledButton(text, BTN_NORMAL, BTN_NORMAL_TEXT);
 	}
 
 	private JPanel buildLogPanel() {
@@ -292,9 +354,14 @@ public class ServerUIModule extends KiftdDynamicWindow {
 		JPanel header = new JPanel(new BorderLayout());
 		header.setOpaque(false);
 		header.setBorder(new EmptyBorder(0, 2, 0, 2));
-		JButton clearBtn = new JButton("\u6e05\u7a7a");
+		autoScrollBox = new JCheckBox("\u81ea\u52a8\u6eda\u52a8", prefs.getBoolean(KEY_AUTO_SCROLL, true));
+		autoScrollBox.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, (int) (10 * proportion)));
+		autoScrollBox.setOpaque(false);
+		autoScrollBox.setFocusPainted(false);
+		autoScrollBox.addItemListener(e -> prefs.putBoolean(KEY_AUTO_SCROLL, autoScrollBox.isSelected()));
+		header.add(autoScrollBox, BorderLayout.WEST);
+		JButton clearBtn = createButton("\u6e05\u7a7a");
 		clearBtn.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, (int) (10 * proportion)));
-		clearBtn.setFocusPainted(false);
 		clearBtn.setMargin(new Insets(1, 6, 1, 6));
 		clearBtn.addActionListener(e -> output.setText(""));
 		header.add(clearBtn, BorderLayout.EAST);
@@ -322,7 +389,9 @@ public class ServerUIModule extends KiftdDynamicWindow {
 						}
 						output.replaceRange("", 0, end);
 					}
-					output.setCaretPosition(output.getText().length());
+					if (autoScrollBox.isSelected()) {
+						output.setCaretPosition(output.getText().length());
+					}
 				});
 			}
 
@@ -365,7 +434,7 @@ public class ServerUIModule extends KiftdDynamicWindow {
 	private void bindEvents() {
 		start.setEnabled(false);
 		stop.setEnabled(false);
-		resatrt.setEnabled(false);
+		restart.setEnabled(false);
 		setting.setEnabled(false);
 		start.addActionListener(e -> {
 			start.setEnabled(false);
@@ -434,7 +503,7 @@ public class ServerUIModule extends KiftdDynamicWindow {
 		});
 		stop.addActionListener(e -> {
 			stop.setEnabled(false);
-			resatrt.setEnabled(false);
+			restart.setEnabled(false);
 			fileIOUtil.setEnabled(false);
 			if (filesViewer != null) {
 				filesViewer.setEnabled(false);
@@ -468,9 +537,9 @@ public class ServerUIModule extends KiftdDynamicWindow {
 			}
 			exitApp();
 		});
-		resatrt.addActionListener(e -> {
+		restart.addActionListener(e -> {
 			stop.setEnabled(false);
-			resatrt.setEnabled(false);
+			restart.setEnabled(false);
 			fileIOUtil.setEnabled(false);
 			if (filesViewer != null) {
 				filesViewer.setEnabled(false);
@@ -579,7 +648,7 @@ public class ServerUIModule extends KiftdDynamicWindow {
 						statusLed.setForeground(LED_GREEN);
 						start.setEnabled(false);
 						stop.setEnabled(true);
-						resatrt.setEnabled(true);
+						restart.setEnabled(true);
 						setting.setEnabled(false);
 					});
 				} else {
@@ -588,7 +657,7 @@ public class ServerUIModule extends KiftdDynamicWindow {
 						statusLed.setForeground(LED_GRAY);
 						start.setEnabled(true);
 						stop.setEnabled(false);
-						resatrt.setEnabled(false);
+						restart.setEnabled(false);
 						setting.setEnabled(true);
 					});
 				}
@@ -630,7 +699,7 @@ public class ServerUIModule extends KiftdDynamicWindow {
 			start.setEnabled(false);
 			stop.setEnabled(false);
 			exit.setEnabled(false);
-			resatrt.setEnabled(false);
+			restart.setEnabled(false);
 			setting.setEnabled(false);
 		});
 		printMessage("\u9000\u51fa\u7a0b\u5e8f...");
@@ -653,6 +722,40 @@ public class ServerUIModule extends KiftdDynamicWindow {
 			window.setExtendedState(JFrame.NORMAL);
 			window.requestFocus();
 		});
+	}
+
+	private void saveWindowBounds() {
+		if (prefs == null || window == null) {
+			return;
+		}
+		prefs.putInt(KEY_WIN_X, window.getX());
+		prefs.putInt(KEY_WIN_Y, window.getY());
+		prefs.putInt(KEY_WIN_W, window.getWidth());
+		prefs.putInt(KEY_WIN_H, window.getHeight());
+	}
+
+	private void restoreWindowBounds() {
+		if (prefs == null) {
+			return;
+		}
+		int x = prefs.getInt(KEY_WIN_X, window.getX());
+		int y = prefs.getInt(KEY_WIN_Y, window.getY());
+		int w = prefs.getInt(KEY_WIN_W, window.getWidth());
+		int h = prefs.getInt(KEY_WIN_H, window.getHeight());
+		Dimension screen = Toolkit.getDefaultToolkit().getScreenSize();
+		if (w < window.getMinimumSize().width) {
+			w = window.getMinimumSize().width;
+		}
+		if (h < window.getMinimumSize().height) {
+			h = window.getMinimumSize().height;
+		}
+		if (x < 0 || x + w > screen.width) {
+			x = 100;
+		}
+		if (y < 0 || y + h > screen.height) {
+			y = 100;
+		}
+		window.setBounds(x, y, w, h);
 	}
 
 	public void printMessage(final String context) {

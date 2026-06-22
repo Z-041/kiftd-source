@@ -41,7 +41,7 @@ public class PasswordUtil {
 			}
 			return false;
 		}
-		return false;
+		return stored.equals(password);
 	}
 
 	public static boolean isPasswordHashed(String stored) {

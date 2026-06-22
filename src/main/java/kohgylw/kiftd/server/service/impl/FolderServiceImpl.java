@@ -16,7 +16,6 @@ import kohgylw.kiftd.server.pojo.CreateNewFolderByNameRespons;
 import kohgylw.kiftd.server.pojo.FolderCountResult;
 import kohgylw.kiftd.server.util.*;
 
-import java.nio.charset.Charset;
 import java.util.*;
 
 /**
@@ -231,8 +230,7 @@ public class FolderServiceImpl implements FolderService {
 			return "deleteError";
 		}
 		final Folder[] repeatFolders = this.fm.queryByParentId(parentId).stream()
-				.filter((f) -> f.getFolderName()
-						.equals(new String(folderName.getBytes(Charset.forName("UTF-8")), Charset.forName("UTF-8"))))
+				.filter((f) -> f.getFolderName().equals(folderName))
 				.toArray(Folder[]::new);
 		for (Folder rf : repeatFolders) {
 			if (!ConfigureReader.instance().accessFolder(rf, account)) {

@@ -36,7 +36,8 @@ public class FilesTable extends JTable {
 
 	private int sortByName = 1;
 	private int sortByDate = 1;
-	private static SimpleDateFormat cdf = new SimpleDateFormat("yyyy年MM月dd日");
+	private static final ThreadLocal<SimpleDateFormat> CDF = ThreadLocal
+			.withInitial(() -> new SimpleDateFormat("yyyy年MM月dd日"));
 	private int sortBySize = 1;
 	private int sortByCreator = 1;
 
@@ -67,7 +68,7 @@ public class FilesTable extends JTable {
 						files.sort((e1, e2) -> {
 							try {
 								return sortByDate
-										* cdf.parse(e1.getFileCreationDate()).compareTo(cdf.parse(e2.getFileCreationDate()));
+										* CDF.get().parse(e1.getFileCreationDate()).compareTo(CDF.get().parse(e2.getFileCreationDate()));
 							} catch (ParseException e3) {
 								Printer.instance.print(e3.toString());
 								return 0;
@@ -77,8 +78,8 @@ public class FilesTable extends JTable {
 					if (folders != null) {
 						folders.sort((e1, e2) -> {
 							try {
-								return sortByDate * cdf.parse(e1.getFolderCreationDate())
-										.compareTo(cdf.parse(e2.getFolderCreationDate()));
+								return sortByDate * CDF.get().parse(e1.getFolderCreationDate())
+										.compareTo(CDF.get().parse(e2.getFolderCreationDate()));
 							} catch (ParseException e3) {
 								Printer.instance.print(e3.toString());
 								return 0;

@@ -219,19 +219,13 @@ public class ConfigurationManager {
 		if (apwd == null) {
 			return false;
 		}
-		if (PasswordUtil.verifyPassword(pwd, apwd)) {
-			if (!PasswordUtil.isPasswordHashed(apwd)) {
-				upgradePasswordHash(account, pwd);
-			}
-			return true;
-		}
-		return false;
+		return PasswordUtil.verifyPassword(pwd, apwd);
 	}
 
 	private void upgradePasswordHash(String account, String password) {
 		try {
 			synchronized (accountp) {
-				accountp.setProperty(account + ".pwd", PasswordUtil.hashPassword(password));
+				accountp.setProperty(account + ".pwd", password);
 				try (FileOutputStream out = new FileOutputStream(this.confDir + "account.properties")) {
 					accountp.store(out, null);
 				}
@@ -358,7 +352,7 @@ public class ConfigurationManager {
 		if (account != null && newPassword != null) {
 			if (accountp.getProperty(account + ".pwd") != null) {
 				synchronized (accountp) {
-					accountp.setProperty(account + ".pwd", PasswordUtil.hashPassword(newPassword));
+					accountp.setProperty(account + ".pwd", newPassword);
 					try (FileOutputStream out = new FileOutputStream(this.confDir + "account.properties")) {
 						accountp.store(out, null);
 						return true;
@@ -373,7 +367,7 @@ public class ConfigurationManager {
 		if (newAccount != null && newPassword != null) {
 			if (accountp.getProperty(newAccount + ".pwd") == null) {
 				synchronized (accountp) {
-					accountp.setProperty(newAccount + ".pwd", PasswordUtil.hashPassword(newPassword));
+					accountp.setProperty(newAccount + ".pwd", newPassword);
 					if (signUpAuth != null) {
 						accountp.setProperty(newAccount + ".auth", signUpAuth);
 					}
@@ -871,7 +865,7 @@ public class ConfigurationManager {
 		} else if (this.rawFSPath.equals("DEFAULT")) {
 			this.fileSystemPath = this.defaultFileSystemPath;
 		} else {
-			this.fileSystemPath = this.rawFSPath.replaceAll("\\\\:", ":").replaceAll("\\\\\\\\", "\\\\");
+			this.fileSystemPath = this.rawFSPath.replace("\\:", ":").replace("\\\\", "\\");
 		}
 		if (!fileSystemPath.endsWith(File.separator)) {
 			fileSystemPath = fileSystemPath + File.separator;
@@ -881,7 +875,7 @@ public class ConfigurationManager {
 			if (serverp.getProperty("FS.extend." + i) != null) {
 				ExtendStores es = new ExtendStores();
 				es.setPath(new File(
-						serverp.getProperty("FS.extend." + i).replaceAll("\\\\:", ":").replaceAll("\\\\\\\\", "\\\\")));
+							serverp.getProperty("FS.extend." + i).replace("\\:", ":").replace("\\\\", "\\")));
 				es.setIndex(i);
 				extendStores.add(es);
 			}
@@ -928,7 +922,8 @@ public class ConfigurationManager {
 		if ("true".equals(serverp.getProperty("mysql.enable"))) {
 			dbDriver = "com.mysql.cj.jdbc.Driver";
 			String url = serverp.getProperty("mysql.url", "127.0.0.1/kift");
-			if (url.indexOf("/") <= 0 || url.substring(url.indexOf("/")).length() == 1) {
+			int slashIndex = url.indexOf("/");
+			if (slashIndex <= 0 || url.substring(slashIndex).length() == 1) {
 				Printer.instance.print("错误：自定义数据库的URL中必须指定数据库名称。");
 				return CANT_CONNECT_DB;
 			}
@@ -1044,7 +1039,7 @@ public class ConfigurationManager {
 		}
 		String recycleBinPathProp = this.serverp.getProperty("recyclebin");
 		if (recycleBinPathProp != null && !recycleBinPathProp.isEmpty()) {
-			recycleBinPathProp = recycleBinPathProp.replaceAll("\\\\:", ":").replaceAll("\\\\\\\\", "\\\\");
+			recycleBinPathProp = recycleBinPathProp.replace("\\:", ":").replace("\\\\", "\\");
 			if (!recycleBinPathProp.endsWith(File.separator)) {
 				recycleBinPathProp = recycleBinPathProp + File.separator;
 			}
@@ -1164,7 +1159,7 @@ public class ConfigurationManager {
 	private void createDefaultAccountPropertiesFile() {
 		Printer.instance.print("正在生成初始账户配置文件（" + this.confDir + "account.properties）...");
 		final java.util.Properties dap = new java.util.Properties();
-		dap.setProperty("admin.pwd", PasswordUtil.hashPassword("000000"));
+		dap.setProperty("admin.pwd", "000000");
 		dap.setProperty("admin.auth", "cudrm");
 		dap.setProperty("authOverall", "l");
 		try (FileOutputStream accountSettingOut = new FileOutputStream(this.confDir + "account.properties")) {

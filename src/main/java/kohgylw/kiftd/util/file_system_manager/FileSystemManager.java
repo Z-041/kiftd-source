@@ -8,7 +8,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -20,6 +19,8 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Stream;
+import java.nio.file.Path;
 
 import kohgylw.kiftd.printer.Printer;
 import kohgylw.kiftd.server.exception.FilesTotalOutOfLimitException;
@@ -226,11 +227,9 @@ public class FileSystemManager {
 		List<Folder> folders = getFoldersByParentId(folderId);
 		List<Node> nodes = selectNodesByFolderId(folderId);
 		for (File f : files) {
-			if (f.isDirectory() && folders.stream().anyMatch((e) -> e.getFolderName()
-					.equals(new String(f.getName().getBytes(Charset.forName("UTF-8")), Charset.forName("UTF-8"))))) {
+			if (f.isDirectory() && folders.stream().anyMatch((e) -> e.getFolderName().equals(f.getName()))) {
 				result++;
-			} else if (nodes.stream().anyMatch((e) -> e.getFileName()
-					.equals(new String(f.getName().getBytes(Charset.forName("UTF-8")), Charset.forName("UTF-8"))))) {
+			} else if (nodes.stream().anyMatch((e) -> e.getFileName().equals(f.getName()))) {
 				result++;
 			}
 		}
@@ -258,18 +257,25 @@ public class FileSystemManager {
 			List<Folder> folders = new ArrayList<>();
 			List<Node> nodes = new ArrayList<>();
 			for (String fid : foldersId) {
-				folders.add(selectFolderById(fid));
+				Folder folder = selectFolderById(fid);
+				if (folder != null) {
+					folders.add(folder);
+				}
 			}
 			for (String nid : filesId) {
-				nodes.add(selectNodeById(nid));
+				Node node = selectNodeById(nid);
+				if (node != null) {
+					nodes.add(node);
+				}
 			}
-			for (File f : path.listFiles()) {
-				if (f.isDirectory() && folders.stream().anyMatch((e) -> e.getFolderName().equals(
-						new String(f.getName().getBytes(Charset.forName("UTF-8")), Charset.forName("UTF-8"))))) {
-					c++;
-				} else if (nodes.stream().anyMatch((e) -> e.getFileName().equals(
-						new String(f.getName().getBytes(Charset.forName("UTF-8")), Charset.forName("UTF-8"))))) {
-					c++;
+			File[] listedFiles = path.listFiles();
+			if (listedFiles != null) {
+				for (File f : listedFiles) {
+					if (f.isDirectory() && folders.stream().anyMatch((e) -> e.getFolderName().equals(f.getName()))) {
+						c++;
+					} else if (nodes.stream().anyMatch((e) -> e.getFileName().equals(f.getName()))) {
+						c++;
+					}
 				}
 			}
 			return c;
@@ -575,11 +581,13 @@ public class FileSystemManager {
 			}
 			per = 100;
 			File[] childs = f.listFiles();
-			for (int i = 0; i < childs.length && gono; i++) {
-				if (childs[i].isDirectory()) {
-					importFolderInto(childs[i], folder.getFolderId(), type);
-				} else {
-					importFileInto(childs[i], folder.getFolderId(), type);
+			if (childs != null) {
+				for (int i = 0; i < childs.length && gono; i++) {
+					if (childs[i].isDirectory()) {
+						importFolderInto(childs[i], folder.getFolderId(), type);
+					} else {
+						importFileInto(childs[i], folder.getFolderId(), type);
+					}
 				}
 			}
 			// 迭代执行直至将全部文件夹及文件导入完毕为止
@@ -730,11 +738,12 @@ public class FileSystemManager {
 		if (node != null && path != null && path.isDirectory()) {
 			per = 0;
 			message = "正在导出文件：" + node.getFileName();
-			if (Arrays.stream(path.listFiles()).parallel().filter((e) -> e.isFile())
+			File[] listedFiles = path.listFiles();
+			if (listedFiles != null && Arrays.stream(listedFiles).filter((e) -> e.isFile())
 					.anyMatch((f) -> f.getName().equals(node.getFileName()))) {
 				switch (type) {
 				case COVER:
-					target = Arrays.stream(path.listFiles()).parallel().filter((e) -> e.isFile())
+					target = Arrays.stream(listedFiles).filter((e) -> e.isFile())
 							.filter((e) -> e.getName().equals(node.getFileName())).findFirst()
 							.get();
 					break;
@@ -751,6 +760,9 @@ public class FileSystemManager {
 				target.createNewFile();
 			}
 			File block = getFileFormBlocks(node);
+			if (block == null) {
+				throw new IOException("无法找到要导出的文件块：" + node.getFileName());
+			}
 			long size = block.length();
 			try (FileInputStream in = new FileInputStream(block);
 					FileOutputStream out = new FileOutputStream(target)) {
@@ -779,11 +791,12 @@ public class FileSystemManager {
 		per = 0;
 		if (folder != null && path != null && path.isDirectory()) {
 			message = "正在导出文件夹：" + folder.getFolderName();
-			if (Arrays.stream(path.listFiles()).parallel().filter((e) -> e.isDirectory())
+			File[] listedFiles = path.listFiles();
+			if (listedFiles != null && Arrays.stream(listedFiles).filter((e) -> e.isDirectory())
 					.anyMatch((f) -> f.getName().equals(folder.getFolderName()))) {
 				switch (type) {
 				case COVER:
-					target = Arrays.stream(path.listFiles()).parallel().filter((e) -> e.isDirectory())
+					target = Arrays.stream(listedFiles).filter((e) -> e.isDirectory())
 							.filter((e) -> e.getName().equals(folder.getFolderName()))
 							.findFirst().get();
 					break;
@@ -796,10 +809,10 @@ public class FileSystemManager {
 					return;
 				}
 			}
-			if (Arrays.stream(path.listFiles()).parallel().filter((e) -> e.isFile())
+			if (listedFiles != null && Arrays.stream(listedFiles).filter((e) -> e.isFile())
 					.anyMatch((e) -> e.getName().equals(folder.getFolderName()))) {
 				target = new File(path, folder.getFolderName() + "_与文件同名"
-						+ UUID.randomUUID().toString().replaceAll("-", ""));
+						+ UUID.randomUUID().toString().replace("-", ""));
 				target.mkdir();
 			}
 			if (target == null) {
@@ -838,6 +851,9 @@ public class FileSystemManager {
 
 	private File getFileFormBlocks(Node f) {
 		// 检查该节点对应的文件块存放于哪个位置（主文件系统/扩展存储区）
+		if (f == null) {
+			return null;
+		}
 		try {
 			File file = null;
 			if (f.getFilePath() == null) {
@@ -855,7 +871,7 @@ public class FileSystemManager {
 					file = new File(es.getPath(), f.getFilePath());
 				}
 			}
-			if (file.isFile()) {
+			if (file != null && file.isFile()) {
 				return file;
 			}
 		} catch (Exception e) {
@@ -872,12 +888,23 @@ public class FileSystemManager {
 				@Override
 				public int compare(ExtendStores o1, ExtendStores o2) {
 					try {
-						return o1.getPath().list().length - o2.getPath().list().length;
+						String[] list1 = o1.getPath().list();
+						String[] list2 = o2.getPath().list();
+						int len1 = list1 == null ? 0 : list1.length;
+						int len2 = list2 == null ? 0 : list2.length;
+						return Integer.compare(len1, len2);
 					} catch (Exception e) {
 						try {
 							// 如果文件太多以至于超出数组上限，则换用如下统计方法
-							long dValue = Files.list(o1.getPath().toPath()).count()
-									- Files.list(o2.getPath().toPath()).count();
+							long count1;
+							long count2;
+							try (Stream<Path> s1 = Files.list(o1.getPath().toPath())) {
+								count1 = s1.count();
+							}
+							try (Stream<Path> s2 = Files.list(o2.getPath().toPath())) {
+								count2 = s2.count();
+							}
+							long dValue = count1 - count2;
 							return dValue > 0L ? 1 : dValue == 0 ? 0 : -1;
 						} catch (IOException e1) {
 							return 0;
@@ -1101,7 +1128,7 @@ public class FileSystemManager {
 				f = selectFolderById(f.getFolderParent());
 			}
 		}
-		StringBuffer np = new StringBuffer();
+		StringBuilder np = new StringBuilder();
 		for (int i = parentList.size() - 1; i >= 0; i--) {
 			np.append(parentList.get(i));
 			np.append(File.separator);

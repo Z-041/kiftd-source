@@ -69,7 +69,7 @@ public class VerificationCodeFactory {
 		if(length<=0) {
 			throw new IllegalArgumentException("验证码工厂：length必须大于0，但是传入length="+length);
 		}
-		StringBuffer codeBuffer = new StringBuffer();
+		StringBuilder codeBuffer = new StringBuilder();
 		VerificationCode result = new VerificationCode();
 		//确保能装下，设定长度
 		width=(length+1)*charSize;

@@ -93,9 +93,11 @@ public class ResourceServiceImpl implements ResourceService {
 						&& ConfigureReader.instance().accessFolder(fm.selectById(n.getFileParentFolder()), account)) {
 					File file = fbu.getFileFromBlocks(n);
 					if (file != null && file.isFile()) {
+						String fileName = n.getFileName();
 						String suffix = "";
-						if (n.getFileName().indexOf(".") >= 0) {
-							suffix = n.getFileName().substring(n.getFileName().lastIndexOf(".")).trim().toLowerCase();
+						int lastDotIndex = fileName.lastIndexOf(".");
+						if (lastDotIndex >= 0) {
+							suffix = fileName.substring(lastDotIndex).trim().toLowerCase();
 						}
 						String contentType = ctm.getContentType(suffix);
 						switch (suffix) {
@@ -353,9 +355,11 @@ public class ResourceServiceImpl implements ResourceService {
 						}
 						// 如无，则返回新数据
 						// 后缀检查
+						String fileName = n.getFileName();
 						String suffix = "";
-						if (n.getFileName().indexOf(".") >= 0) {
-							suffix = n.getFileName().substring(n.getFileName().lastIndexOf(".")).trim().toLowerCase();
+						int lastDotIndex = fileName.lastIndexOf(".");
+						if (lastDotIndex >= 0) {
+							suffix = fileName.substring(lastDotIndex).trim().toLowerCase();
 						}
 						if (".lrc".equals(suffix)) {
 							String contentType = "text/plain";

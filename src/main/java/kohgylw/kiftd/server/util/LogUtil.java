@@ -100,13 +100,21 @@ public class LogUtil {
 	 * 
 	 * @param e Exception 需要记录的异常对象
 	 */
+	private String buildParentPath(List<Folder> folders) {
+		StringBuilder pl = new StringBuilder();
+		for (Folder i : folders) {
+			pl.append(i.getFolderName()).append("/");
+		}
+		return pl.toString();
+	}
+
 	public void writeException(Exception e) {
 		if (ConfigureReader.instance().inspectLogLevel(LogLevel.Runtime_Exception)) {
-			StringBuffer exceptionInfo = new StringBuffer(e.toString());
+			StringBuilder exceptionInfo = new StringBuilder(e.toString());
 			StackTraceElement[] stes = e.getStackTrace();
 			for (int i = 0; i < stes.length && i < 10; i++) {
 				StackTraceElement ste = stes[i];
-				exceptionInfo.append("\r\n	at " + ste.getClassName() + "." + ste.getMethodName() + "("
+				exceptionInfo.append("\r\n\tat " + ste.getClassName() + "." + ste.getMethodName() + "("
 						+ ste.getFileName() + ":" + ste.getLineNumber() + ")");
 			}
 			if (stes.length > 10) {
@@ -130,10 +138,7 @@ public class LogUtil {
 			String a = account;// 方便下方使用终态操作
 			writerThread.execute(() -> {
 				List<Folder> l = fu.getParentList(f.getFolderId());
-				String pl = new String();
-				for (Folder i : l) {
-					pl = pl + i.getFolderName() + "/";
-				}
+				String pl = buildParentPath(l);
 				String content = ">IP [" + ip + "]\r\n>ACCOUNT [" + a + "]\r\n>OPERATE [Create new folder]\r\n>PATH ["
 						+ pl + "]\r\n>NAME [" + f.getFolderName() + "],CONSTRAINT [" + f.getFolderConstraint() + "]";
 				writeToLog("Event", content);
@@ -156,10 +161,7 @@ public class LogUtil {
 			String a = account;
 			writerThread.execute(() -> {
 				List<Folder> l = fu.getParentList(folderId);
-				String pl = new String();
-				for (Folder i : l) {
-					pl = pl + i.getFolderName() + "/";
-				}
+				String pl = buildParentPath(l);
 				String content = ">IP [" + ip + "]\r\n>ACCOUNT [" + a + "]\r\n>OPERATE [Edit folder]\r\n>PATH [" + pl
 						+ "]\r\n>NAME [" + oldName + "]->[" + newName + "],CONSTRAINT [" + oldConstraint + "]->["
 						+ newConstraint + "]";
@@ -183,10 +185,7 @@ public class LogUtil {
 			String a = account;
 			String ip = idg.getIpAddr(request);
 			writerThread.execute(() -> {
-				String pl = new String();
-				for (Folder i : l) {
-					pl = pl + i.getFolderName() + "/";
-				}
+				String pl = buildParentPath(l);
 				String content = ">IP [" + ip + "]\r\n>ACCOUNT [" + a + "]\r\n>OPERATE [Delete folder]\r\n>PATH [" + pl
 						+ "]\r\n>NAME [" + f.getFolderName() + "]";
 				writeToLog("Event", content);
@@ -210,11 +209,11 @@ public class LogUtil {
 			String ip = idg.getIpAddr(request);
 			writerThread.execute(() -> {
 				Folder folder = fm.selectById(f.getFileParentFolder());
-				List<Folder> l = fu.getParentList(folder.getFolderId());
-				String pl = new String();
-				for (Folder i : l) {
-					pl = pl + i.getFolderName() + "/";
+				if (folder == null) {
+					return;
 				}
+				List<Folder> l = fu.getParentList(folder.getFolderId());
+				String pl = buildParentPath(l);
 				String content = ">IP [" + ip + "]\r\n>ACCOUNT [" + a + "]\r\n>OPERATE [Delete file]\r\n>PATH [" + pl
 						+ folder.getFolderName() + "]\r\n>NAME [" + f.getFileName() + "]";
 				writeToLog("Event", content);
@@ -241,10 +240,7 @@ public class LogUtil {
 					return;
 				}
 				List<Folder> l = fu.getParentList(folder.getFolderId());
-				String pl = new String();
-				for (Folder i : l) {
-					pl = pl + i.getFolderName() + "/";
-				}
+				String pl = buildParentPath(l);
 				String content = ">IP [" + ip + "]\r\n>ACCOUNT [" + a + "]\r\n>OPERATE [Upload file]\r\n>PATH [" + pl
 						+ folder.getFolderName() + "]\r\n>NAME [" + f.getFileName() + "]";
 				writeToLog("Event", content);
@@ -266,11 +262,11 @@ public class LogUtil {
 			String a = account;
 			writerThread.execute(() -> {
 				Folder folder = fm.selectById(f.getFileParentFolder());
-				List<Folder> l = fu.getParentList(folder.getFolderId());
-				String pl = new String();
-				for (Folder i : l) {
-					pl = pl + i.getFolderName() + "/";
+				if (folder == null) {
+					return;
 				}
+				List<Folder> l = fu.getParentList(folder.getFolderId());
+				String pl = buildParentPath(l);
 				String content = ">IP [" + ip + "]\r\n>ACCOUNT [" + a + "]\r\n>OPERATE [Download file]\r\n>PATH [" + pl
 						+ folder.getFolderName() + "]\r\n>NAME [" + f.getFileName() + "]";
 				writeToLog("Event", content);
@@ -289,11 +285,11 @@ public class LogUtil {
 			String ip = idg.getIpAddr(request);
 			writerThread.execute(() -> {
 				Folder folder = fm.selectById(f.getFileParentFolder());
-				List<Folder> l = fu.getParentList(folder.getFolderId());
-				String pl = new String();
-				for (Folder i : l) {
-					pl = pl + i.getFolderName() + "/";
+				if (folder == null) {
+					return;
 				}
+				List<Folder> l = fu.getParentList(folder.getFolderId());
+				String pl = buildParentPath(l);
 				String content = ">IP [" + ip + "]\r\n>OPERATE [Request Chain]\r\n>PATH [" + pl + folder.getFolderName()
 						+ "]\r\n>NAME [" + f.getFileName() + "]";
 				writeToLog("Event", content);
@@ -316,11 +312,11 @@ public class LogUtil {
 			String ip = idg.getIpAddr(request);
 			writerThread.execute(() -> {
 				Folder folder = fm.selectById(f.getFileParentFolder());
-				List<Folder> l = fu.getParentList(folder.getFolderId());
-				String pl = new String();
-				for (Folder i : l) {
-					pl = pl + i.getFolderName() + "/";
+				if (folder == null) {
+					return;
 				}
+				List<Folder> l = fu.getParentList(folder.getFolderId());
+				String pl = buildParentPath(l);
 				String content = ">IP [" + ip + "]\r\n>OPERATE [Download file By Shared URL]\r\n>PATH [" + pl
 						+ folder.getFolderName() + "]\r\n>NAME [" + f.getFileName() + "]";
 				writeToLog("Event", content);
@@ -347,11 +343,11 @@ public class LogUtil {
 			String ip = idg.getIpAddr(request);
 			writerThread.execute(() -> {
 				Folder folder = fm.selectById(f.getFileParentFolder());
-				List<Folder> l = fu.getParentList(folder.getFolderId());
-				String pl = new String();
-				for (Folder i : l) {
-					pl = pl + i.getFolderName() + "/";
+				if (folder == null) {
+					return;
 				}
+				List<Folder> l = fu.getParentList(folder.getFolderId());
+				String pl = buildParentPath(l);
 				String content = ">IP [" + ip + "]\r\n>ACCOUNT [" + a
 						+ "]\r\n>OPERATE [Share Download file URL]\r\n>PATH [" + pl + folder.getFolderName()
 						+ "]\r\n>NAME [" + f.getFileName() + "]";
@@ -374,11 +370,11 @@ public class LogUtil {
 			String a = account;
 			writerThread.execute(() -> {
 				Folder folder = fm.selectById(parentFolderId);
-				List<Folder> l = fu.getParentList(folder.getFolderId());
-				String pl = new String();
-				for (Folder i : l) {
-					pl = pl + i.getFolderName() + "/";
+				if (folder == null) {
+					return;
 				}
+				List<Folder> l = fu.getParentList(folder.getFolderId());
+				String pl = buildParentPath(l);
 				String content = ">IP [" + ip + "]\r\n>ACCOUNT [" + a + "]\r\n>OPERATE [Rename file]\r\n>PATH [" + pl
 						+ folder.getFolderName() + "]\r\n>NAME [" + oldName + "]->[" + newName + "]";
 				writeToLog("Event", content);
@@ -466,8 +462,6 @@ public class LogUtil {
 		} catch (Exception e1) {
 			if (Printer.instance != null) {
 				Printer.instance.print("KohgylwIFT:[Log]Cannt write to file,message:" + e1.getMessage());
-			} else {
-				System.out.println("KohgylwIFT:[Log]Cannt write to file,message:" + e1.getMessage());
 			}
 		}
 	}
@@ -487,7 +481,7 @@ public class LogUtil {
 			String a = account;
 			String ip = idg.getIpAddr(request);
 			writerThread.execute(() -> {
-				StringBuffer content = new StringBuffer(">IP [" + ip + "]\r\n>ACCOUNT [" + a
+				StringBuilder content = new StringBuilder(">IP [" + ip + "]\r\n>ACCOUNT [" + a
 						+ "]\r\n>OPERATE [Download package]\r\n----------------\r\n");
 				for (String fid : idList) {
 					Node f = fim.selectById(fid);

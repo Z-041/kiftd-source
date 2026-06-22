@@ -18,20 +18,19 @@ import java.util.regex.*;
 public class TextFormateUtil
 {
     private static TextFormateUtil tfu;
+    private static final Pattern NAME_PATTERN = Pattern.compile("[|\\/*<>\"?&$:]+");
     
     public static TextFormateUtil instance() {
         return TextFormateUtil.tfu;
     }
     
     public boolean matcherFolderName(final String folderName) {
-    		final Pattern p = Pattern.compile("[|\\/*<>\"?&$:]+");
-        final Matcher m = p.matcher(folderName);
+        final Matcher m = NAME_PATTERN.matcher(folderName);
         return !m.find();
     }
     
     public boolean matcherFileName(final String fileName) {
-        final Pattern p = Pattern.compile("[|\\/*<>\"?&$:]+");
-        final Matcher m = p.matcher(fileName);
+        final Matcher m = NAME_PATTERN.matcher(fileName);
         return !m.find();
     }
     

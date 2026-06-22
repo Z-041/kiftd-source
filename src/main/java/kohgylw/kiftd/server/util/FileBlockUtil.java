@@ -18,6 +18,7 @@ import kohgylw.kiftd.server.model.*;
 import kohgylw.kiftd.server.pojo.ExtendStores;
 
 import java.util.*;
+import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 
 import org.zeroturnaround.zip.*;
@@ -232,12 +233,23 @@ public class FileBlockUtil {
 				public int compare(ExtendStores o1, ExtendStores o2) {
 					try {
 						// 通常情况下，直接比较子文件列表长度即可
-						return o1.getPath().list().length - o2.getPath().list().length;
+						String[] list1 = o1.getPath().list();
+						String[] list2 = o2.getPath().list();
+						int len1 = list1 == null ? 0 : list1.length;
+						int len2 = list2 == null ? 0 : list2.length;
+						return Integer.compare(len1, len2);
 					} catch (Exception e) {
 						try {
 							// 如果文件太多以至于超出数组上限，则换用如下统计方法
-							long dValue = Files.list(o1.getPath().toPath()).count()
-									- Files.list(o2.getPath().toPath()).count();
+							long count1;
+							long count2;
+							try (Stream<Path> s1 = Files.list(o1.getPath().toPath())) {
+								count1 = s1.count();
+							}
+							try (Stream<Path> s2 = Files.list(o2.getPath().toPath())) {
+								count2 = s2.count();
+							}
+							long dValue = count1 - count2;
 							return dValue > 0L ? 1 : dValue == 0 ? 0 : -1;
 						} catch (IOException e1) {
 							return 0;
@@ -379,13 +391,16 @@ public class FileBlockUtil {
 			if (dateDir.isDirectory() || dateDir.mkdir()) {
 				// 如果有，则直接使用，否则创建当前日期的留档子文件夹，之后检查此文件夹内是否有重名留档文件
 				int i = 0;
-				List<String> fileNames = Arrays.asList(dateDir.list());
+				String[] dateDirList = dateDir.list();
+				List<String> fileNames = dateDirList == null ? Collections.emptyList()
+						: Arrays.asList(dateDirList);
 				String newName = originalName;
+				int lastDotIndex = originalName.lastIndexOf(".");
 				while (fileNames.contains(newName)) {
 					i++;
-					if (originalName.indexOf(".") >= 0) {
-						newName = originalName.substring(0, originalName.lastIndexOf(".")) + " (" + i + ")"
-								+ originalName.substring(originalName.lastIndexOf("."));
+					if (lastDotIndex >= 0) {
+						newName = originalName.substring(0, lastDotIndex) + " (" + i + ")"
+								+ originalName.substring(lastDotIndex);
 					} else {
 						newName = originalName + " (" + i + ")";
 					}
@@ -421,6 +436,9 @@ public class FileBlockUtil {
 	 */
 	public File getFileFromBlocks(Node f) {
 		// 检查该节点对应的文件块存放于哪个位置（主文件系统/扩展存储区）
+		if (f == null) {
+			return null;
+		}
 		try {
 			File file = null;
 			if (f.getFilePath() == null) {
@@ -438,7 +456,7 @@ public class FileBlockUtil {
 					file = new File(es.getPath(), f.getFilePath());
 				}
 			}
-			if (file.isFile()) {
+			if (file != null && file.isFile()) {
 				return file;
 			}
 		} catch (Exception e) {
@@ -677,7 +695,7 @@ public class FileBlockUtil {
 	 */
 	public String getETag(File block) {
 		if (block != null && block.exists()) {
-			StringBuffer sb = new StringBuffer();
+			StringBuilder sb = new StringBuilder();
 			sb.append("W\"");
 			sb.append(block.length());
 			sb.append("-");
@@ -781,7 +799,7 @@ public class FileBlockUtil {
 	public String getNodePath(Node n) {
 		Folder folder = flm.selectById(n.getFileParentFolder());
 		List<Folder> l = fu.getParentList(folder.getFolderId());
-		StringBuffer pl = new StringBuffer();
+		StringBuilder pl = new StringBuilder();
 		for (Folder i : l) {
 			pl.append(i.getFolderName() + "/");
 		}

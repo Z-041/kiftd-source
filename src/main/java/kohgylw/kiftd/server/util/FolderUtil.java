@@ -12,6 +12,8 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import kohgylw.kiftd.server.util.TextFormateUtil;
+
 @Component
 public class FolderUtil {
 
@@ -94,7 +96,9 @@ public class FolderUtil {
 		if (parentId == null || folderName == null || parentId.length() <= 0 || folderName.length() <= 0) {
 			return null;
 		}
-		if (folderName.equals(".") || folderName.equals("..")) {
+		if (folderName.equals(".") || folderName.equals("..")
+				|| !TextFormateUtil.instance().matcherFolderName(folderName)
+				|| folderName.indexOf(".") == 0) {
 			return null;
 		}
 		final Folder parentFolder = this.fm.selectById(parentId);
@@ -284,7 +288,7 @@ public class FolderUtil {
 	 */
 	public String getFolderPath(Folder f) {
 		List<Folder> l = getParentList(f.getFolderId());
-		StringBuffer pl = new StringBuffer();
+		StringBuilder pl = new StringBuilder();
 		for (Folder i : l) {
 			pl.append(i.getFolderName() + "/");
 		}

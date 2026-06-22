@@ -20,35 +20,32 @@ import kohgylw.kiftd.printer.Printer;
  * @version 1.0
  */
 public class RSADecryptUtil {
-	private static Base64.Decoder decoder;
-	private static KeyFactory kf;
-	private static Cipher c;
+	private static final Base64.Decoder DECODER = Base64.getDecoder();
+	private static final KeyFactory KEY_FACTORY;
+	private static final String CIPHER_ALGORITHM = "RSA/ECB/PKCS1Padding";
+
+	static {
+		try {
+			KEY_FACTORY = KeyFactory.getInstance("RSA");
+		} catch (NoSuchAlgorithmException e) {
+			throw new ExceptionInInitializerError(e);
+		}
+	}
 
 	public static String dncryption(final String context, final String privateKey) {
-		final byte[] b = RSADecryptUtil.decoder.decode(privateKey);
-		final byte[] s = RSADecryptUtil.decoder.decode(context);
+		final byte[] b = RSADecryptUtil.DECODER.decode(privateKey);
+		final byte[] s = RSADecryptUtil.DECODER.decode(context);
 		final PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(b);
 		try {
-			final PrivateKey key = RSADecryptUtil.kf.generatePrivate(spec);
-			RSADecryptUtil.c.init(Cipher.DECRYPT_MODE, key);
-			final byte[] f = RSADecryptUtil.c.doFinal(s);
+			final PrivateKey key = RSADecryptUtil.KEY_FACTORY.generatePrivate(spec);
+			final Cipher cipher = Cipher.getInstance(CIPHER_ALGORITHM);
+			cipher.init(Cipher.DECRYPT_MODE, key);
+			final byte[] f = cipher.doFinal(s);
 			return new String(f, StandardCharsets.UTF_8);
 		} catch (Exception e) {
 			Printer.instance.print(e.getMessage());
 			Printer.instance.print("错误：RSA解密失败。");
 		}
 		return null;
-	}
-
-	static {
-		RSADecryptUtil.decoder = Base64.getDecoder();
-		try {
-			RSADecryptUtil.kf = KeyFactory.getInstance("RSA");
-			RSADecryptUtil.c = Cipher.getInstance("RSA/ECB/PKCS1Padding");
-		} catch (NoSuchAlgorithmException e) {
-			e.printStackTrace();
-		} catch (NoSuchPaddingException e2) {
-			e2.printStackTrace();
-		}
 	}
 }

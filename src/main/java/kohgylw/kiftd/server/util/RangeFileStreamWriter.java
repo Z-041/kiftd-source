@@ -158,7 +158,7 @@ public class RangeFileStreamWriter {
 		if (rangeTag != null && rangeTag.startsWith("bytes=")
 				&& (ifRange == null || ifRange.trim().equals(eTag) || ifRange.trim().equals(lastModified))) {
 			// 进行断点续传
-			rangeBytes = rangeTag.replaceAll("bytes=", "");
+			rangeBytes = rangeTag.replace("bytes=", "");
 			if (rangeBytes.indexOf("-") < 0) {
 				// 数据范围请求格式不正确，应为?-?的格式
 				status = HttpServletResponse.SC_BAD_REQUEST;
@@ -211,11 +211,11 @@ public class RangeFileStreamWriter {
 			// 设置Content-Range，格式为“bytes 起始偏移-结束偏移/文件的总大小”
 			String contentRange;
 			if (!hasEnd) {
-				contentRange = new StringBuffer("bytes ").append("" + startOffset).append("-")
-						.append("" + (fileLength - 1)).append("/").append("" + fileLength).toString();
+				contentRange = new StringBuilder("bytes ").append(startOffset).append("-")
+						.append(fileLength - 1).append("/").append(fileLength).toString();
 			} else {
-				contentRange = new StringBuffer("bytes ").append(rangeBytes).append("/").append("" + fileLength)
-						.toString();
+				contentRange = new StringBuilder("bytes ").append(startOffset).append("-")
+						.append(endOffset).append("/").append(fileLength).toString();
 			}
 			response.setHeader("Content-Range", contentRange);
 		} else {

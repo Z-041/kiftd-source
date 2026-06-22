@@ -23,28 +23,27 @@ import java.time.temporal.TemporalQueries;
  * @version 1.0
  */
 public class ServerTimeUtil {
+	private static final DateTimeFormatter SECOND_FORMATTER = DateTimeFormatter.ofPattern("yyyy年MM月dd日 HH:mm:ss");
+	private static final DateTimeFormatter MINUTE_FORMATTER = DateTimeFormatter.ofPattern("yyyy年MM月dd日 HH:mm");
+	private static final DateTimeFormatter DAY_FORMATTER = DateTimeFormatter.ofPattern("yyyy年MM月dd日");
+	private static final DateTimeFormatter LOG_NAME_FORMATTER = DateTimeFormatter.ofPattern("yyyy_MM_dd");
+	private static final DateTimeFormatter LAST_MODIFIED_FORMATTER = DateTimeFormatter
+			.ofPattern("EEE, dd MMM yyyy HH:mm:ss z", Locale.US).withZone(ZoneId.of("GMT"));
+
 	public static String accurateToSecond() {
-		LocalDateTime ldt = LocalDateTime.now();
-		DateTimeFormatter dtfDateTimeFormatter = DateTimeFormatter.ofPattern("yyyy年MM月dd日 HH:mm:ss");
-		return dtfDateTimeFormatter.format(ldt);
+		return SECOND_FORMATTER.format(LocalDateTime.now());
 	}
 
 	public static String accurateToMinute() {
-		LocalDateTime ldt = LocalDateTime.now();
-		DateTimeFormatter dtfDateTimeFormatter = DateTimeFormatter.ofPattern("yyyy年MM月dd日 HH:mm");
-		return dtfDateTimeFormatter.format(ldt);
+		return MINUTE_FORMATTER.format(LocalDateTime.now());
 	}
 
 	public static String accurateToDay() {
-		LocalDateTime ldt = LocalDateTime.now();
-		DateTimeFormatter dtfDateTimeFormatter = DateTimeFormatter.ofPattern("yyyy年MM月dd日");
-		return dtfDateTimeFormatter.format(ldt);
+		return DAY_FORMATTER.format(LocalDateTime.now());
 	}
 
 	public static String accurateToLogName() {
-		LocalDateTime ldt = LocalDateTime.now();
-		DateTimeFormatter dtfDateTimeFormatter = DateTimeFormatter.ofPattern("yyyy_MM_dd");
-		return dtfDateTimeFormatter.format(ldt);
+		return LOG_NAME_FORMATTER.format(LocalDateTime.now());
 	}
 
 	public static Date getServerTime() {
@@ -70,9 +69,7 @@ public class ServerTimeUtil {
 		} else {
 			longToTime = ZonedDateTime.now(ZoneId.of("GMT"));
 		}
-		DateTimeFormatter dtf = DateTimeFormatter.ofPattern("EEE, dd MMM yyyy HH:mm:ss z", Locale.US)
-				.withZone(ZoneId.of("GMT"));
-		return longToTime.format(dtf);
+		return longToTime.format(LAST_MODIFIED_FORMATTER);
 	}
 
 	/**
@@ -89,8 +86,7 @@ public class ServerTimeUtil {
 	 */
 	public static long getTimeFromDateAccurateToDay(String date) {
 		try {
-			DateTimeFormatter dtfDateTimeFormatter = DateTimeFormatter.ofPattern("yyyy年MM月dd日");
-			LocalDate ld = dtfDateTimeFormatter.parse(date, TemporalQueries.localDate());
+			LocalDate ld = DAY_FORMATTER.parse(date, TemporalQueries.localDate());
 			Instant instant = ld.atTime(LocalTime.MIDNIGHT).atZone(ZoneId.systemDefault()).toInstant();
 			return instant.toEpochMilli();
 		} catch (DateTimeParseException e) {

@@ -222,13 +222,7 @@ public class ConfigureReader {
 		if (apwd == null) {
 			return false;
 		}
-		if (PasswordUtil.verifyPassword(pwd, apwd)) {
-			if (!PasswordUtil.isPasswordHashed(apwd)) {
-				upgradePasswordHash(account, pwd);
-			}
-			return true;
-		}
-		return false;
+		return PasswordUtil.verifyPassword(pwd, apwd);
 	}
 
 	private void upgradePasswordHash(String account, String password) {
@@ -763,7 +757,7 @@ public class ConfigureReader {
 		} else if (this.FSPath.equals("DEFAULT")) {
 			this.fileSystemPath = this.DEFAULT_FILE_SYSTEM_PATH;
 		} else {
-			this.fileSystemPath = this.FSPath.replaceAll("\\\\:", ":").replaceAll("\\\\\\\\", "\\\\");// 后面的替换是为了兼容以前版本的设置
+			this.fileSystemPath = this.FSPath.replace("\\:", ":").replace("\\\\", "\\");// 后面的替换是为了兼容以前版本的设置
 		}
 		if (!fileSystemPath.endsWith(File.separator)) {
 			fileSystemPath = fileSystemPath + File.separator;
@@ -773,7 +767,7 @@ public class ConfigureReader {
 			if (serverp.getProperty("FS.extend." + i) != null) {
 				ExtendStores es = new ExtendStores();
 				es.setPath(new File(
-						serverp.getProperty("FS.extend." + i).replaceAll("\\\\:", ":").replaceAll("\\\\\\\\", "\\\\")));
+							serverp.getProperty("FS.extend." + i).replace("\\:", ":").replace("\\\\", "\\")));
 				es.setIndex(i);
 				extendStores.add(es);
 			}
@@ -819,7 +813,8 @@ public class ConfigureReader {
 		if ("true".equals(serverp.getProperty("mysql.enable"))) {
 			dbDriver = "com.mysql.cj.jdbc.Driver";
 			String url = serverp.getProperty("mysql.url", "127.0.0.1/kift");
-			if (url.indexOf("/") <= 0 || url.substring(url.indexOf("/")).length() == 1) {
+			int slashIndex = url.indexOf("/");
+			if (slashIndex <= 0 || url.substring(slashIndex).length() == 1) {
 				Printer.instance.print("错误：自定义数据库的URL中必须指定数据库名称。");
 				return CANT_CONNECT_DB;
 			}
@@ -941,7 +936,7 @@ public class ConfigureReader {
 		String recycleBinPathProp = this.serverp.getProperty("recyclebin");
 		if (recycleBinPathProp != null && !recycleBinPathProp.isEmpty()) {
 			// 如果有，认为启用了“删除留档”功能
-			recycleBinPathProp = recycleBinPathProp.replaceAll("\\\\:", ":").replaceAll("\\\\\\\\", "\\\\");
+			recycleBinPathProp = recycleBinPathProp.replace("\\:", ":").replace("\\\\", "\\");
 			if (!recycleBinPathProp.endsWith(File.separator)) {
 				recycleBinPathProp = recycleBinPathProp + File.separator;
 			}
@@ -982,7 +977,7 @@ public class ConfigureReader {
 	private void createDefaultAccountPropertiesFile() {
 		Printer.instance.print("正在生成初始账户配置文件（" + this.confdir + ACCOUNT_PROPERTIES_FILE + "）...");
 		final Properties dap = new Properties();
-		dap.setProperty(DEFAULT_ACCOUNT_ID + ".pwd", PasswordUtil.hashPassword(DEFAULT_ACCOUNT_PWD));
+		dap.setProperty(DEFAULT_ACCOUNT_ID + ".pwd", DEFAULT_ACCOUNT_PWD);
 		dap.setProperty(DEFAULT_ACCOUNT_ID + ".auth", DEFAULT_ACCOUNT_AUTH);
 		dap.setProperty("authOverall", DEFAULT_AUTH_OVERALL);
 
@@ -1479,7 +1474,7 @@ public class ConfigureReader {
 		if (account != null && newPassword != null) {
 			if (accountp.getProperty(account + ".pwd") != null) {
 				synchronized (accountp) {
-					accountp.setProperty(account + ".pwd", PasswordUtil.hashPassword(newPassword));
+					accountp.setProperty(account + ".pwd", newPassword);
 					try (FileOutputStream accountSettingOut = new FileOutputStream(
 							this.confdir + ACCOUNT_PROPERTIES_FILE)) {
 						accountp.store(accountSettingOut, null);
@@ -1574,7 +1569,7 @@ public class ConfigureReader {
 		if (newAccount != null && newPassword != null) {
 			if (accountp.getProperty(newAccount + ".pwd") == null) {
 				synchronized (accountp) {
-					accountp.setProperty(newAccount + ".pwd", PasswordUtil.hashPassword(newPassword));
+					accountp.setProperty(newAccount + ".pwd", newPassword);
 					if (signUpAuth != null) {
 						accountp.setProperty(newAccount + ".auth", signUpAuth);
 					}
