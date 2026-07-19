@@ -5,12 +5,16 @@ import javax.sql.DataSource;
 import org.mybatis.spring.mapper.MapperScannerConfigurer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.jdbc.datasource.DataSourceTransactionManager;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
 
 import com.baomidou.mybatisplus.extension.spring.MybatisSqlSessionFactoryBean;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 
 @Configuration
+@EnableTransactionManagement
 public class DataSourceConfig {
 
 	@Bean
@@ -33,6 +37,11 @@ public class DataSourceConfig {
 		final MybatisSqlSessionFactoryBean ssf = new MybatisSqlSessionFactoryBean();
 		ssf.setDataSource(ds);
 		return ssf;
+	}
+
+	@Bean
+	public PlatformTransactionManager transactionManager(final DataSource ds) {
+		return new DataSourceTransactionManager(ds);
 	}
 
 	@Bean

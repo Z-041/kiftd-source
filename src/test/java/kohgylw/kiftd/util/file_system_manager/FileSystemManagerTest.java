@@ -12,20 +12,20 @@ import org.mockito.Mockito;
 
 import kohgylw.kiftd.printer.Printer;
 import kohgylw.kiftd.server.model.Node;
-import kohgylw.kiftd.server.util.ConfigureReader;
+import kohgylw.kiftd.newcore.config.ConfigurationManager;
 
 class FileSystemManagerTest {
 
-    private static MockedStatic<ConfigureReader> mockedCr;
+    private static MockedStatic<ConfigurationManager> mockedCr;
     private static FileSystemManager fsm;
 
     @BeforeAll
     static void setup() throws Exception {
         Printer.init(false);
 
-        mockedCr = Mockito.mockStatic(ConfigureReader.class);
-        ConfigureReader mockReader = Mockito.mock(ConfigureReader.class);
-        mockedCr.when(ConfigureReader::instance).thenReturn(mockReader);
+        mockedCr = Mockito.mockStatic(ConfigurationManager.class);
+        ConfigurationManager mockReader = Mockito.mock(ConfigurationManager.class);
+        mockedCr.when(ConfigurationManager::instance).thenReturn(mockReader);
 
         Mockito.when(mockReader.getFileNodePathDriver()).thenReturn("org.h2.Driver");
         Mockito.when(mockReader.getFileNodePathURL()).thenReturn("jdbc:h2:mem:test");
@@ -61,17 +61,31 @@ class FileSystemManagerTest {
     }
 
     @Test
-    void testGetFileFormBlocksWithValidFilePath() throws Exception {
-        Node node = new Node();
-        node.setFileId("test-id");
-        node.setFileName("test.txt");
-        node.setFilePath("file_test-uuid.block");
+	void testGetFileFormBlocksWithValidFilePath() throws Exception {
+		Node node = new Node();
+		node.setFileId("test-id");
+		node.setFileName("test.txt");
+		node.setFilePath("file_test-uuid.block");
 
-        Method method = FileSystemManager.class.getDeclaredMethod("getFileFormBlocks", Node.class);
-        method.setAccessible(true);
+		Method method = FileSystemManager.class.getDeclaredMethod("getFileFormBlocks", Node.class);
+		method.setAccessible(true);
 
-        Object result = method.invoke(fsm, node);
-        assertNull(result, "When block file does not exist, should return null (no crash)");
-    }
+		Object result = method.invoke(fsm, node);
+		assertNull(result, "When block file does not exist, should return null (no crash)");
+	}
+
+	@Test
+	void testGetFileFormBlocksWithPathTraversal() throws Exception {
+		Node node = new Node();
+		node.setFileId("test-id");
+		node.setFileName("test.txt");
+		node.setFilePath("file_../../etc/passwd.block");
+
+		Method method = FileSystemManager.class.getDeclaredMethod("getFileFormBlocks", Node.class);
+		method.setAccessible(true);
+
+		Object result = method.invoke(fsm, node);
+		assertNull(result, "路径穿越格式的文件块索引应被拦截");
+	}
 
 }

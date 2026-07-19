@@ -38,52 +38,25 @@ public class TxtCharsetGetter {
 		nsDetector det = new nsDetector(lang);
 		CharsetDetectionObserverImpl cdoi = new CharsetDetectionObserverImpl();
 		det.Init(cdoi);
-		BufferedInputStream imp = new BufferedInputStream(in);
-		byte[] buf = new byte[1024];
-		int len;
 		boolean isAscii = true;
-		while ((len = imp.read(buf, 0, buf.length)) != -1) {
-			if (isAscii) {
-				isAscii = det.isAscii(buf, len);
-			}
-			if (!isAscii) {
-				if (det.DoIt(buf, len, false)) {
-					break;
+		try (BufferedInputStream imp = new BufferedInputStream(in)) {
+			byte[] buf = new byte[1024];
+			int len;
+			while ((len = imp.read(buf, 0, buf.length)) != -1) {
+				if (isAscii) {
+					isAscii = det.isAscii(buf, len);
+				}
+				if (!isAscii) {
+					if (det.DoIt(buf, len, false)) {
+						break;
+					}
 				}
 			}
 		}
-		imp.close();
-		in.close();
 		det.DataEnd();
-		if (isAscii) {
-			return "ASCII";
-		} else if (cdoi.getCharset() != null) {
-			return cdoi.getCharset();
-		} else {
-			String[] prob = det.getProbableCharsets();
-			if (prob != null && prob.length > 0) {
-				return prob[0];
-			}
-			return "GBK";
-		}
+		return determineCharset(det, cdoi, isAscii);
 	}
 
-	/**
-	 * 
-	 * <h2>获取文本输入流的编码集</h2>
-	 * <p>
-	 * 该方法用于获取一个字符串byte数组最可能的编码集，并将其名称返回。
-	 * </p>
-	 * 
-	 * @author 青阳龙野(kohgylw)
-	 * @param buf
-	 *            待检验byte数组
-	 * @param offset
-	 *            检验位起始位置
-	 * @param length
-	 *            检验位长度
-	 * @return java.lang.String 可能性最高的编码集名称
-	 */
 	public String getTxtCharset(byte[] buf, int offset, int length) throws Exception {
 		int lang = nsPSMDetector.CHINESE;
 		nsDetector det = new nsDetector(lang);
@@ -98,6 +71,10 @@ public class TxtCharsetGetter {
 			det.DoIt(array, length, false);
 		}
 		det.DataEnd();
+		return determineCharset(det, cdoi, isAscii);
+	}
+
+	private String determineCharset(nsDetector det, CharsetDetectionObserverImpl cdoi, boolean isAscii) {
 		if (isAscii) {
 			return "ASCII";
 		} else if (cdoi.getCharset() != null) {

@@ -1,6 +1,5 @@
 package kohgylw.kiftd.newcore.controller;
 
-import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import kohgylw.kiftd.newcore.service.FolderService;
@@ -16,10 +15,13 @@ public class FolderController {
 
 	private static final String CHARSET_BY_AJAX = "text/html; charset=utf-8";
 
-	@Resource
-	private FolderViewService folderViewService;
-	@Resource
-	private FolderService folderService;
+	private final FolderViewService folderViewService;
+	private final FolderService folderService;
+
+	public FolderController(FolderViewService folderViewService, FolderService folderService) {
+		this.folderViewService = folderViewService;
+		this.folderService = folderService;
+	}
 
 	@RequestMapping(value = { "/getFolderView.ajax" }, produces = { CHARSET_BY_AJAX })
 	@ResponseBody

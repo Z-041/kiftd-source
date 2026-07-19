@@ -1,10 +1,13 @@
 package kohgylw.kiftd.server.util;
 
-import java.util.*;
 import java.nio.charset.StandardCharsets;
-import java.security.spec.*;
-import java.security.*;
-import javax.crypto.*;
+import java.security.KeyFactory;
+import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
+import java.security.spec.PKCS8EncodedKeySpec;
+import java.util.Base64;
+
+import javax.crypto.Cipher;
 
 import kohgylw.kiftd.printer.Printer;
 

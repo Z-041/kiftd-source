@@ -1,38 +1,31 @@
 package kohgylw.kiftd.newcore;
 
-import kohgylw.kiftd.newcore.config.WebMvcConfig;
-import kohgylw.kiftd.newcore.config.DataSourceConfig;
 import kohgylw.kiftd.printer.Printer;
 import kohgylw.kiftd.newcore.config.ConfigurationManager;
+import kohgylw.kiftd.newcore.config.DataSourceConfig;
+import kohgylw.kiftd.newcore.config.UndertowServerConfig;
+import kohgylw.kiftd.newcore.config.WebMvcConfig;
+import kohgylw.kiftd.newcore.service.StartupHealthChecker;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.web.embedded.undertow.UndertowServletWebServerFactory;
-import org.springframework.boot.web.server.ErrorPage;
-import org.springframework.boot.web.server.Ssl;
-import org.springframework.boot.web.server.WebServerFactoryCustomizer;
-import org.springframework.boot.web.servlet.server.ConfigurableServletWebServerFactory;
-import org.springframework.boot.web.servlet.server.ServletWebServerFactory;
 import org.springframework.context.ApplicationContext;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
-import org.springframework.http.HttpStatus;
 
-import io.undertow.UndertowOptions;
-import io.undertow.server.HttpHandler;
-import io.undertow.util.Headers;
-import io.undertow.util.StatusCodes;
+import com.zaxxer.hikari.HikariDataSource;
+
+import javax.sql.DataSource;
 
 @SpringBootApplication
-@Import({ WebMvcConfig.class, DataSourceConfig.class, ConfigurationManager.class })
+@Import({ WebMvcConfig.class, DataSourceConfig.class, ConfigurationManager.class, UndertowServerConfig.class })
 public class KiftdApplication {
 
-	private static ApplicationContext context;
-	private static boolean running;
+	private static volatile ApplicationContext context;
+	private static volatile boolean running = false;
+	private static volatile Thread shutdownHook;
 
 	static {
 		System.setProperty("logging.level.root", "ERROR");
-		running = false;
 	}
 
 	public synchronized boolean start() {
@@ -46,7 +39,11 @@ public class KiftdApplication {
 					app.setBannerMode(org.springframework.boot.Banner.Mode.OFF);
 					context = app.run();
 					running = (context != null);
-					Printer.instance.print("服务器引擎已启动。");
+					if (running) {
+						registerShutdownHook();
+						runHealthCheck();
+						Printer.instance.print("服务器引擎已启动。");
+					}
 					return running;
 				} catch (Exception e) {
 					Printer.instance.print(e.toString());
@@ -61,11 +58,24 @@ public class KiftdApplication {
 		return true;
 	}
 
+	private void runHealthCheck() {
+		try {
+			StartupHealthChecker healthChecker = context.getBean(StartupHealthChecker.class);
+			if (!healthChecker.performHealthCheck(context)) {
+				Printer.instance.print("警告：启动健康检查未完全通过，但服务器仍将运行。");
+			}
+		} catch (Exception e) {
+			Printer.instance.print("警告：健康检查服务不可用，跳过健康检查。");
+		}
+	}
+
 	public synchronized boolean stop() {
 		Printer.instance.print("正在关闭服务器...");
+		removeShutdownHook();
 		if (context != null) {
 			Printer.instance.print("正在终止服务器引擎...");
 			try {
+				cleanupResources();
 				int exitCode = SpringApplication.exit(context, () -> 0);
 				running = false;
 				context = null;
@@ -80,70 +90,62 @@ public class KiftdApplication {
 		return true;
 	}
 
+	private void registerShutdownHook() {
+		if (shutdownHook == null) {
+			synchronized (KiftdApplication.class) {
+				if (shutdownHook == null) {
+					shutdownHook = new Thread(() -> {
+						Printer.instance.print("收到JVM关闭信号，正在优雅关闭服务器...");
+						try {
+							cleanupResources();
+							if (context != null) {
+								SpringApplication.exit(context, () -> 0);
+								context = null;
+							}
+							running = false;
+							Printer.instance.print("服务器已优雅关闭。");
+						} catch (Exception e) {
+							Printer.instance.print("优雅关闭时发生错误：" + e.getMessage());
+						}
+					}, "kiftd-shutdown-hook");
+					Runtime.getRuntime().addShutdownHook(shutdownHook);
+					Printer.instance.print("已注册优雅关闭钩子。");
+				}
+			}
+		}
+	}
+
+	private void removeShutdownHook() {
+		if (shutdownHook != null) {
+			try {
+				Runtime.getRuntime().removeShutdownHook(shutdownHook);
+			} catch (IllegalStateException ignored) {
+			}
+			shutdownHook = null;
+		}
+	}
+
+	private void cleanupResources() {
+		Printer.instance.print("正在清理资源...");
+		try {
+			if (context != null) {
+				try {
+					DataSource dataSource = context.getBean(DataSource.class);
+					if (dataSource instanceof HikariDataSource) {
+						((HikariDataSource) dataSource).close();
+						Printer.instance.print("数据库连接池已关闭。");
+					}
+				} catch (Exception e) {
+					Printer.instance.print("关闭数据库连接池时发生警告：" + e.getMessage());
+				}
+			}
+			Printer.instance.print("资源清理完成。");
+		} catch (Exception e) {
+			Printer.instance.print("资源清理时发生错误：" + e.getMessage());
+		}
+	}
+
 	public synchronized boolean isRunning() {
 		return running;
-	}
-
-	@Bean
-	public ServletWebServerFactory servletContainer(ConfigurationManager cm) {
-		UndertowServletWebServerFactory factory = new UndertowServletWebServerFactory();
-
-		if (cm.isHttpsEnabled()) {
-			final int httpPort = cm.getPort();
-			final int httpsPort = cm.getHttpsPort();
-
-			factory.setPort(httpsPort);
-
-			Ssl ssl = new Ssl();
-			ssl.setKeyStore(cm.getHttpsKeyFile());
-			ssl.setKeyStorePassword(cm.getHttpsKeyPass());
-			ssl.setKeyStoreType(cm.getHttpsKeyType());
-			factory.setSsl(ssl);
-
-			factory.addBuilderCustomizers(builder -> {
-				builder.addHttpListener(httpPort, "0.0.0.0");
-				builder.setServerOption(UndertowOptions.RECORD_REQUEST_START_TIME, true);
-			});
-
-			factory.addDeploymentInfoCustomizers(deploymentInfo -> {
-				deploymentInfo.addInitialHandlerChainWrapper(handler -> httpToHttpsRedirect(handler, cm));
-			});
-		} else {
-			factory.setPort(cm.getPort());
-		}
-
-		factory.addErrorPages(
-				new ErrorPage(HttpStatus.NOT_FOUND, "/prv/error.html"),
-				new ErrorPage(HttpStatus.INTERNAL_SERVER_ERROR, "/prv/error.html"),
-				new ErrorPage(HttpStatus.UNAUTHORIZED, "/prv/error.html"),
-				new ErrorPage(HttpStatus.FORBIDDEN, "/prv/forbidden.html"));
-
-		factory.addBuilderCustomizers(builder -> {
-			builder.setWorkerThreads(200);
-			builder.setIoThreads(Math.max(Runtime.getRuntime().availableProcessors(), 2));
-			builder.setServerOption(UndertowOptions.ENABLE_HTTP2, true);
-			builder.setServerOption(UndertowOptions.NO_REQUEST_TIMEOUT, 30000);
-		});
-
-		return factory;
-	}
-
-	private HttpHandler httpToHttpsRedirect(HttpHandler next, ConfigurationManager cm) {
-		return exchange -> {
-			if ("http".equals(exchange.getRequestScheme())) {
-				int httpsPort = cm.getHttpsPort();
-				String host = exchange.getHostName();
-				String path = exchange.getRequestURI();
-				String query = exchange.getQueryString();
-				String location = "https://" + host + ":" + httpsPort + path;
-				if (query != null && !query.isEmpty()) {
-					location += "?" + query;
-				}
-				exchange.setStatusCode(StatusCodes.FOUND);
-				exchange.getResponseHeaders().put(Headers.LOCATION, location);
-				return;
-			}
-			next.handleRequest(exchange);
-		};
 	}
 }

@@ -1,102 +1,99 @@
 package kohgylw.kiftd.mc;
 
-import kohgylw.kiftd.newcore.KiftdApplication;
-import kohgylw.kiftd.newcore.config.ConfigurationManager;
-import kohgylw.kiftd.server.exception.FilesTotalOutOfLimitException;
-import kohgylw.kiftd.server.exception.FoldersTotalOutOfLimitException;
-import kohgylw.kiftd.server.model.Node;
-
-import java.io.File;
-import java.nio.file.FileAlreadyExistsException;
-import java.sql.SQLException;
-import java.util.Arrays;
-import java.util.List;
 import java.util.Scanner;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import kohgylw.kiftd.printer.*;
-import kohgylw.kiftd.server.util.*;
+import kohgylw.kiftd.newcore.KiftdApplication;
+import kohgylw.kiftd.newcore.config.ConfigurationManager;
+import kohgylw.kiftd.printer.Printer;
 import kohgylw.kiftd.util.file_system_manager.FileSystemManager;
-import kohgylw.kiftd.util.file_system_manager.pojo.Folder;
-import kohgylw.kiftd.util.file_system_manager.pojo.FolderView;
 
-/**
- * 
- * <h2>命令模式启动器</h2>
- * <p>
- * 该启动器将以命令模式启动kiftd，请执行静态build()方法开启界面并初始化kiftd服务器引擎。
- * </p>
- * 
- * @author 青阳龙野(kohgylw)
- * @version 1.0
- */
 public class ConsoleRunner {
-	private static ConsoleRunner cs;
-	private static KiftdApplication ctl;
-	private static String commandTips;
-	private static String fsCommandTips;
-	private static FolderView currentFolder;
-	private Scanner reader;
 
-	private ExecutorService worker;
+	private static volatile ConsoleRunner instance;
+	private static KiftdApplication app;
+
+	private final ExecutorService worker;
+	private final Scanner reader;
+	private final FileSystemCommandHandler fsHandler;
+	private final AccountCommandHandler accountHandler;
+
+	private static final String COMMAND_TIPS = "kiftd:您可以输入以下指令以控制服务器：\r\n"
+			+ "-start 启动服务器\r\n"
+			+ "-stop 停止服务器\r\n"
+			+ "-exit 停止服务器并退出应用\r\n"
+			+ "-restart 重启服务器\r\n"
+			+ "-files 文件管理\r\n"
+			+ "-status 查看服务器状态\r\n"
+			+ "-help 显示帮助文本";
 
 	private ConsoleRunner() {
 		Printer.init(false);
-		ConsoleRunner.ctl = new KiftdApplication();
+		app = new KiftdApplication();
 		worker = Executors.newSingleThreadExecutor();
-		ConsoleRunner.commandTips = "kiftd:您可以输入以下指令以控制服务器：\r\n-start 启动服务器\r\n-stop 停止服务器\r\n-exit 停止服务器并退出应用\r\n-restart 重启服务器\r\n-files 文件管理\r\n-status 查看服务器状态\r\n-help 显示帮助文本";
-		ConsoleRunner.fsCommandTips = "kiftd files:您可以输入以下指令进行文件管理：\r\nls 显示当前文件夹内容（可使用参数 “-l” 显示所有项目的详细信息）\r\ncd {“文件夹名称” 或 “--文件夹序号”} 进入指定文件夹（示例：“cd foo” 或 “cd --1”，如需返回上一级请输入“cd ../”）\r\nimport {要导入的本地文件（必须使用完整路径）} 将本地文件或文件夹导入至此\r\nexport {“目标名称” 或 “--目标序号”（省略该项则导出当前文件夹的全部内容）} {要导出至本地的路径（必须使用完整路径）} 将指定文件或文件夹导出本地\r\nrm {“目标名称” 或 “--目标序号”} 删除指定文件或文件夹\r\nexit 退出文件管理并返回kiftd控制台\r\nhelp 显示帮助文本";
+		reader = new Scanner(System.in);
+
+		accountHandler = new AccountCommandHandler();
+		fsHandler = new FileSystemCommandHandler(
+				() -> reader,
+				new FileSystemCommandHandler.ProgressListenerFactory() {
+					@Override
+					public Runnable create() {
+						ProgressListener pl = new ProgressListener();
+						worker.execute(pl);
+						return pl;
+					}
+
+					@Override
+					public void stop(Runnable listener) {
+						if (listener instanceof ProgressListener) {
+							((ProgressListener) listener).stop();
+						}
+					}
+				});
 	}
 
-	/**
-	 * 
-	 * <h2>以命令模式运行kiftd</h2>
-	 * <p>
-	 * 启动命令模式操作并初始化服务器引擎，该方法将返回本启动器的唯一实例。
-	 * </p>
-	 * 
-	 * @author 青阳龙野(kohgylw)
-	 * @param args java.lang.String[] 启动参数
-	 * @return kohgylw.kiftd.mc.ConsoleRunner 本启动器唯一实例
-	 */
 	public static ConsoleRunner build(final String[] args) {
-		if (ConsoleRunner.cs == null) {
-			ConsoleRunner.cs = new ConsoleRunner();
+		if (instance == null) {
+			synchronized (ConsoleRunner.class) {
+				if (instance == null) {
+					instance = new ConsoleRunner();
+				}
+			}
 		}
-		ConsoleRunner.cs.execute(args);
-		return ConsoleRunner.cs;
+		instance.execute(args);
+		return instance;
 	}
 
-	// 执行相应的指令并进行后续处理，该方法为整个kiftd命令模式的起点。
 	private void execute(final String[] args) {
 		if (args.length > 0) {
 			final String command = args[0];
 			switch (command) {
-			case "-export": {
-				doExport(args);
+			case "-export":
+				fsHandler.doExport(args);
 				break;
-			}
-			case "-import": {
-				doImport(args);
+			case "-import":
+				fsHandler.doImport(args);
 				break;
-			}
-			case "-transfer": {
-				doTransfer(args);
+			case "-transfer":
+				fsHandler.doTransfer(args);
 				break;
-			}
-			case "-console": {
-				this.startKiftdByConsole();
+			case "-console":
+				startKiftdByConsole();
 				break;
-			}
-			case "-start": {
-				ConsoleRunner.ctl.start();
+			case "-start":
+				app.start();
 				break;
-			}
-			default: {
+			case "-resetpwd":
+				accountHandler.resetPassword(args);
+				break;
+			case "-account":
+				accountHandler.handleAccountCommand(args);
+				break;
+			default:
 				Printer.instance.print("kiftd:无效的指令，使用控制台模式启动请输入参数 -console，直接启动服务器引擎请输入参数 -start，使用UI模式启动请不要传入任何参数。");
 				break;
-			}
 			}
 		}
 	}
@@ -107,50 +104,106 @@ public class ConsoleRunner {
 		final Thread t = new Thread(() -> {
 			Printer.instance.print("正在初始化服务器...");
 			if (ConfigurationManager.instance().getStatus() == 0) {
-				this.awaiting();
+				awaiting();
 			}
-			return;
 		});
 		t.start();
 	}
 
+	private void awaiting() {
+		Thread t = new Thread(() -> {
+			Printer.instance.print("命令帮助：\r\n" + COMMAND_TIPS + "\r\n");
+			try {
+				while (true) {
+					Printer.instance.print("kiftd: console$ ");
+					String command = reader.nextLine().trim();
+					if (handleConsoleCommand(command)) {
+						return;
+					}
+				}
+			} catch (Exception e) {
+				Printer.instance.print(e.toString());
+				Printer.instance.print("错误：读取命令时出现意外导致程序退出，请重启kiftd。");
+			}
+		});
+		t.start();
+	}
+
+	private boolean handleConsoleCommand(String command) {
+		switch (command) {
+		case "":
+			return false;
+		case "-start":
+			startServer();
+			return false;
+		case "-stop":
+			stopServer();
+			return false;
+		case "-restart":
+			restartServer();
+			return false;
+		case "-status":
+			printServerStatus();
+			return false;
+		case "-files":
+			fsHandler.enterFileManager();
+			return false;
+		case "-exit":
+			reader.close();
+			exit();
+			return true;
+		case "help":
+		case "--help":
+		case "-help":
+			Printer.instance.print("命令帮助：\r\n" + COMMAND_TIPS);
+			return false;
+		default:
+			Printer.instance.print("错误：无法识别的指令。\r\n" + COMMAND_TIPS);
+			return false;
+		}
+	}
+
 	private void startServer() {
 		Printer.instance.print("执行命令：启动服务器...");
-		if (ConsoleRunner.ctl.isRunning()) {
+		if (app.isRunning()) {
 			Printer.instance.print("错误：服务器已经启动了。您可以使用 -status 命令查看服务器运行状态或使用 -stop 命令停止服务器。");
-		} else if (ConsoleRunner.ctl.start()) {
+		} else if (app.start()) {
 			Printer.instance.print("kiftd服务器已启动，可以正常访问了，您可以使用 -status 指令查看运行状态。");
 		} else {
-			if (ConfigurationManager.instance().getStatus() != 0) {
-				switch (ConfigurationManager.instance().getStatus()) {
-				case ConfigurationManager.INVALID_PORT:
-					Printer.instance.print("错误：kiftd服务器未能启动，端口设置无效。");
-					break;
-				case ConfigurationManager.INVALID_BUFFER_SIZE:
-					Printer.instance.print("错误：kiftd服务器未能启动，缓冲区设置无效。");
-					break;
-				case ConfigurationManager.INVALID_FILE_SYSTEM_PATH:
-					Printer.instance.print("错误：kiftd服务器未能启动，文件系统路径或某一扩展存储区设置无效。");
-					break;
-				case ConfigurationManager.INVALID_LOG:
-					Printer.instance.print("错误：kiftd服务器未能启动，日志等级设置无效。");
-					break;
-				case ConfigurationManager.INVALID_VC:
-					Printer.instance.print("错误：kiftd服务器未能启动，登录验证码设置无效。");
-					break;
-				default:
-					Printer.instance.print("错误：kiftd服务器未能启动，请重试或检查设置。");
-					break;
-				}
-			} else {
+			printStartupError();
+		}
+	}
+
+	private void printStartupError() {
+		if (ConfigurationManager.instance().getStatus() != 0) {
+			switch (ConfigurationManager.instance().getStatus()) {
+			case ConfigurationManager.INVALID_PORT:
+				Printer.instance.print("错误：kiftd服务器未能启动，端口设置无效。");
+				break;
+			case ConfigurationManager.INVALID_BUFFER_SIZE:
+				Printer.instance.print("错误：kiftd服务器未能启动，缓冲区设置无效。");
+				break;
+			case ConfigurationManager.INVALID_FILE_SYSTEM_PATH:
+				Printer.instance.print("错误：kiftd服务器未能启动，文件系统路径或某一扩展存储区设置无效。");
+				break;
+			case ConfigurationManager.INVALID_LOG:
+				Printer.instance.print("错误：kiftd服务器未能启动，日志等级设置无效。");
+				break;
+			case ConfigurationManager.INVALID_VC:
+				Printer.instance.print("错误：kiftd服务器未能启动，登录验证码设置无效。");
+				break;
+			default:
 				Printer.instance.print("错误：kiftd服务器未能启动，请重试或检查设置。");
+				break;
 			}
+		} else {
+			Printer.instance.print("错误：kiftd服务器未能启动，请重试或检查设置。");
 		}
 	}
 
 	private void exit() {
 		Printer.instance.print("执行命令：停止服务器并退出kiftd...");
-		if (ConsoleRunner.ctl.isRunning() && ConsoleRunner.ctl.stop()) {
+		if (app.isRunning() && app.stop()) {
 			Printer.instance.print("服务器已关闭，停止所有访问。");
 		}
 		worker.shutdown();
@@ -163,9 +216,9 @@ public class ConsoleRunner {
 
 	private void restartServer() {
 		Printer.instance.print("执行命令：重启服务器...");
-		if (ConsoleRunner.ctl.isRunning()) {
-			if (ConsoleRunner.ctl.stop()) {
-				if (ConsoleRunner.ctl.start()) {
+		if (app.isRunning()) {
+			if (app.stop()) {
+				if (app.start()) {
 					Printer.instance.print("服务器重启成功，可以正常访问了。");
 				} else {
 					Printer.instance.print("错误：无法重新启动服务器，请尝试手动启动。");
@@ -180,8 +233,8 @@ public class ConsoleRunner {
 
 	private void stopServer() {
 		Printer.instance.print("执行命令：停止服务器...");
-		if (ConsoleRunner.ctl.isRunning()) {
-			if (ConsoleRunner.ctl.stop()) {
+		if (app.isRunning()) {
+			if (app.stop()) {
 				Printer.instance.print("服务器已关闭，停止所有访问。");
 			} else {
 				Printer.instance.print("错误：无法关闭服务器，您可以尝试强制关闭。");
@@ -191,754 +244,42 @@ public class ConsoleRunner {
 		}
 	}
 
-	private void awaiting() {
-		Thread t = new Thread(() -> {
-			reader = new Scanner(System.in);
-			Printer.instance.print("命令帮助：\r\n" + commandTips + "\r\n");
-			try {
-				while (true) {
-					Printer.instance.print("kiftd: console$ ");
-					String command = reader.nextLine().trim();
-					switch (command) {
-					case "":
-						break;
-					case "-start":
-						startServer();
-						break;
-					case "-stop":
-						stopServer();
-						break;
-					case "-restart":
-						restartServer();
-						break;
-					case "-status":
-						printServerStatus();
-						break;
-					case "-files":
-						fileSystemManagerModel();
-						break;
-					case "-exit":
-						reader.close();
-						exit();
-						return;
-					case "help":
-					case "--help":
-					case "-help":
-						Printer.instance.print("命令帮助：\r\n" + commandTips);
-						break;
-					default:
-						Printer.instance.print("错误：无法识别的指令。\r\n" + commandTips);
-						break;
-					}
-				}
-			} catch (Exception e) {
-				Printer.instance.print(e.toString());
-				Printer.instance.print("错误：读取命令时出现意外导致程序退出，请重启kiftd。");
-			}
-		});
-		t.start();
-	}
-
-	// 打印服务器状态
 	private void printServerStatus() {
-		Printer.instance.print("服务器状态：\r\n<Port>端口号:" + ConfigurationManager.instance().getPort() + "\r\n<LogLevel>日志等级:"
-				+ ConfigurationManager.instance().getLogLevel() + "\r\n<BufferSize>缓冲区大小:"
-				+ ConfigurationManager.instance().getBuffSize() + " B\r\n<FileSystemPath>文件系统存储路径："
-				+ ConfigurationManager.instance().getFileSystemPath() + "\r\n<MustLogin>是否必须登录："
-				+ ConfigurationManager.instance().mustLogin() + "\r\n<Running>运行状态：" + ConsoleRunner.ctl.isRunning());
+		Printer.instance.print("服务器状态：\r\n"
+				+ "<Port>端口号:" + ConfigurationManager.instance().getPort() + "\r\n"
+				+ "<LogLevel>日志等级:" + ConfigurationManager.instance().getLogLevel() + "\r\n"
+				+ "<BufferSize>缓冲区大小:" + ConfigurationManager.instance().getBuffSize() + " B\r\n"
+				+ "<FileSystemPath>文件系统存储路径：" + ConfigurationManager.instance().getFileSystemPath() + "\r\n"
+				+ "<MustLogin>是否必须登录：" + ConfigurationManager.instance().mustLogin() + "\r\n"
+				+ "<Running>运行状态：" + app.isRunning());
 	}
 
-	// 进入文件管理模式（航天飞机模式）
-	private void fileSystemManagerModel() {
-		Printer.instance.print("已进入文件管理功能。");
-		try {
-			if (currentFolder == null || currentFolder.getCurrent() == null || FileSystemManager.getInstance()
-					.selectFolderById(currentFolder.getCurrent().getFolderId()) == null) {
-				getFolderView("root");
-			}
-		} catch (Exception e) {
-			Printer.instance.print("错误：无法打开文件系统，该文件系统可能正在被另一个kiftd占用。");
-			return;
-		}
-		Printer.instance.print("命令帮助：\r\n" + fsCommandTips);
-		try {
-			while (true) {
-				Printer.instance.print("kiftd: " + currentFolder.getCurrent().getFolderName() + "$ ");
-				String command = reader.nextLine().trim();
-				// 若未输入任何命令，则直接跳过
-				if (command.length() == 0) {
-					continue;
-				}
-				// 针对一些带参数指令的操作
-				if (command.startsWith("cd ")) {
-					gotoFolder(command.substring(3));
-					continue;
-				}
-				if (command.startsWith("import ")) {
-					doImport(command.substring(7));
-					continue;
-				}
-				if (command.startsWith("rm ")) {
-					doDelete(command.substring(3));
-					continue;
-				}
-				if (command.startsWith("export ")) {
-					doExport(command.substring(7));
-					continue;
-				}
-				if (command.startsWith("ls ") || command.equals("ls")) {
-					String[] oArgs = command.substring(2).trim().split(" ");
-					String[] args = Arrays.stream(oArgs).filter(s -> !s.isEmpty()).toArray(String[]::new);
-					if (args.length == 0) {
-						showCurrentFolder(false);
-					} else if (args.length == 1 && "-l".equals(args[0])) {
-						showCurrentFolder(true);
-					} else {
-						Printer.instance.print("错误：显示当前文件夹内容失败，输入参数不正确。");
-					}
-					continue;
-				}
-				// 针对一些不带参数指令的操作
-				switch (command) {
-				case "exit":
-					Printer.instance.print("退出文件管理。");
-					return;
-				case "help":
-				case "--help":
-				case "-help":
-					Printer.instance.print("命令帮助：\r\n" + fsCommandTips);
-					break;
-				default:
-					Printer.instance.print("错误：无法识别的指令。\r\n" + fsCommandTips);
-					break;
-				}
-			}
-		} catch (Exception e) {
-			Printer.instance.print("错误：读取命令时出现意外，已退出文件管理功能。");
-		}
-	}
-
-	// 得到指定ID的文件夹视图
-	private void getFolderView(String fid) throws SQLException {
-		currentFolder = FileSystemManager.getInstance().getFolderView(fid);
-	}
-
-	// 打印当前文件夹内容（ls）
-	private void showCurrentFolder(boolean showDetailedInformation) {
-		try {
-			String folderId = currentFolder.getCurrent().getFolderId();
-			if (Math.max(FileSystemManager.getInstance().getFilesTotalNumByFoldersId(folderId),
-					FileSystemManager.getInstance().getFoldersTotalNumByFoldersId(folderId)) > Integer.MAX_VALUE) {
-				Printer.instance.print("警告：文件夹列表长度超过最大限值，只能显示前" + Integer.MAX_VALUE + "行。");
-			}
-			currentFolder = FileSystemManager.getInstance().getFolderView(folderId);
-		} catch (SQLException e) {
-			openFolderError();
-			return;
-		}
-		List<Folder> fls = currentFolder.getFolders();
-		int index = 1;
-		for (Folder f : fls) {
-			StringBuilder row = new StringBuilder();
-			row.append("--" + index);
-			row.append("\t");
-			row.append("[文件夹]");
-			row.append("\t");
-			row.append(f);
-			if (showDetailedInformation) {
-				row.append("\t");
-				row.append(f.getFolderCreationDate());
-				row.append("\t");
-				row.append("--");
-				row.append("\t");
-				row.append(f.getFolderCreator());
-			}
-			Printer.instance.print(row.toString());
-			index++;
-		}
-		List<Node> fs = currentFolder.getFiles();
-		for (Node f : fs) {
-			StringBuilder row = new StringBuilder();
-			row.append("--" + index);
-			row.append("\t");
-			row.append("[文件]");
-			row.append("\t");
-			row.append(f.getFileName());
-			if (showDetailedInformation) {
-				row.append("\t");
-				row.append(f.getFileCreationDate());
-				row.append("\t");
-				row.append(formatFileSize(f.getFileSize()));
-				row.append("\t");
-				row.append(f.getFileCreator());
-			}
-			Printer.instance.print(row.toString());
-			index++;
-		}
-		Printer.instance.print("");
-	}
-
-	// 将以Byte为单位表示的文件字符转换为以合适单位表示的字符串
-	private String formatFileSize(String value) {
-		double convertSize;
-		String unit;
-		long size = Long.parseLong((String) value);
-		if (size < 1024) {
-			convertSize = (double) size;
-			unit = "B";
-		} else if (size < 1048576L) {
-			convertSize = ((double) size / 1024.0);
-			unit = "KB";
-		} else if (size < 1073741824L) {
-			convertSize = ((double) size / 1048576.0);
-			unit = "MB";
-		} else if (size < 1099511627776L) {
-			convertSize = ((double) size / 1073741824.0);
-			unit = "GB";
-		} else {
-			convertSize = ((double) size / 1099511627776.0);
-			unit = "TB";
-		}
-		return String.format("%.1f", convertSize) + " " + unit;
-	}
-
-	// 进入某一文件夹，可以输入文件夹名或是前方编号（例如cd foo或是cd --1）
-	private void gotoFolder(String fname) {
-		fname = fname.trim();
-		try {
-			currentFolder = FileSystemManager.getInstance().getFolderView(currentFolder.getCurrent().getFolderId());
-			String fid = getSelectFolderId(fname);
-			if (fid != null) {
-				getFolderView(fid);
-				return;
-			}
-			Printer.instance.print("错误：该文件夹不存在或其不是一个文件夹（" + fname + "）。");
-		} catch (SQLException e) {
-			openFolderError();
-		}
-	}
-
-	// 根据路径获取文件夹ID，例如“/ROOT/foo/bar”这样的，如果不能被解析则返回null，否则返回文件夹ID
-	public Object getPath(String path) {
-		if (path.startsWith("/ROOT")) {
-			String[] paths = path.split("/");
-			try {
-				String parent = "null";
-				for (int i = 1; i < paths.length - 1; i++) {
-					String folderName = paths[i];
-					Folder folder = FileSystemManager.getInstance().getFoldersByParentId(parent).stream()
-							.filter((e) -> e.getFolderName().equals(folderName)).findFirst().orElse(null);
-					if (folder == null) {
-						return null;
-					}
-					parent = folder.getFolderId();
-				}
-				String fname = paths[paths.length - 1];
-				List<Folder> folders = FileSystemManager.getInstance().getFoldersByParentId(parent);
-				if (path.endsWith("/") || folders.stream().anyMatch((e) -> e.getFolderName().equals(fname))) {
-					return folders.stream().filter((e) -> e.getFolderName().equals(fname)).findFirst().orElse(null);
-				} else {
-					return FileSystemManager.getInstance().selectNodesByFolderId(parent).stream()
-							.filter((e) -> e.getFileName().equals(fname)).findFirst().orElse(null);
-				}
-			} catch (Exception e) {
-			}
-		}
-		return null;
-	}
-
-	// 根据用户输入的序号或者名称得到相应的文件夹ID
-	private String getSelectFolderId(String fname) {
-		if ("../".equals(fname) || "..".equals(fname)) {
-			if (currentFolder.getCurrent().getFolderId().equals("root")) {
-				return "root";
-			} else {
-				return currentFolder.getCurrent().getFolderParent();
-			}
-		}
-		if ("./".equals(fname) || ".".equals(fname)) {
-			return currentFolder.getCurrent().getFolderId();
-		}
-		if (fname.startsWith("--")) {
-			try {
-				int index = Integer.parseInt(fname.substring(2));
-				if (index >= 1 && index <= currentFolder.getFolders().size()) {
-					return currentFolder.getFolders().get(index - 1).getFolderId();
-				}
-			} catch (Exception e) {
-
-			}
-			return null;
-		}
-		Folder folder = currentFolder.getFolders().stream().filter((e) -> e.getFolderName().equals(fname))
-				.findFirst().orElse(null);
-		if (folder != null) {
-			return folder.getFolderId();
-		}
-		return null;
-	}
-
-	// 根据用户输入的序号或者名称得到相应的文件或文件夹ID（不区分文件夹或文件）
-	private String getSelectFolderOrFileId(String fname) {
-		if ("../".equals(fname) || "..".equals(fname)) {
-			if (currentFolder.getCurrent().getFolderId().equals("root")) {
-				return "root";
-			} else {
-				return currentFolder.getCurrent().getFolderParent();
-			}
-		}
-		if ("./".equals(fname) || ".".equals(fname)) {
-			return currentFolder.getCurrent().getFolderId();
-		}
-		if (fname.startsWith("--")) {
-			try {
-				int index = Integer.parseInt(fname.substring(2));
-				if (index >= 1 && index <= currentFolder.getFolders().size()) {
-					return currentFolder.getFolders().get(index - 1).getFolderId();
-				} else {
-					return currentFolder.getFiles().get(index - currentFolder.getFolders().size() - 1).getFileId();
-				}
-			} catch (Exception e) {
-
-			}
-			return null;
-		}
-		Folder folder = currentFolder.getFolders().stream().filter((e) -> e.getFolderName().equals(fname))
-				.findFirst().orElse(null);
-		if (folder != null) {
-			return folder.getFolderId();
-		}
-		Node file = currentFolder.getFiles().stream().filter((m) -> m.getFileName().equals(fname))
-				.findFirst().orElse(null);
-		if (file != null) {
-			return file.getFileId();
-		}
-		return null;
-	}
-
-	// 导入一个文件或文件夹（直接应用的简化版）
-	private void doImport(String[] args) {
-		// 针对简化命令（只有1个参数），认为要将整个ROOT导出至某位置
-		try {
-			String importTarget;
-			String importPath;
-			Object path;
-			File target;
-			if (args.length == 2) {
-				importTarget = args[1];
-				importPath = "/ROOT";
-				path = FileSystemManager.getInstance().selectFolderById("root");
-				target = new File(importTarget);
-			} else if (args.length == 3 || args.length == 4) {
-				importPath = args[1];
-				importTarget = args[2];
-				target = new File(importTarget);
-				path = getPath(importPath);
-			} else {
-				Printer.instance.print("错误：导入失败，必须指定导入目标（示例：“-import /ROOT/ /home/your/import/file.txt”）。");
-				return;
-			}
-			if (!(path instanceof Folder)) {
-				Printer.instance.print("错误：导入位置（" + importPath + "）必须是一个文件夹（示例：“/ROOT”）。");
-				return;
-			}
-			String folderId = ((Folder) path).getFolderId();
-			if (!target.exists()) {
-				Printer.instance.print("错误：导入失败，要导入的文件或文件夹不存在（" + importTarget + "）。");
-				return;
-			}
-			File[] files = new File[] { target };
-			String type;
-			if (FileSystemManager.getInstance().hasExistsFilesOrFolders(files, folderId) > 0) {
-				if (args.length == 4) {
-					switch (args[3]) {
-					case "-C":
-						type = FileSystemManager.COVER;
-						break;
-					case "-B":
-						type = FileSystemManager.BOTH;
-						break;
-					default:
-						Printer.instance.print("错误：导入失败，导入路径下存在相同的文件或文件夹（请使用以下参数：[-C]覆盖 [-B]保留两者）。");
-						return;
-					}
-				} else if (args.length == 2) {
-					type = FileSystemManager.COVER;
-				} else {
-					Printer.instance.print("错误：导入失败，导入路径下存在相同的文件或文件夹（请增加以下参数：[-C]覆盖 [-B]保留两者）。");
-					return;
-				}
-			} else {
-				type = "cancel";
-			}
-			if (FileSystemManager.getInstance().importFrom(files, folderId, type)) {
-				return;
-			} else {
-				Printer.instance.print("错误：导入失败，可能导入全部文件。");
-			}
-		} catch (Exception e1) {
-			Printer.instance.print("错误：导入失败，出现意外错误。");
-		}
-	}
-
-	// 导入一个文件或文件夹
-	private void doImport(String fpath) {
-		fpath = fpath.trim();
-		File f = new File(fpath);
-		if (!f.exists()) {
-			Printer.instance.print("错误：无法导入文件或文件夹，该目标不存在（" + fpath + "），请重新检查。");
-			return;
-		}
-		String targetFolder = currentFolder.getCurrent().getFolderId();
-		String type = "";
-		File[] importFiles = new File[] { f };
-		ProgressListener pl = null;
-		try {
-			if (FileSystemManager.getInstance().hasExistsFilesOrFolders(importFiles, targetFolder) > 0) {
-				Printer.instance.print("提示：该路径下已经存在同名文件或文件夹（" + f.getName() + "），您希望？[C]取消 [V]覆盖 [B]保留两者");
-				q: while (true) {
-					String command = reader.nextLine().trim();
-					switch (command) {
-					case "C":
-						Printer.instance.print("导入被取消。");
-						return;
-					case "V":
-						type = FileSystemManager.COVER;
-						break q;
-					case "B":
-						type = FileSystemManager.BOTH;
-						break q;
-					default:
-						Printer.instance.print("请输入C、V或B：");
-						break;
-					}
-				}
-			}
-			Printer.instance.print("正在导入，请稍候...");
-			pl = new ProgressListener();
-			worker.execute(pl);
-			FileSystemManager.getInstance().importFrom(importFiles, targetFolder, type);
-			pl.c = false;
-			Printer.instance.print("导入完成。");
-		} catch (FilesTotalOutOfLimitException e1) {
-			if (pl != null) {
-				pl.c = false;
-			}
-			Printer.instance.print("错误：导入失败，该文件夹内的文件数目已达上限，无法导入更多文件。");
-		} catch (FoldersTotalOutOfLimitException e2) {
-			if (pl != null) {
-				pl.c = false;
-			}
-			Printer.instance.print("错误：导入失败，该文件夹内的文件夹数目已达上限，无法导入更多文件夹。");
-		} catch (Exception e3) {
-			if (pl != null) {
-				pl.c = false;
-			}
-			Printer.instance.print("错误：无法导入该文件（或文件夹），请重试。");
-		}
-	}
-
-	// 导出一个文件或文件夹（直接应用的简化版）
-	private void doExport(String[] args) {
-		// 针对简化命令（只有1个参数），认为要将整个ROOT导出至某位置
-		try {
-			String exportTarget;
-			String exportPath;
-			Object target;
-			File path;
-			if (args.length == 2) {
-				exportPath = args[1];
-				exportTarget = "/ROOT";
-				path = new File(exportPath);
-				target = FileSystemManager.getInstance().selectFolderById("root");
-			} else if (args.length == 3 || args.length == 4) {
-				exportTarget = args[1];
-				exportPath = args[2];
-				target = getPath(exportTarget);
-				path = new File(exportPath);
-			} else {
-				Printer.instance.print("错误：导出失败，必须指定导出路径（示例：“-export /ROOT/ /home/your/export/folder”）。");
-				return;
-			}
-			if (!path.isDirectory()) {
-				Printer.instance.print("错误：导出路径（" + exportPath + "）必须指向一个已经存在的文件夹。");
-				return;
-			}
-			if (target == null) {
-				Printer.instance.print("错误：导出失败，要导出的文件或文件夹不存在（" + exportTarget + "）。");
-				return;
-			}
-			String[] foldersId;
-			String[] filesId;
-			String type;
-			if (target instanceof Node) {
-				foldersId = new String[] {};
-				filesId = new String[] { ((Node) target).getFileId() };
-			} else if (target instanceof Folder) {
-				foldersId = new String[] { ((Folder) target).getFolderId() };
-				filesId = new String[] {};
-			} else {
-				Printer.instance.print("错误：导出失败，出现意外错误。");
-				return;
-			}
-			if (FileSystemManager.getInstance().hasExistsFilesOrFolders(foldersId, filesId, path) > 0) {
-				if (args.length == 4) {
-					switch (args[3]) {
-					case "-C":
-						type = FileSystemManager.COVER;
-						break;
-					case "-B":
-						type = FileSystemManager.BOTH;
-						break;
-					default:
-						Printer.instance.print("错误：导出失败，导出路径下存在相同的文件或文件夹（请使用以下参数：[-C]覆盖 [-B]保留两者）。");
-						return;
-					}
-				} else if (args.length == 2) {
-					type = FileSystemManager.COVER;
-				} else {
-					Printer.instance.print("错误：导出失败，导出路径下存在相同的文件或文件夹（请增加以下参数：[-C]覆盖 [-B]保留两者）。");
-					return;
-				}
-			} else {
-				type = "cancel";
-			}
-			if (FileSystemManager.getInstance().exportTo(foldersId, filesId, path, type)) {
-				return;
-			} else {
-				Printer.instance.print("错误：导出失败，可能未导出全部文件。");
-			}
-		} catch (Exception e1) {
-			Printer.instance.print("错误：导出失败，出现意外错误。");
-		}
-	}
-
-	// 导出一个文件或文件夹
-	private void doExport(String command) {
-		command = command.trim();
-		// 将参数按照空格分隔
-		String[] oArgs = command.split(" ");
-		// 提取有效的参数（避免中间有多个空格）
-		String[] args = Arrays.stream(oArgs).filter(s -> !s.isEmpty()).toArray(String[]::new);
-		String id;
-		String path;
-		ProgressListener pl = null;
-		if (args.length == 1) {
-			path = args[0];
-			id = currentFolder.getCurrent().getFolderId();
-		} else if (args.length == 2) {
-			id = getSelectFolderOrFileId(args[0]);
-			path = args[1];
-		} else {
-			Printer.instance.print("错误：导出失败，输入参数不正确。");
-			return;
-		}
-		File targetPath = new File(path);
-		if (targetPath.isDirectory()) {
-			if (id == null) {
-				Printer.instance.print("错误：导出失败，该文件或文件夹不存在（" + args[0] + "）。");
-				return;
-			}
-			try {
-				String[] foldersId = null;
-				String[] filesId = null;
-				String type = "";
-				if (id.equals(currentFolder.getCurrent().getFolderId())
-						|| currentFolder.getFolders().stream().anyMatch((e) -> e.getFolderId().equals(id))) {
-					foldersId = new String[] { id };
-					filesId = new String[] {};
-				} else if (currentFolder.getFiles().stream().anyMatch((e) -> e.getFileId().equals(id))) {
-					foldersId = new String[] {};
-					filesId = new String[] { id };
-				} else {
-					Printer.instance.print("错误：要导出的文件（或文件夹）不合法，只允许在当前文件夹内的选择（" + path + "）。");
-					return;
-				}
-				if (FileSystemManager.getInstance().hasExistsFilesOrFolders(foldersId, filesId, targetPath) > 0) {
-					Printer.instance.print("提示：该路径下已经存在同名文件或文件夹（" + targetPath.getName() + "），您希望？[C]取消 [V]覆盖 [B]保留两者");
-					q: while (true) {
-						String command2 = reader.nextLine().trim();
-						switch (command2) {
-						case "C":
-							Printer.instance.print("导出被取消。");
-							return;
-						case "V":
-							type = FileSystemManager.COVER;
-							break q;
-						case "B":
-							type = FileSystemManager.BOTH;
-							break q;
-						default:
-							Printer.instance.print("请输入C、V或B：");
-							break;
-						}
-					}
-				}
-				Printer.instance.print("正在导出，请稍候...");
-				pl = new ProgressListener();
-				worker.execute(pl);
-				FileSystemManager.getInstance().exportTo(foldersId, filesId, targetPath, type);
-				pl.c = false;
-				Printer.instance.print("导出完成。");
-			} catch (Exception e1) {
-				if (pl != null) {
-					pl.c = false;
-				}
-				Printer.instance.print("错误：无法导出该文件（或文件夹），请重试。");
-			}
-		} else {
-			Printer.instance.print("错误：导出失败，导出的目标必须是一个文件夹（" + path + "）。");
-		}
-	}
-
-	// 移出指定存储区的数据至指定文件夹内
-	private void doTransfer(String[] args) {
-		short extendStoreIndex;
-		File reservePath;
-		if (args.length == 3) {
-			try {
-				extendStoreIndex = Short.parseShort(args[1]);
-				reservePath = new File(args[2]);
-				if (!reservePath.isDirectory()) {
-					Printer.instance.print("错误：移出数据的保存路径（" + args[2] + "）必须指向一个已经存在的文件夹。");
-					return;
-				}
-				try {
-					long total = FileSystemManager.getInstance().getTotalOfNodesAtExtendStore(extendStoreIndex);
-					if (total > 0) {
-						FileSystemManager.getInstance().transferExtendStore(extendStoreIndex, reservePath);
-						return;
-					} else {
-						Printer.instance.print("错误：该扩展存储区（" + args[1] + "）不存在或其内部尚无任何数据，无需执行该操作。");
-						return;
-					}
-				} catch (FileAlreadyExistsException e1) {
-					Printer.instance.print("错误：目标文件夹内存在同名文件，建议选择一个空文件夹作为移出数据的保存路径。");
-				} catch (Exception e2) {
-					Printer.instance.print("错误：无法移出该扩展存储区内的数据，请重试。");
-				}
-			} catch (NumberFormatException e) {
-				Printer.instance.print("错误：扩展存储区编号（" + args[1] + "）无法被识别。");
-			}
-		} else {
-			Printer.instance.print("错误：移出失败，必须指定要移出的扩展存储区编号和移出数据的保存路径（示例：“-transfer 1 /home/your/transfer/folder”）。");
-		}
-	}
-
-	// 删除某一文件或文件夹
-	private void doDelete(String fname) {
-		fname = fname.trim();
-		ProgressListener pl = null;
-		try {
-			currentFolder = FileSystemManager.getInstance().getFolderView(currentFolder.getCurrent().getFolderId());
-		} catch (SQLException e2) {
-			openFolderError();
-			return;
-		}
-		String id = getSelectFolderOrFileId(fname);
-		try {
-			if (currentFolder.getFolders().stream().anyMatch((e) -> e.getFolderId().equals(id))) {
-				if (confirmOpt("确认要删除该文件夹么？")) {
-					Printer.instance.print("正在删除文件夹，请稍候...");
-					pl = new ProgressListener();
-					worker.execute(pl);
-					if (FileSystemManager.getInstance().delete(new String[] { id }, new String[] {})) {
-						Printer.instance.print("删除完毕。");
-					} else {
-						Printer.instance.print("删除失败，可能未能删除该文件夹，请重试。");
-					}
-					pl.c = false;
-				} else {
-					Printer.instance.print("已取消删除。");
-				}
-				return;
-			}
-			if (currentFolder.getFiles().stream().anyMatch((e) -> e.getFileId().equals(id))) {
-				if (confirmOpt("确认要删除该文件么？")) {
-					Printer.instance.print("正在删除文件，请稍候...");
-					pl = new ProgressListener();
-					worker.execute(pl);
-					if (FileSystemManager.getInstance().delete(new String[] {}, new String[] { id })) {
-						Printer.instance.print("删除完毕。");
-					} else {
-						Printer.instance.print("删除失败，可能未能删除该文件，请重试。");
-					}
-					pl.c = false;
-				} else {
-					Printer.instance.print("已取消删除。");
-				}
-				return;
-			}
-		} catch (Exception e1) {
-			if (pl != null) {
-				pl.c = false;
-			}
-			Printer.instance.print("错误：无法删除文件，请重试。");
-		}
-		Printer.instance.print("错误：该文件或文件夹不存在（" + fname + "）。");
-	}
-
-	// 对于关键操作（主要就是删除）进行进一步确认，避免误操作。
-	private boolean confirmOpt(String tip) {
-		Printer.instance.print("提示：" + tip + " [Y/N]");
-		while (true) {
-			System.out.print("> ");
-			String command = reader.nextLine().trim();
-			switch (command) {
-			case "Y":
-				return true;
-			case "N":
-				return false;
-			default:
-				Printer.instance.print("必须正确输入Y或N：");
-				break;
-			}
-		}
-	}
-
-	// 这是一个专门用于显示进度的内部类，在耗时操作中应使用它，每秒显示一次进度状态。
 	class ProgressListener implements Runnable {
 
-		private boolean c = true;
+		private volatile boolean running = true;
 
 		@Override
 		public void run() {
 			try {
 				Thread.sleep(1000);
 			} catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+				return;
 			}
-			while (c) {
+			while (running) {
 				Printer.instance.print(FileSystemManager.message);
 				Printer.instance.print("当前进度：" + FileSystemManager.per + "%");
 				try {
 					Thread.sleep(1000);
 				} catch (InterruptedException e) {
+					Thread.currentThread().interrupt();
+					return;
 				}
 			}
 		}
 
-	}
-
-	// 如果一个文件夹不可访问（例如被删除），则提示下列错误信息
-	private void openFolderError() {
-		Printer.instance.print("错误：无法读取指定文件夹，是否返回根目录？[Y/N]");
-		while (true) {
-			System.out.print("> ");
-			String command = reader.nextLine().trim();
-			switch (command) {
-			case "Y":
-				try {
-					currentFolder = FileSystemManager.getInstance().getFolderView("root");
-				} catch (SQLException e1) {
-					Printer.instance.print("错误：无法读取根目录，请尝试重新打开文件管理系统或重启kiftd。");
-				}
-				return;
-			case "N":
-				return;
-			default:
-				Printer.instance.print("请输入Y或N：");
-				break;
-			}
+		public void stop() {
+			running = false;
 		}
 	}
 }

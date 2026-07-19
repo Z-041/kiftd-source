@@ -7,10 +7,10 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -130,7 +130,7 @@ public class KiftdProperties {
 	 *            java.io.InputStream 输入流，必须为文本输入流
 	 */
 	public void load(InputStream in) throws IOException {
-		try (BufferedReader reader = new BufferedReader(new InputStreamReader(in, "8859_1"))) {
+		try (BufferedReader reader = new BufferedReader(new InputStreamReader(in, StandardCharsets.ISO_8859_1))) {
 			String lineStr = null;
 			// 按行读取文本
 			clear();
@@ -171,7 +171,7 @@ public class KiftdProperties {
 	 *            java.lang.String 标题头，若传入null则不添加此项
 	 */
 	public void store(OutputStream out, String header) throws IOException {
-		try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(out, "8859_1"))) {
+		try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(out, StandardCharsets.ISO_8859_1))) {
 			if (header != null) {
 				writer.write("#" + header);
 				writer.newLine();
@@ -218,11 +218,7 @@ public class KiftdProperties {
 	public void removeProperty(String key) {
 		if (key != null) {
 			properties.remove(key);
-			for(Iterator<LineContext> itor=contexts.iterator();itor.hasNext();) {
-				if(key.equals(itor.next().key)) {
-					itor.remove();
-				}
-			}
+			contexts.removeIf(lc -> key.equals(lc.key));
 		}
 	}
 

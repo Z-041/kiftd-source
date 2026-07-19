@@ -12,7 +12,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
-import kohgylw.kiftd.server.util.ConfigureReader;
+import kohgylw.kiftd.newcore.config.ConfigurationManager;
 
 @ExtendWith(MockitoExtension.class)
 class ProtectedURLFilterTest {
@@ -54,9 +54,9 @@ class ProtectedURLFilterTest {
         when(request.getSession()).thenReturn(session);
         when(session.getAttribute("ACCOUNT")).thenReturn(null);
 
-        try (var cr = mockStatic(ConfigureReader.class)) {
-            ConfigureReader reader = mock(ConfigureReader.class);
-            cr.when(ConfigureReader::instance).thenReturn(reader);
+        try (var cr = mockStatic(ConfigurationManager.class)) {
+            ConfigurationManager reader = mock(ConfigurationManager.class);
+            cr.when(ConfigurationManager::instance).thenReturn(reader);
             when(reader.foundAccount(null)).thenReturn(false);
 
             ProtectedURLFilter filter = new ProtectedURLFilter();
@@ -73,9 +73,9 @@ class ProtectedURLFilterTest {
         when(request.getSession()).thenReturn(session);
         when(session.getAttribute("ACCOUNT")).thenReturn("admin");
 
-        try (var cr = mockStatic(ConfigureReader.class)) {
-            ConfigureReader reader = mock(ConfigureReader.class);
-            cr.when(ConfigureReader::instance).thenReturn(reader);
+        try (var cr = mockStatic(ConfigurationManager.class)) {
+            ConfigurationManager reader = mock(ConfigurationManager.class);
+            cr.when(ConfigurationManager::instance).thenReturn(reader);
             when(reader.foundAccount("admin")).thenReturn(true);
 
             ProtectedURLFilter filter = new ProtectedURLFilter();

@@ -99,28 +99,44 @@ public class VerificationCodeFactory {
 			int end_y=RANDOM.nextInt(height);
 			graphics.drawLine(start_x, start_y, end_x, end_y);
 		}
-		for(int i=0;i<maxOval;i++) {
-			//为每条线随机生成一个颜色，不能太浅了
+		for (int i = 0; i < maxOval; i++) {
+			// 为每条线随机生成一个颜色，不能太浅了
 			graphics.setColor(getRandomColor());
-			graphics.setStroke(new BasicStroke(RANDOM.nextInt(charSize)/2+1));
-			int start_x=RANDOM.nextInt(width);
-			int start_y=RANDOM.nextInt(height);
-			int end_x=RANDOM.nextInt(width);
-			int end_y=RANDOM.nextInt(height);
+			graphics.setStroke(new BasicStroke(RANDOM.nextInt(charSize) / 2 + 1));
+			int start_x = RANDOM.nextInt(width);
+			int start_y = RANDOM.nextInt(height);
+			int end_x = RANDOM.nextInt(width);
+			int end_y = RANDOM.nextInt(height);
 			graphics.drawOval(start_x, start_y, end_x, end_y);
 		}
-		//最后，把验证码内容加上去
-		//设置统一字体
-		Font font = new Font("songti", Font.BOLD, charSize);
-		//生成若干个字
-		for(int i=0;i<codeBuffer.length();i++) {
-			//再给每个字也生成一个颜色
+		// 在字符绘制前加入随机噪点，增加自动识别难度，同时保证字符位于噪点之上
+		int noiseCount = Math.max(20, width * height / 80);
+		for (int i = 0; i < noiseCount; i++) {
 			graphics.setColor(getRandomColor());
-			//稍微转一个小角度
-			graphics.setFont(font.deriveFont(AffineTransform.getRotateInstance(Math.toRadians(RANDOM.nextInt(90)),0,-charSize/2)));
-			graphics.drawString(String.valueOf(codeBuffer.charAt(i)), (i+1)*charSize, charSize);
+			int x = RANDOM.nextInt(width);
+			int y = RANDOM.nextInt(height);
+			graphics.fillRect(x, y, 1, 1);
 		}
-		//存入
+		// 最后，把验证码内容加上去
+		// 设置统一字体
+		Font font = new Font("songti", Font.BOLD, charSize);
+		// 生成若干个字
+		for (int i = 0; i < codeBuffer.length(); i++) {
+			// 再给每个字也生成一个颜色
+			graphics.setColor(getRandomColor());
+			// 随机水平与垂直偏移，破坏基线对齐
+			int xOffset = RANDOM.nextInt(charSize / 3) - charSize / 6;
+			int yOffset = RANDOM.nextInt(charSize / 2) - charSize / 4;
+			int xPos = (i + 1) * charSize + xOffset;
+			int yPos = charSize + yOffset;
+			// 稍微转一个小角度
+			AffineTransform transform = new AffineTransform();
+			transform.translate(0, yOffset);
+			transform.rotate(Math.toRadians(RANDOM.nextInt(90)), 0, -charSize / 2);
+			graphics.setFont(font.deriveFont(transform));
+			graphics.drawString(String.valueOf(codeBuffer.charAt(i)), xPos, yPos);
+		}
+		// 存入
 		result.setImage(image);
 		return result;
 	}

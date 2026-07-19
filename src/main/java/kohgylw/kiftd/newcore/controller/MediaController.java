@@ -1,6 +1,5 @@
 package kohgylw.kiftd.newcore.controller;
 
-import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import kohgylw.kiftd.newcore.service.MediaService;
@@ -15,8 +14,11 @@ public class MediaController {
 
 	private static final String CHARSET_BY_AJAX = "text/html; charset=utf-8";
 
-	@Resource
-	private MediaService mediaService;
+	private final MediaService mediaService;
+
+	public MediaController(MediaService mediaService) {
+		this.mediaService = mediaService;
+	}
 
 	@RequestMapping(value = { "/playVideo.ajax" }, produces = { CHARSET_BY_AJAX })
 	@ResponseBody

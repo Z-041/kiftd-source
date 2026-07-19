@@ -11,6 +11,8 @@ public interface FileNodeRepository {
 
 	List<Node> selectByParentFolderId(String parentFolderId);
 
+	List<Node> selectByParentFolderIds(List<String> parentFolderIds);
+
 	List<Node> selectByParentFolderIdSection(Map<String, Object> paramMap);
 
 	List<Node> selectByPath(String path);
@@ -24,4 +26,6 @@ public interface FileNodeRepository {
 	int update(Node node);
 
 	int deleteById(String fileId);
+
+	long countByParentFolderId(String parentFolderId);
 }

@@ -3,6 +3,7 @@ package kohgylw.kiftd.server.util;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.*;
 
+import kohgylw.kiftd.newcore.config.ConfigurationManager;
 import kohgylw.kiftd.printer.Printer;
 import kohgylw.kiftd.server.enumeration.AccountAuth;
 import kohgylw.kiftd.server.mapper.*;
@@ -59,7 +60,7 @@ public class FileBlockUtil {
 	 *
 	 */
 	public void initTempDir() {
-		final File f = new File(ConfigureReader.instance().getTemporaryfilePath());
+		final File f = new File(ConfigurationManager.instance().getTemporaryfilePath());
 		if (f.isDirectory()) {
 			try (DirectoryStream<Path> ds = Files.newDirectoryStream(f.toPath())) {
 				for (Path path : ds) {
@@ -94,21 +95,47 @@ public class FileBlockUtil {
 	 * @return java.io.File 生成的文件块，如果保存失败则返回null
 	 */
 	public File saveToFileBlocks(final MultipartFile f) {
-		// 得到全部扩展存储区
-		List<ExtendStores> ess = getExtendStoresBySort();
+		return saveToFileBlocks(f.getSize(), file -> {
+			try (InputStream in = f.getInputStream()) {
+				Files.copy(in, file.toPath(), StandardCopyOption.REPLACE_EXISTING);
+			} catch (IOException e) {
+				throw new UncheckedIOException(e);
+			}
+		});
+	}
+
+	/**
+	 * 
+	 * <h2>将新上传的文件存入文件系统</h2>
+	 * <p>
+	 * 将一个java.io.File类型的文件对象存入节点，并返回保存的路径名称。其中，路径名称使用“file_{UUID}.block”
+	 * （存放于主文件系统中）或“{存储区编号}_{UUID}.block”（存放在指定编号的扩展存储区中）的形式。
+	 * </p>
+	 * 
+	 * @author 青阳龙野(kohgylw)
+	 * @param f 要存入的文件对象
+	 * @return java.io.File 生成的文件块，如果保存失败则返回null
+	 */
+	public File saveToFileBlocks(final File f) {
+		return saveToFileBlocks(f.length(), file -> {
+			try {
+				Files.move(f.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING);
+			} catch (IOException e) {
+				throw new UncheckedIOException(e);
+			}
+		});
+	}
+
+	private File saveToFileBlocks(long fileSize, java.util.function.Consumer<File> writeOperation) {
+		List<ExtendStores> ess = FileBlockUtil.getExtendStoresBySort();
 		if (ess.size() > 0) {
-			// 从文件块最少的开始遍历这些扩展存储区
 			for (ExtendStores es : ess) {
-				if (es.getPath().getFreeSpace() > f.getSize()) {
-					// 如果该存储区的空余容量大于待上传文件的体积
+				if (es.getPath().getFreeSpace() > fileSize) {
 					File file = null;
 					try {
-						// 则尝试在该存储区中生成一个空文件块
-						file = createNewBlock(es.getIndex() + "_", es.getPath());
+						file = FileBlockUtil.createNewBlock(es.getIndex() + "_", es.getPath());
 						if (file != null) {
-							try (InputStream in = f.getInputStream()) {
-								Files.copy(in, file.toPath(), StandardCopyOption.REPLACE_EXISTING);
-							}
+							writeOperation.accept(file);
 							return file;
 						} else {
 							continue;
@@ -128,89 +155,18 @@ public class FileBlockUtil {
 		}
 		File file = null;
 		try {
-			file = createNewBlock("file_", new File(ConfigureReader.instance().getFileBlockPath()));
+			file = FileBlockUtil.createNewBlock("file_", new File(ConfigurationManager.instance().getFileBlockPath()));
 			if (file != null) {
-				try (InputStream in = f.getInputStream()) {
-					Files.copy(in, file.toPath(), StandardCopyOption.REPLACE_EXISTING);
-				}
+				writeOperation.accept(file);
 				return file;
 			}
 		} catch (Exception e) {
-			// 出现异常则记录日志，则删除残留数据并返回null
 			if (file != null) {
 				file.delete();
 			}
 			lu.writeException(e);
 			Printer.instance.print("错误：文件块生成失败，无法存入新的文件数据。详细信息：" + e.getMessage());
 		}
-		// 因其他原因生成失败也返回null
-		return null;
-	}
-
-	/**
-	 * 
-	 * <h2>将新上传的文件存入文件系统</h2>
-	 * <p>
-	 * 将一个java.io.File类型的文件对象存入节点，并返回保存的路径名称。其中，路径名称使用“file_{UUID}.block”
-	 * （存放于主文件系统中）或“{存储区编号}_{UUID}.block”（存放在指定编号的扩展存储区中）的形式。
-	 * </p>
-	 * 
-	 * @author 青阳龙野(kohgylw)
-	 * @param f 要存入的文件对象
-	 * @return java.io.File 生成的文件块，如果保存失败则返回null
-	 */
-	public File saveToFileBlocks(final File f) {
-		// 得到全部扩展存储区
-		List<ExtendStores> ess = getExtendStoresBySort();
-		if (ess.size() > 0) {
-			// 从文件块最少的开始遍历这些扩展存储区
-			for (ExtendStores es : ess) {
-				if (es.getPath().getFreeSpace() > f.length()) {
-					// 如果该存储区的空余容量大于待上传文件的体积
-					File file = null;
-					try {
-						// 则尝试在该存储区中生成一个空文件块
-						file = createNewBlock(es.getIndex() + "_", es.getPath());
-						if (file != null) {
-							// 生成成功，尝试存入数据
-							Files.move(f.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING);
-							return file;
-						} else {
-							continue;// 如果本处无法生成新文件块，那么在其他路径下继续尝试
-						}
-					} catch (IOException e) {
-						// 出现IO异常，则删除残留文件并继续尝试其他扩展存储区
-						if (file != null) {
-							file.delete();
-						}
-						continue;
-					} catch (Exception e) {
-						// 出现其他异常则记录日志
-						lu.writeException(e);
-						Printer.instance.print(e.getMessage());
-						continue;
-					}
-				}
-			}
-		}
-		// 如果不存在扩展存储区或者最大的扩展存储区的剩余容量依旧小于指定大小，则尝试在主文件系统路径下生成新文件块
-		File file = null;
-		try {
-			file = createNewBlock("file_", new File(ConfigureReader.instance().getFileBlockPath()));
-			if (file != null) {
-				// 生成成功，则尝试存入数据
-				Files.move(f.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING);
-				return file;
-			}
-		} catch (Exception e) {
-			// 出现异常则记录日志，则删除残留数据并返回null
-			if (file != null) {
-				file.delete();
-			}
-			lu.writeException(e);
-			Printer.instance.print("错误：文件块生成失败，无法存入新的文件数据。详细信息：" + e.getMessage());
-		}
-		// 因其他原因生成失败也返回null
 		return null;
 	}
 
@@ -224,36 +180,30 @@ public class FileBlockUtil {
 	 * @author 青阳龙野(kohgylw)
 	 * @return java.util.List&lt;ExtendStores&rt; 排序好的扩展存储区列表。
 	 */
-	private List<ExtendStores> getExtendStoresBySort() {
-		List<ExtendStores> ess = ConfigureReader.instance().getExtendStores();
+	public static List<ExtendStores> getExtendStoresBySort() {
+		List<ExtendStores> ess = ConfigurationManager.instance().getExtendStores();
 		if (ess.size() > 0) {
-			// 将所有扩展存储区按照已存储文件块的数目从小到大进行排序
-			Collections.sort(ess, new Comparator<ExtendStores>() {
-				@Override
-				public int compare(ExtendStores o1, ExtendStores o2) {
+			Collections.sort(ess, (o1, o2) -> {
+				try {
+					String[] list1 = o1.getPath().list();
+					String[] list2 = o2.getPath().list();
+					int len1 = list1 == null ? 0 : list1.length;
+					int len2 = list2 == null ? 0 : list2.length;
+					return Integer.compare(len1, len2);
+				} catch (Exception e) {
 					try {
-						// 通常情况下，直接比较子文件列表长度即可
-						String[] list1 = o1.getPath().list();
-						String[] list2 = o2.getPath().list();
-						int len1 = list1 == null ? 0 : list1.length;
-						int len2 = list2 == null ? 0 : list2.length;
-						return Integer.compare(len1, len2);
-					} catch (Exception e) {
-						try {
-							// 如果文件太多以至于超出数组上限，则换用如下统计方法
-							long count1;
-							long count2;
-							try (Stream<Path> s1 = Files.list(o1.getPath().toPath())) {
-								count1 = s1.count();
-							}
-							try (Stream<Path> s2 = Files.list(o2.getPath().toPath())) {
-								count2 = s2.count();
-							}
-							long dValue = count1 - count2;
-							return dValue > 0L ? 1 : dValue == 0 ? 0 : -1;
-						} catch (IOException e1) {
-							return 0;
+						long count1;
+						long count2;
+						try (Stream<Path> s1 = Files.list(o1.getPath().toPath())) {
+							count1 = s1.count();
 						}
+						try (Stream<Path> s2 = Files.list(o2.getPath().toPath())) {
+							count2 = s2.count();
+						}
+						long dValue = count1 - count2;
+						return dValue > 0L ? 1 : dValue == 0 ? 0 : -1;
+					} catch (IOException e1) {
+						return 0;
 					}
 				}
 			});
@@ -261,8 +211,7 @@ public class FileBlockUtil {
 		return ess;
 	}
 
-	// 生成创建一个在指定路径下名称（编号）绝对不重复的新文件块
-	private File createNewBlock(String prefix, File parent) throws IOException {
+	public static File createNewBlock(String prefix, File parent) throws IOException {
 		int appendIndex = 0;
 		int retryNum = 0;
 		String newName = prefix + UUID.randomUUID().toString().replace("-", "");
@@ -341,7 +290,7 @@ public class FileBlockUtil {
 	 */
 	private boolean clearFileBlock(Node n) {
 		// 获取“删除留档”功能的设置路径。
-		String recycleBinPath = ConfigureReader.instance().getRecycleBinPath();
+		String recycleBinPath = ConfigurationManager.instance().getRecycleBinPath();
 		// 获取节点对应的文件块
 		File file = getFileFromBlocks(n);
 		// 检查该节点引用的文件块是否被其他节点引用
@@ -439,22 +388,24 @@ public class FileBlockUtil {
 		if (f == null) {
 			return null;
 		}
+		String filePath = f.getFilePath();
+		if (filePath == null || !isValidBlockFileName(filePath)) {
+			return null;
+		}
 		try {
-			File file = null;
-			if (f.getFilePath() == null) {
-				return null;
-			}
-			if (f.getFilePath().startsWith("file_")) {// 存放于主文件系统中
+			File file;
+			if (filePath.startsWith("file_")) {// 存放于主文件系统中
 				// 直接从主文件系统的文件块存放区获得对应的文件块
-				file = new File(ConfigureReader.instance().getFileBlockPath(), f.getFilePath());
+				file = resolveBlockFile(new File(ConfigurationManager.instance().getFileBlockPath()), filePath);
 			} else {// 存放于扩展存储区
-				short index = Short.parseShort(f.getFilePath().substring(0, f.getFilePath().indexOf('_')));
+				short index = Short.parseShort(filePath.substring(0, filePath.indexOf('_')));
 				// 根据编号查到对应的扩展存储区路径，进而获取对应的文件块
-				ExtendStores es = ConfigureReader.instance().getExtendStores().stream()
+				ExtendStores es = ConfigurationManager.instance().getExtendStores().stream()
 						.filter((e) -> e.getIndex() == index).findAny().orElse(null);
-				if (es != null) {
-					file = new File(es.getPath(), f.getFilePath());
+				if (es == null) {
+					return null;
 				}
+				file = resolveBlockFile(es.getPath(), filePath);
 			}
 			if (file != null && file.isFile()) {
 				return file;
@@ -464,6 +415,19 @@ public class FileBlockUtil {
 			Printer.instance.print("错误：文件数据读取失败。详细信息：" + e.getMessage());
 		}
 		return null;
+	}
+
+	private static boolean isValidBlockFileName(String filePath) {
+		return filePath.matches("^(file|\\d+)_[A-Za-z0-9_-]+\\.block$");
+	}
+
+	private static File resolveBlockFile(File root, String filePath) throws IOException {
+		Path rootPath = root.toPath().normalize().toAbsolutePath();
+		Path resolved = rootPath.resolve(filePath).normalize().toAbsolutePath();
+		if (!resolved.startsWith(rootPath)) {
+			return null;
+		}
+		return resolved.toFile();
 	}
 
 	/**
@@ -482,8 +446,8 @@ public class FileBlockUtil {
 				checkNodes("root");
 				// 检查是否存在未正确对应文件节点的文件块，若有则删除，从而确保文件块不出现遗留问题
 				List<File> paths = new ArrayList<>();
-				paths.add(new File(ConfigureReader.instance().getFileBlockPath()));
-				for (ExtendStores es : ConfigureReader.instance().getExtendStores()) {
+				paths.add(new File(ConfigurationManager.instance().getFileBlockPath()));
+				for (ExtendStores es : ConfigurationManager.instance().getExtendStores()) {
 					paths.add(es.getPath());
 				}
 				for (File path : paths) {
@@ -513,8 +477,12 @@ public class FileBlockUtil {
 
 	// 校对文件节点，要求某一节点必须有对应的文件块，否则将其移除（避免出现死节点）
 	private void checkNodes(String fid) {
-		List<Node> nodes = fm.queryByParentFolderId(fid);
-		for (Node node : nodes) {
+		// 批量加载所有后代文件夹，避免递归 N+1 查询
+		final List<String> allFolderIds = new ArrayList<>();
+		allFolderIds.add(fid);
+		allFolderIds.addAll(fu.getAllDescendantFolderIds(fid));
+		final List<Node> allNodes = fm.queryByParentFolderIds(allFolderIds);
+		for (Node node : allNodes) {
 			File block = getFileFromBlocks(node);
 			if (block == null) {
 				fm.deleteById(node.getFileId());
@@ -527,10 +495,6 @@ public class FileBlockUtil {
 					fm.updateById(node);
 				}
 			}
-		}
-		List<Folder> folders = flm.queryByParentId(fid);
-		for (Folder fl : folders) {
-			checkNodes(fl.getFolderId());
 		}
 	}
 
@@ -550,7 +514,7 @@ public class FileBlockUtil {
 	 */
 	public String createZip(final List<String> idList, final List<String> fidList, String account) {
 		final String zipname = "tf_" + UUID.randomUUID().toString() + ".zip";
-		final String tempPath = ConfigureReader.instance().getTemporaryfilePath();
+		final String tempPath = ConfigurationManager.instance().getTemporaryfilePath();
 		final File f = new File(tempPath, zipname);
 		try {
 			final List<ZipEntrySource> zs = new ArrayList<>();
@@ -558,7 +522,7 @@ public class FileBlockUtil {
 			final List<Folder> folders = new ArrayList<>();
 			for (String fid : fidList) {
 				Folder fo = flm.selectById(fid);
-				if (ConfigureReader.instance().accessFolder(fo, account) && ConfigureReader.instance()
+				if (ConfigurationManager.instance().accessFolder(fo, account) && ConfigurationManager.instance()
 						.authorized(account, AccountAuth.DOWNLOAD_FILES, fu.getAllFoldersId(fo.getFolderParent()))) {
 					if (fo != null) {
 						folders.add(fo);
@@ -568,8 +532,8 @@ public class FileBlockUtil {
 			final List<Node> nodes = new ArrayList<>();
 			for (String id : idList) {
 				Node n = fm.selectById(id);
-				if (ConfigureReader.instance().accessFolder(flm.selectById(n.getFileParentFolder()), account)
-						&& ConfigureReader.instance().authorized(account, AccountAuth.DOWNLOAD_FILES,
+				if (ConfigurationManager.instance().accessFolder(flm.selectById(n.getFileParentFolder()), account)
+						&& ConfigurationManager.instance().authorized(account, AccountAuth.DOWNLOAD_FILES,
 								fu.getAllFoldersId(n.getFileParentFolder()))) {
 					if (n != null) {
 						nodes.add(n);
@@ -591,7 +555,7 @@ public class FileBlockUtil {
 				addFoldersToZipEntrySourceArray(fo, zs, account, "");
 			}
 			for (Node node : nodes) {
-				if (ConfigureReader.instance().accessFolder(flm.selectById(node.getFileParentFolder()), account)) {
+				if (ConfigurationManager.instance().accessFolder(flm.selectById(node.getFileParentFolder()), account)) {
 					int i = 1;
 					String fname = node.getFileName();
 					while (true) {
@@ -623,7 +587,7 @@ public class FileBlockUtil {
 
 	// 迭代生成ZIP文件夹单元，将一个文件夹内的文件和文件夹也进行打包
 	private void addFoldersToZipEntrySourceArray(Folder f, List<ZipEntrySource> zs, String account, String parentPath) {
-		if (f != null && ConfigureReader.instance().accessFolder(f, account)) {
+		if (f != null && ConfigurationManager.instance().accessFolder(f, account)) {
 			String folderName = f.getFolderName();
 			String thisPath = parentPath + folderName + "/";
 			zs.add(new ZipEntrySource() {

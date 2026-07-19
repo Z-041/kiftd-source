@@ -1,11 +1,10 @@
 package kohgylw.kiftd.newcore.controller;
 
-import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 
-import kohgylw.kiftd.server.service.ResourceService;
+import kohgylw.kiftd.newcore.service.ResourceService;
 
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -16,8 +15,11 @@ import org.springframework.web.bind.annotation.ResponseBody;
 @RequestMapping({ "/resourceController" })
 public class ResourceController {
 
-	@Resource
-	private ResourceService rs;
+	private final ResourceService rs;
+
+	public ResourceController(ResourceService rs) {
+		this.rs = rs;
+	}
 
 	@RequestMapping("/getResource/{fileId}")
 	public void getResource(@PathVariable("fileId") String fileId, HttpServletRequest request,

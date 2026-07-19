@@ -1,6 +1,5 @@
 package kohgylw.kiftd.newcore.controller;
 
-import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
@@ -19,12 +18,15 @@ public class FileController {
 
 	private static final String CHARSET_BY_AJAX = "text/html; charset=utf-8";
 
-	@Resource
-	private FileService fileService;
-	@Resource
-	private FolderService folderService;
-	@Resource
-	private FolderViewService folderViewService;
+	private final FileService fileService;
+	private final FolderService folderService;
+	private final FolderViewService folderViewService;
+
+	public FileController(FileService fileService, FolderService folderService, FolderViewService folderViewService) {
+		this.fileService = fileService;
+		this.folderService = folderService;
+		this.folderViewService = folderViewService;
+	}
 
 	@RequestMapping(value = { "/douploadFile.ajax" }, produces = { CHARSET_BY_AJAX })
 	@ResponseBody

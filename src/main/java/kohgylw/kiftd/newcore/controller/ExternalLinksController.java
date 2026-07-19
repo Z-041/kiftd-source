@@ -1,10 +1,9 @@
 package kohgylw.kiftd.newcore.controller;
 
-import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import kohgylw.kiftd.server.service.ExternalDownloadService;
-import kohgylw.kiftd.server.service.FileChainService;
+import kohgylw.kiftd.newcore.service.ExternalDownloadService;
+import kohgylw.kiftd.newcore.service.FileChainService;
 
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -14,10 +13,13 @@ import org.springframework.web.bind.annotation.ResponseBody;
 @RequestMapping({ "/externalLinksController" })
 public class ExternalLinksController {
 
-	@Resource
-	private ExternalDownloadService eds;
-	@Resource
-	private FileChainService fcs;
+	private final ExternalDownloadService eds;
+	private final FileChainService fcs;
+
+	public ExternalLinksController(ExternalDownloadService eds, FileChainService fcs) {
+		this.eds = eds;
+		this.fcs = fcs;
+	}
 
 	@RequestMapping("/getDownloadKey.ajax")
 	@ResponseBody

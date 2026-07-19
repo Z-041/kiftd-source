@@ -1,22 +1,23 @@
 package kohgylw.kiftd.newcore.config;
 
 import java.io.File;
+import java.util.Arrays;
 
 import jakarta.servlet.MultipartConfigElement;
+import jakarta.servlet.SessionCookieConfig;
+import jakarta.servlet.ServletContext;
 
 import org.springframework.boot.web.server.WebServerFactoryCustomizer;
 import org.springframework.boot.web.servlet.ServletComponentScan;
+import org.springframework.boot.web.servlet.ServletContextInitializer;
 import org.springframework.boot.web.servlet.server.ConfigurableServletWebServerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.DefaultServletHandlerConfigurer;
-import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -28,31 +29,16 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
 	@Override
 	public void addCorsMappings(CorsRegistry registry) {
-		registry.addMapping("/**")
-				.allowedOriginPatterns("*")
-				.allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
-				.allowedHeaders("*")
-				.allowCredentials(true);
-	}
-
-	@Override
-	public void addInterceptors(InterceptorRegistry registry) {
-		registry.addInterceptor(new org.springframework.web.servlet.HandlerInterceptor() {
-			@Override
-			public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler)
-					throws Exception {
-				if ("POST".equalsIgnoreCase(request.getMethod())
-						&& request.getRequestURI().endsWith(".ajax")) {
-					String referer = request.getHeader("Referer");
-					String origin = request.getHeader("Origin");
-					if (referer == null && origin == null) {
-						response.sendError(HttpServletResponse.SC_FORBIDDEN);
-						return false;
-					}
-				}
-				return true;
-			}
-		});
+		String origins = ConfigurationManager.instance().getCorsAllowedOrigins();
+		if (origins != null && !origins.isEmpty()) {
+			String[] originArray = Arrays.stream(origins.split(","))
+					.map(String::trim)
+					.toArray(String[]::new);
+			registry.addMapping("/**")
+					.allowedOrigins(originArray)
+					.allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+					.allowedHeaders("*");
+		}
 	}
 
 	@Bean
@@ -80,5 +66,13 @@ public class WebMvcConfig implements WebMvcConfigurer {
 	@Bean
 	public Gson gson() {
 		return new GsonBuilder().create();
+	}
+
+	@Bean
+	public ServletContextInitializer sessionCookieInitializer() {
+		return servletContext -> {
+			SessionCookieConfig config = servletContext.getSessionCookieConfig();
+			config.setHttpOnly(true);
+		};
 	}
 }

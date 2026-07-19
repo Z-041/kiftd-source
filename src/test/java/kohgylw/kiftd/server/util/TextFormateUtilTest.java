@@ -39,6 +39,7 @@ class TextFormateUtilTest {
         assertTrue(tfu.matcherFileName("my-photo.jpg"));
         assertTrue(tfu.matcherFileName("测试文件.pdf"));
         assertTrue(tfu.matcherFileName("file_v1.2.tar.gz"));
+        assertTrue(tfu.matcherFileName("file..txt"));
     }
 
     @Test
@@ -53,12 +54,12 @@ class TextFormateUtilTest {
 
     @Test
     void testMatcherFolderNameEmptyString() {
-        assertTrue(tfu.matcherFolderName(""));
+        assertFalse(tfu.matcherFolderName(""));
     }
 
     @Test
     void testMatcherFileNameEmptyString() {
-        assertTrue(tfu.matcherFileName(""));
+        assertFalse(tfu.matcherFileName(""));
     }
 
     @Test
@@ -66,6 +67,40 @@ class TextFormateUtilTest {
         assertFalse(tfu.matcherFolderName("|"));
         assertFalse(tfu.matcherFolderName(":"));
         assertFalse(tfu.matcherFolderName("*"));
+    }
+
+    @Test
+    void testMatcherNameRejectsControlCharacters() {
+        assertFalse(tfu.matcherFileName("file\u0000.txt"));
+        assertFalse(tfu.matcherFolderName("folder\u0007name"));
+        assertFalse(tfu.matcherFileName("file\u007f.txt"));
+    }
+
+    @Test
+    void testMatcherNameRejectsLeadingOrTrailingSpaceAndDot() {
+        assertFalse(tfu.matcherFileName(" leading.txt"));
+        assertFalse(tfu.matcherFileName("trailing "));
+        assertFalse(tfu.matcherFileName(".hidden.txt"));
+        assertFalse(tfu.matcherFileName("file."));
+        assertFalse(tfu.matcherFolderName(".hidden"));
+    }
+
+    @Test
+    void testMatcherNameRejectsWindowsReservedNames() {
+        assertFalse(tfu.matcherFileName("CON"));
+        assertFalse(tfu.matcherFileName("con.txt"));
+        assertFalse(tfu.matcherFileName("COM1"));
+        assertFalse(tfu.matcherFileName("LPT9"));
+        assertFalse(tfu.matcherFolderName("NUL"));
+    }
+
+    @Test
+    void testMatcherNameRejectsTooLongName() {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < 256; i++) {
+            sb.append('a');
+        }
+        assertFalse(tfu.matcherFileName(sb.toString()));
     }
 
     @Test

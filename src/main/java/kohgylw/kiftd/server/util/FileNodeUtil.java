@@ -1,5 +1,7 @@
 package kohgylw.kiftd.server.util;
 
+import kohgylw.kiftd.newcore.config.ConfigurationManager;
+
 import java.io.File;
 import java.io.IOException;
 import java.sql.Connection;
@@ -51,16 +53,16 @@ public class FileNodeUtil {
 		Printer.instance.print("初始化文件节点...");
 		try {
 			if (conn == null) {
-				Class.forName(ConfigureReader.instance().getFileNodePathDriver()).getDeclaredConstructor().newInstance();
+				Class.forName(ConfigurationManager.instance().getFileNodePathDriver()).getDeclaredConstructor().newInstance();
 			}
-			String newUrl = ConfigureReader.instance().getFileNodePathURL();
+			String newUrl = ConfigurationManager.instance().getFileNodePathURL();
 			// 判断当前位置是否初始化文件节点
 			if (url == null || !url.equals(newUrl)) {
-				conn = DriverManager.getConnection(newUrl, ConfigureReader.instance().getFileNodePathUserName(),
-						ConfigureReader.instance().getFileNodePathPassWord());
+				conn = DriverManager.getConnection(newUrl, ConfigurationManager.instance().getFileNodePathUserName(),
+						ConfigurationManager.instance().getFileNodePathPassWord());
 				url = newUrl;
 				// 检查是否存在旧版本的归档数据，若有，则尝试将其导入。
-				File upgradeFile = new File(ConfigureReader.instance().getFileNodePath() + "upgrade.sql");
+				File upgradeFile = new File(ConfigurationManager.instance().getFileNodePath() + "upgrade.sql");
 				if (upgradeFile.isFile()) {
 					Printer.instance.print("正在从旧版本导入数据...");
 					try (Statement state0 = conn.createStatement()) {
@@ -87,7 +89,7 @@ public class FileNodeUtil {
 							"CREATE TABLE IF NOT EXISTS FILE(file_id VARCHAR(128) PRIMARY KEY,file_name VARCHAR(128) NOT NULL,file_size VARCHAR(128) NOT NULL,file_parent_folder varchar(128) NOT NULL,file_creation_date varchar(128) NOT NULL,file_creator varchar(128) NOT NULL,file_path varchar(128) NOT NULL)");
 				}
 				// 为数据库生成索引，此处分为MySQL和H2两种操作
-				if (ConfigureReader.instance().useMySQL()) {
+				if (ConfigurationManager.instance().useMySQL()) {
 					try (Statement state4 = conn.createStatement();
 							ResultSet indexCount = state4.executeQuery("SHOW INDEX FROM FILE WHERE Key_name = 'file_index'")) {
 						if (!indexCount.next()) {
@@ -143,20 +145,8 @@ public class FileNodeUtil {
 	 * @return java.lang.String 新文件名
 	 */
 	public static String getNewNodeName(String originalName, List<Node> nodes) {
-		int i = 0;
 		List<String> fileNames = nodes.stream().map(Node::getFileName).collect(Collectors.toList());
-		String newName = originalName;
-		int lastDotIndex = originalName.lastIndexOf(".");
-		while (fileNames.contains(newName)) {
-			i++;
-			if (lastDotIndex >= 0) {
-				newName = originalName.substring(0, lastDotIndex) + " (" + i + ")"
-						+ originalName.substring(lastDotIndex);
-			} else {
-				newName = originalName + " (" + i + ")";
-			}
-		}
-		return newName;
+		return generateUniqueName(originalName, fileNames, true);
 	}
 
 	/**
@@ -172,14 +162,8 @@ public class FileNodeUtil {
 	 * @return java.lang.String 新文件夹名
 	 */
 	public static String getNewFolderName(String originalName, List<? extends Folder> folders) {
-		int i = 0;
 		List<String> fileNames = folders.stream().map(Folder::getFolderName).collect(Collectors.toList());
-		String newName = originalName;
-		while (fileNames.contains(newName)) {
-			i++;
-			newName = originalName + " " + i;
-		}
-		return newName;
+		return generateUniqueName(originalName, fileNames, false);
 	}
 
 	/**
@@ -195,17 +179,11 @@ public class FileNodeUtil {
 	 * @return java.lang.String 新文件夹名
 	 */
 	public static String getNewFolderName(Folder folder, File parentfolder) {
-		int i = 0;
 		File[] listedFiles = parentfolder.listFiles();
 		List<String> fileNames = listedFiles == null ? Collections.emptyList()
 				: java.util.Arrays.stream(listedFiles).filter(File::isDirectory).map(File::getName)
 						.collect(Collectors.toList());
-		String newName = folder.getFolderName();
-		while (fileNames.contains(newName)) {
-			i++;
-			newName = folder.getFolderName() + " " + i;
-		}
-		return newName;
+		return generateUniqueName(folder.getFolderName(), fileNames, false);
 	}
 
 	/**
@@ -223,21 +201,26 @@ public class FileNodeUtil {
 	 * @return java.lang.String 新文件名
 	 */
 	public static String getNewNodeName(Node n, File folder) {
-		int i = 0;
 		File[] listedFiles = folder.listFiles();
 		List<String> fileNames = listedFiles == null ? Collections.emptyList()
 				: java.util.Arrays.stream(listedFiles).filter(File::isFile).map(File::getName)
 						.collect(Collectors.toList());
-		String originalName = n.getFileName();
+		return generateUniqueName(n.getFileName(), fileNames, true);
+	}
+
+	private static String generateUniqueName(String originalName, List<String> existingNames, boolean isFile) {
+		int i = 0;
 		String newName = originalName;
 		int lastDotIndex = originalName.lastIndexOf(".");
-		while (fileNames.contains(newName)) {
+		while (existingNames.contains(newName)) {
 			i++;
-			if (lastDotIndex >= 0) {
+			if (isFile && lastDotIndex >= 0) {
 				newName = originalName.substring(0, lastDotIndex) + " (" + i + ")"
 						+ originalName.substring(lastDotIndex);
-			} else {
+			} else if (isFile) {
 				newName = originalName + " (" + i + ")";
+			} else {
+				newName = originalName + " " + i;
 			}
 		}
 		return newName;

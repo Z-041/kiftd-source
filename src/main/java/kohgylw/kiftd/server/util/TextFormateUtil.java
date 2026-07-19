@@ -15,23 +15,52 @@ import java.util.regex.*;
  * @author 青阳龙野(kohgylw)
  * @version 1.0
  */
-public class TextFormateUtil
-{
-    private static TextFormateUtil tfu;
-    private static final Pattern NAME_PATTERN = Pattern.compile("[|\\/*<>\"?&$:]+");
-    
+public final class TextFormateUtil {
+    private static final TextFormateUtil INSTANCE = new TextFormateUtil();
+    // 非法字符：控制字符以及 Windows/Unix 路径与 shell 危险字符
+    private static final Pattern ILLEGAL_CHAR_PATTERN = Pattern.compile("[\\x00-\\x1f\\x7f|\\\\/*<>\"?&$:]+");
+    // Windows 保留设备名（不区分大小写），后接点号或字符串结尾均视为保留名
+    private static final Pattern RESERVED_NAME_PATTERN = Pattern
+            .compile("(?i)^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(\\.|$)");
+    private static final int MAX_NAME_LENGTH = 255;
+
+    private TextFormateUtil() {
+    }
+
     public static TextFormateUtil instance() {
-        return TextFormateUtil.tfu;
+        return INSTANCE;
     }
-    
+
     public boolean matcherFolderName(final String folderName) {
-        final Matcher m = NAME_PATTERN.matcher(folderName);
-        return !m.find();
+        return isValidName(folderName);
     }
-    
+
     public boolean matcherFileName(final String fileName) {
-        final Matcher m = NAME_PATTERN.matcher(fileName);
-        return !m.find();
+        return isValidName(fileName);
+    }
+
+    private boolean isValidName(final String name) {
+        if (name == null) {
+            return false;
+        }
+        final int len = name.length();
+        if (len == 0 || len > MAX_NAME_LENGTH) {
+            return false;
+        }
+        if (ILLEGAL_CHAR_PATTERN.matcher(name).find()) {
+            return false;
+        }
+        // 首尾空格或点号在 Windows 与部分文件系统会导致异常或安全问题
+        final char first = name.charAt(0);
+        final char last = name.charAt(len - 1);
+        if (first == ' ' || first == '.' || last == ' ' || last == '.') {
+            return false;
+        }
+        // Windows 保留设备名
+        if (RESERVED_NAME_PATTERN.matcher(name).find()) {
+            return false;
+        }
+        return true;
     }
     
     /**
@@ -50,8 +79,4 @@ public class TextFormateUtil
 	public boolean hasEscapes(String in) {
 		return in.indexOf("\\") >= 0;
 	}
-    
-    static {
-        TextFormateUtil.tfu = new TextFormateUtil();
-    }
 }

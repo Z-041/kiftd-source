@@ -1,6 +1,5 @@
 package kohgylw.kiftd.newcore.controller;
 
-import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import kohgylw.kiftd.newcore.service.SystemService;
 
@@ -14,8 +13,11 @@ public class AdminController {
 
 	private static final String CHARSET_BY_AJAX = "text/html; charset=utf-8";
 
-	@Resource
-	private SystemService systemService;
+	private final SystemService systemService;
+
+	public AdminController(SystemService systemService) {
+		this.systemService = systemService;
+	}
 
 	@RequestMapping({ "/getServerOS.ajax" })
 	@ResponseBody

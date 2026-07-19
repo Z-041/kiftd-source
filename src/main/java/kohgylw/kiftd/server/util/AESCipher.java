@@ -32,26 +32,23 @@ public class AESCipher {
 	private static final String CIPHER_TYPE = "AES/GCM/NoPadding";
 	private static final int GCM_IV_LENGTH = 12;
 	private static final int GCM_TAG_LENGTH = 128;
-	private Base64.Encoder encoder;
-	private Base64.Decoder decoder;
-	private SecureRandom secureRandom;
+	private static final Base64.Encoder ENCODER = Base64.getEncoder();
+	private static final Base64.Decoder DECODER = Base64.getDecoder();
+	private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
 	public AESCipher() {
-		encoder = Base64.getEncoder();
-		decoder = Base64.getDecoder();
-		secureRandom = new SecureRandom();
 	}
 
 	public String generateRandomKey() throws NoSuchAlgorithmException {
 		KeyGenerator kg = KeyGenerator.getInstance("AES");
 		kg.init(256);
-		return encoder.encodeToString(kg.generateKey().getEncoded());
+		return ENCODER.encodeToString(kg.generateKey().getEncoded());
 	}
 
 	public String encrypt(String base64Key, String content) throws Exception {
-		SecretKey key = new SecretKeySpec(decoder.decode(base64Key), "AES");
+		SecretKey key = new SecretKeySpec(DECODER.decode(base64Key), "AES");
 		byte[] iv = new byte[GCM_IV_LENGTH];
-		secureRandom.nextBytes(iv);
+		SECURE_RANDOM.nextBytes(iv);
 		Cipher cipher = Cipher.getInstance(CIPHER_TYPE);
 		GCMParameterSpec spec = new GCMParameterSpec(GCM_TAG_LENGTH, iv);
 		cipher.init(Cipher.ENCRYPT_MODE, key, spec);
@@ -59,12 +56,12 @@ public class AESCipher {
 		ByteBuffer buffer = ByteBuffer.allocate(iv.length + ciphertext.length);
 		buffer.put(iv);
 		buffer.put(ciphertext);
-		return encoder.encodeToString(buffer.array());
+		return ENCODER.encodeToString(buffer.array());
 	}
 
 	public String decrypt(String base64Key, String ciphertext) throws Exception {
-		SecretKey key = new SecretKeySpec(decoder.decode(base64Key), "AES");
-		byte[] decoded = decoder.decode(ciphertext);
+		SecretKey key = new SecretKeySpec(DECODER.decode(base64Key), "AES");
+		byte[] decoded = DECODER.decode(ciphertext);
 		ByteBuffer buffer = ByteBuffer.wrap(decoded);
 		byte[] iv = new byte[GCM_IV_LENGTH];
 		buffer.get(iv);

@@ -1,6 +1,5 @@
 package kohgylw.kiftd.newcore.controller;
 
-import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
@@ -16,8 +15,11 @@ public class AuthController {
 
 	private static final String CHARSET_BY_AJAX = "text/html; charset=utf-8";
 
-	@Resource
-	private AuthService authService;
+	private final AuthService authService;
+
+	public AuthController(AuthService authService) {
+		this.authService = authService;
+	}
 
 	@RequestMapping(value = { "/getPublicKey.ajax" }, produces = { CHARSET_BY_AJAX })
 	@ResponseBody

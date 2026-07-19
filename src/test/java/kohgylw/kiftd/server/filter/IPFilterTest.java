@@ -11,7 +11,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import kohgylw.kiftd.server.util.ConfigureReader;
+import kohgylw.kiftd.newcore.config.ConfigurationManager;
 import kohgylw.kiftd.server.util.IpAddrGetter;
 
 @ExtendWith(MockitoExtension.class)
@@ -33,9 +33,9 @@ class IPFilterTest {
         idgField.setAccessible(true);
         idgField.set(filter, ipGetter);
 
-        try (var cr = mockStatic(ConfigureReader.class)) {
-            ConfigureReader reader = mock(ConfigureReader.class);
-            cr.when(ConfigureReader::instance).thenReturn(reader);
+        try (var cr = mockStatic(ConfigurationManager.class)) {
+            ConfigurationManager reader = mock(ConfigurationManager.class);
+            cr.when(ConfigurationManager::instance).thenReturn(reader);
             when(reader.enableIPRule()).thenReturn(false);
 
             filter.doFilter(request, response, chain);
@@ -52,9 +52,9 @@ class IPFilterTest {
         idgField.setAccessible(true);
         idgField.set(filter, ipGetter);
 
-        try (var cr = mockStatic(ConfigureReader.class)) {
-            ConfigureReader reader = mock(ConfigureReader.class);
-            cr.when(ConfigureReader::instance).thenReturn(reader);
+        try (var cr = mockStatic(ConfigurationManager.class)) {
+            ConfigurationManager reader = mock(ConfigurationManager.class);
+            cr.when(ConfigurationManager::instance).thenReturn(reader);
             when(reader.enableIPRule()).thenReturn(true);
             when(ipGetter.getIpAddr(request)).thenReturn("192.168.1.100");
             when(reader.filterAccessIP("192.168.1.100")).thenReturn(true);
@@ -73,9 +73,9 @@ class IPFilterTest {
         idgField.setAccessible(true);
         idgField.set(filter, ipGetter);
 
-        try (var cr = mockStatic(ConfigureReader.class)) {
-            ConfigureReader reader = mock(ConfigureReader.class);
-            cr.when(ConfigureReader::instance).thenReturn(reader);
+        try (var cr = mockStatic(ConfigurationManager.class)) {
+            ConfigurationManager reader = mock(ConfigurationManager.class);
+            cr.when(ConfigurationManager::instance).thenReturn(reader);
             when(reader.enableIPRule()).thenReturn(true);
             when(ipGetter.getIpAddr(request)).thenReturn("10.0.0.5");
             when(reader.filterAccessIP("10.0.0.5")).thenReturn(false);
@@ -94,9 +94,9 @@ class IPFilterTest {
         idgField.setAccessible(true);
         idgField.set(filter, ipGetter);
 
-        try (var cr = mockStatic(ConfigureReader.class)) {
-            ConfigureReader reader = mock(ConfigureReader.class);
-            cr.when(ConfigureReader::instance).thenReturn(reader);
+        try (var cr = mockStatic(ConfigurationManager.class)) {
+            ConfigurationManager reader = mock(ConfigurationManager.class);
+            cr.when(ConfigurationManager::instance).thenReturn(reader);
             when(reader.enableIPRule()).thenReturn(true);
             when(ipGetter.getIpAddr(request)).thenReturn("192.168.0.99");
             when(reader.filterAccessIP("192.168.0.99")).thenReturn(false);

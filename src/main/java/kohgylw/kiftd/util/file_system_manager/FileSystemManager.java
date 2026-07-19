@@ -27,7 +27,8 @@ import kohgylw.kiftd.server.exception.FilesTotalOutOfLimitException;
 import kohgylw.kiftd.server.exception.FoldersTotalOutOfLimitException;
 import kohgylw.kiftd.server.model.Node;
 import kohgylw.kiftd.server.pojo.ExtendStores;
-import kohgylw.kiftd.server.util.ConfigureReader;
+import kohgylw.kiftd.newcore.config.ConfigurationManager;
+import kohgylw.kiftd.server.util.FileBlockUtil;
 import kohgylw.kiftd.server.util.FileNodeUtil;
 import kohgylw.kiftd.server.util.ServerTimeUtil;
 import kohgylw.kiftd.util.file_system_manager.pojo.Folder;
@@ -476,7 +477,7 @@ public class FileSystemManager {
 			node.setFileId(UUID.randomUUID().toString());
 			node.setFileParentFolder(folderId);
 			node.setFileCreationDate(ServerTimeUtil.accurateToDay());
-			node.setFileCreator(ConfigureReader.instance().getImportAccount());
+			node.setFileCreator(ConfigurationManager.instance().getImportAccount());
 			node.setFileSize(Long.toString(size));
 			// 保存文件块并写入新节点
 			File block = saveToFileBlocks(f);
@@ -551,7 +552,7 @@ public class FileSystemManager {
 				folder.setFolderConstraint(parent.getFolderConstraint());
 				folder.setFolderParent(folderId);
 				if ("root".equals(parent.getFolderId())) {
-					folder.setFolderCreator(ConfigureReader.instance().getImportAccount());
+					folder.setFolderCreator(ConfigurationManager.instance().getImportAccount());
 				} else {
 					folder.setFolderCreator(parent.getFolderCreator());
 				}
@@ -654,45 +655,46 @@ public class FileSystemManager {
 	// 删除一个文件
 	private void deleteFile(String nodeId) throws SQLException, IOException {
 		Node n = selectNodeById(nodeId);
+		if (n == null) {
+			return;
+		}
 		per = 50;
 		message = "正在删除文件：" + n.getFileName();
-		if (n != null) {
-			if (deleteNodeById(nodeId) > 0) {
-				per = 80;
-				List<Node> nodes = selectNodesByPathExcludeById(n.getFilePath(), n.getFileId());
-				String recycleBinPath = ConfigureReader.instance().getRecycleBinPath();
-				File block = getFileFormBlocks(n);
-				if (nodes == null || nodes.isEmpty()) {
-					// 删除文件节点对应的数据块
-					if (block != null) {
-						if (recycleBinPath != null) {
-							if (saveToRecycleBin(block, recycleBinPath, n.getFileName(), false)) {
-								per = 100;
-								return;
-							}
-						} else {
-							if (block.delete()) {
-								per = 100;
-								return;
-							}
+		if (deleteNodeById(nodeId) > 0) {
+			per = 80;
+			List<Node> nodes = selectNodesByPathExcludeById(n.getFilePath(), n.getFileId());
+			String recycleBinPath = ConfigurationManager.instance().getRecycleBinPath();
+			File block = getFileFormBlocks(n);
+			if (nodes == null || nodes.isEmpty()) {
+				// 删除文件节点对应的数据块
+				if (block != null) {
+					if (recycleBinPath != null) {
+						if (saveToRecycleBin(block, recycleBinPath, n.getFileName(), false)) {
+							per = 100;
+							return;
 						}
-					}
-				} else {
-					if (block != null) {
-						if (recycleBinPath != null) {
-							if (saveToRecycleBin(block, recycleBinPath, n.getFileName(), true)) {
-								per = 100;
-								return;
-							}
-						} else {
+					} else {
+						if (block.delete()) {
 							per = 100;
 							return;
 						}
 					}
 				}
+			} else {
+				if (block != null) {
+					if (recycleBinPath != null) {
+						if (saveToRecycleBin(block, recycleBinPath, n.getFileName(), true)) {
+							per = 100;
+							return;
+						}
+					} else {
+						per = 100;
+						return;
+					}
+				}
 			}
-			throw new SQLException();
 		}
+		throw new SQLException();
 	}
 
 	// 留档功能，应与kohgylw.kiftd.server.util.FileBlockUtil.saveToRecycleBin(File, String,
@@ -736,19 +738,20 @@ public class FileSystemManager {
 		Node node = selectNodeById(nodeId);
 		File target = null;
 		if (node != null && path != null && path.isDirectory()) {
+			String fileName = validateFilename(node.getFileName(), path);
 			per = 0;
-			message = "正在导出文件：" + node.getFileName();
+			message = "正在导出文件：" + fileName;
 			File[] listedFiles = path.listFiles();
 			if (listedFiles != null && Arrays.stream(listedFiles).filter((e) -> e.isFile())
-					.anyMatch((f) -> f.getName().equals(node.getFileName()))) {
+					.anyMatch((f) -> f.getName().equals(fileName))) {
 				switch (type) {
 				case COVER:
 					target = Arrays.stream(listedFiles).filter((e) -> e.isFile())
-							.filter((e) -> e.getName().equals(node.getFileName())).findFirst()
+							.filter((e) -> e.getName().equals(fileName)).findFirst()
 							.get();
 					break;
 				case BOTH:
-					target = new File(path, FileNodeUtil.getNewNodeName(node, path));
+					target = new File(path, validateFilename(FileNodeUtil.getNewNodeName(node, path), path));
 					target.createNewFile();
 					break;
 				default:
@@ -756,7 +759,7 @@ public class FileSystemManager {
 				}
 			}
 			if (target == null) {
-				target = new File(path, node.getFileName());
+				target = new File(path, fileName);
 				target.createNewFile();
 			}
 			File block = getFileFormBlocks(node);
@@ -854,22 +857,24 @@ public class FileSystemManager {
 		if (f == null) {
 			return null;
 		}
+		String filePath = f.getFilePath();
+		if (filePath == null || !isValidBlockFileName(filePath)) {
+			return null;
+		}
 		try {
-			File file = null;
-			if (f.getFilePath() == null) {
-				return null;
-			}
-			if (f.getFilePath().startsWith("file_")) {// 存放于主文件系统中
+			File file;
+			if (filePath.startsWith("file_")) {// 存放于主文件系统中
 				// 直接从主文件系统的文件块存放区获得对应的文件块
-				file = new File(ConfigureReader.instance().getFileBlockPath(), f.getFilePath());
+				file = resolveBlockFile(new File(ConfigurationManager.instance().getFileBlockPath()), filePath);
 			} else {// 存放于扩展存储区
-				short index = Short.parseShort(f.getFilePath().substring(0, f.getFilePath().indexOf('_')));
+				short index = Short.parseShort(filePath.substring(0, filePath.indexOf('_')));
 				// 根据编号查到对应的扩展存储区路径，进而获取对应的文件块
-				ExtendStores es = ConfigureReader.instance().getExtendStores().stream()
+				ExtendStores es = ConfigurationManager.instance().getExtendStores().stream()
 						.filter((e) -> e.getIndex() == index).findAny().orElse(null);
-				if (es != null) {
-					file = new File(es.getPath(), f.getFilePath());
+				if (es == null) {
+					return null;
 				}
+				file = resolveBlockFile(es.getPath(), filePath);
 			}
 			if (file != null && file.isFile()) {
 				return file;
@@ -880,52 +885,33 @@ public class FileSystemManager {
 		return null;
 	}
 
+	private static boolean isValidBlockFileName(String filePath) {
+		return filePath.matches("^(file|\\d+)_[A-Za-z0-9_-]+\\.block$");
+	}
+
+	private static File resolveBlockFile(File root, String filePath) throws IOException {
+		Path rootPath = root.toPath().normalize().toAbsolutePath();
+		Path resolved = rootPath.resolve(filePath).normalize().toAbsolutePath();
+		if (!resolved.startsWith(rootPath)) {
+			return null;
+		}
+		return resolved.toFile();
+	}
+
 	public File saveToFileBlocks(final File f) {
-		// 如果存在扩展存储区，则优先在文件块最少的扩展存储区中存放文件（避免占用主文件系统）
-		List<ExtendStores> ess = ConfigureReader.instance().getExtendStores();// 得到全部扩展存储区
-		if (ess.size() > 0) {// 如果存在
-			Collections.sort(ess, new Comparator<ExtendStores>() {
-				@Override
-				public int compare(ExtendStores o1, ExtendStores o2) {
-					try {
-						String[] list1 = o1.getPath().list();
-						String[] list2 = o2.getPath().list();
-						int len1 = list1 == null ? 0 : list1.length;
-						int len2 = list2 == null ? 0 : list2.length;
-						return Integer.compare(len1, len2);
-					} catch (Exception e) {
-						try {
-							// 如果文件太多以至于超出数组上限，则换用如下统计方法
-							long count1;
-							long count2;
-							try (Stream<Path> s1 = Files.list(o1.getPath().toPath())) {
-								count1 = s1.count();
-							}
-							try (Stream<Path> s2 = Files.list(o2.getPath().toPath())) {
-								count2 = s2.count();
-							}
-							long dValue = count1 - count2;
-							return dValue > 0L ? 1 : dValue == 0 ? 0 : -1;
-						} catch (IOException e1) {
-							return 0;
-						}
-					}
-				}
-			});
-			// 遍历这些扩展存储区，并尝试将新文件存入一个已有文件数目最少、同时容量又足够的扩展存储区中
+		List<ExtendStores> ess = FileBlockUtil.getExtendStoresBySort();
+		if (ess.size() > 0) {
 			for (ExtendStores es : ess) {
-				// 如果该存储区的空余容量大于要存放的文件
 				if (es.getPath().getFreeSpace() > f.length()) {
 					try {
-						File file = createNewBlock(es.getIndex() + "_", es.getPath());
+						File file = FileBlockUtil.createNewBlock(es.getIndex() + "_", es.getPath());
 						if (file != null) {
-							transferFile(f, file);// 则执行存放，并将文件命名为“{存储区编号}_{UUID}.block”的形式
+							transferFile(f, file);
 							return file;
 						} else {
 							continue;
 						}
 					} catch (IOException e) {
-						// 如果无法存入（由于体积过大或其他问题），那么继续尝试其他扩展存储区
 						continue;
 					} catch (Exception e) {
 						Printer.instance.print(e.getMessage());
@@ -934,40 +920,16 @@ public class FileSystemManager {
 				}
 			}
 		}
-		// 如果不存在扩展存储区或者最大的扩展存储区无法存放目标文件，则尝试将其存放至主文件系统路径下
 		try {
-			final File target = createNewBlock("file_", new File(ConfigureReader.instance().getFileBlockPath()));
+			final File target = FileBlockUtil.createNewBlock("file_", new File(ConfigurationManager.instance().getFileBlockPath()));
 			if (target != null) {
-				transferFile(f, target);// 执行存放，并肩文件命名为“file_{UUID}.block”的形式
+				transferFile(f, target);
 				return target;
 			}
 		} catch (Exception e) {
 			Printer.instance.print("错误：文件块生成失败，无法存入新的文件数据。详细信息：" + e.getMessage());
 		}
 		return null;
-	}
-
-	// 生成创建一个在指定路径下名称（编号）绝对不重复的新文件块
-	private File createNewBlock(String prefix, File parent) throws IOException {
-		int appendIndex = 0;
-		int retryNum = 0;
-		String newName = prefix + UUID.randomUUID().toString().replace("-", "");
-		File newBlock = new File(parent, newName + ".block");
-		while (!newBlock.createNewFile()) {
-			if (appendIndex >= 0 && appendIndex < Integer.MAX_VALUE) {
-				newBlock = new File(parent, newName + "_" + appendIndex + ".block");
-				appendIndex++;
-			} else {
-				if (retryNum >= 5) {
-					return null;
-				} else {
-					newName = prefix + UUID.randomUUID().toString().replace("-", "");
-					newBlock = new File(parent, newName + ".block");
-					retryNum++;
-				}
-			}
-		}
-		return newBlock;
 	}
 
 	private void transferFile(File f, File target) throws Exception {
@@ -1058,18 +1020,27 @@ public class FileSystemManager {
 			per = 0;
 			message = "正在移出数据...";
 			gono = true;
+			String reserveCanonical = reservePath.getCanonicalPath();
 			for (int i = 0; i < total && gono; i++) {
 				message = "正在移出数据(" + i + "/" + total + ")...";
 				per = (int) (((double) i / total) * 100.0);
 				Node n = nodes.get(i);
 				File b = getFileFormBlocks(n);
+				if (b == null) {
+					throw new IOException("无法找到文件块: " + n.getFileName());
+				}
 				File parentFolder = new File(reservePath, getNativePath(n));
+				String parentCanonical = parentFolder.getCanonicalPath();
+				if (!parentCanonical.equals(reserveCanonical)
+						&& !parentCanonical.startsWith(reserveCanonical + File.separator)) {
+					throw new IOException("非法路径: " + parentFolder.getAbsolutePath());
+				}
 				if (!parentFolder.isDirectory()) {
 					if (!parentFolder.mkdirs()) {
 						return false;
 					}
 				}
-				File target = new File(parentFolder, n.getFileName());
+				File target = new File(parentFolder, validateFilename(n.getFileName(), parentFolder));
 				Files.move(b.toPath(), target.toPath());
 				deleteNodeById(n.getFileId());
 			}
@@ -1142,7 +1113,8 @@ public class FileSystemManager {
 		}
 		File target = new File(parentDir, name);
 		try {
-			if (!target.getCanonicalPath().startsWith(parentDir.getCanonicalPath())) {
+			String parentCanonical = parentDir.getCanonicalPath();
+			if (!target.getCanonicalPath().startsWith(parentCanonical + File.separator)) {
 				throw new IllegalArgumentException("路径穿越检测: " + name);
 			}
 		} catch (java.io.IOException e) {

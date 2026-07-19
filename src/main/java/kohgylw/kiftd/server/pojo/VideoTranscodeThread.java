@@ -7,7 +7,7 @@ import java.util.UUID;
 import org.apache.commons.codec.digest.DigestUtils;
 
 import kohgylw.kiftd.printer.Printer;
-import kohgylw.kiftd.server.util.ConfigureReader;
+import kohgylw.kiftd.newcore.config.ConfigurationManager;
 import ws.schild.jave.Encoder;
 import ws.schild.jave.MultimediaObject;
 import ws.schild.jave.encode.EncodingAttributes;
@@ -42,7 +42,7 @@ public class VideoTranscodeThread {
 		Thread t = new Thread(() -> {
 			try {
 				outputFileName="video_"+UUID.randomUUID().toString()+".mp4";
-				encoder.encode(mo, new File(ConfigureReader.instance().getTemporaryfilePath(), outputFileName),
+				encoder.encode(mo, new File(ConfigurationManager.instance().getTemporaryfilePath(), outputFileName),
 						ea, new EncoderProgressListener() {
 							public void progress(int arg0) {
 								progress = (arg0 / 10.00) + "";
@@ -84,7 +84,7 @@ public class VideoTranscodeThread {
 		if(encoder!=null) {
 			encoder.abortEncoding();
 		}
-		File f=new File(ConfigureReader.instance().getTemporaryfilePath(),outputFileName);
+		File f=new File(ConfigurationManager.instance().getTemporaryfilePath(),outputFileName);
 		if(f.exists()) {
 			f.delete();
 		}

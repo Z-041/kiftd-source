@@ -11,376 +11,204 @@ import javax.swing.event.*;
 import javax.swing.*;
 import java.text.*;
 import java.util.*;
-import java.util.prefs.*;
 
 import kohgylw.kiftd.printer.Printer;
-import kohgylw.kiftd.server.util.ConfigureReader;
+import kohgylw.kiftd.newcore.config.ConfigurationManager;
 import kohgylw.kiftd.ui.callback.*;
 
-/**
- *
- * <h2>服务器主界面模块</h2>
- * <p>
- * 该类是kiftd服务器的主控制台窗口（Swing GUI），提供服务器启动/停止/重启、
- * 文件管理、系统设置等操作界面。使用单例模式确保同一时间只有一个控制台实例，
- * 支持系统托盘图标和后台运行。
- * </p>
- *
- * @author 青阳龙野(kohgylw)
- * @version 1.0
- */
 public class ServerUIModule extends KiftdDynamicWindow {
 
-	private JFrame window;
-	private SystemTray tray;
-	private TrayIcon trayIcon;
-	private JTextArea output;
+	protected static JFrame window;
+	private static SystemTray tray;
+	private static TrayIcon trayIcon;
+	private static JTextArea output;
 	private static ServerUIModule instance;
-	private SettingWindow sw;
-	private FSViewer fsv;
-	private OnCloseServer cs;
-	private OnStartServer ss;
-	private GetServerStatus st;
-	private GetServerTime ti;
-	private JButton start;
-	private JButton stop;
-	private JButton restart;
-	private JButton setting;
-	private JButton fileIOUtil;
-	private JButton exit;
-	private JCheckBox autoScrollBox;
-	private Preferences prefs;
-	private JLabel serverStatusLab;
-	private JLabel portStatusLab;
-	private JLabel logLevelLab;
-	private JLabel bufferSizeLab;
-	private JLabel statusLed;
-	private static final String S_STOP = "停止";
-	private static final String S_START = "运行中";
-	private static final String S_STARTING = "启动中...";
-	private static final String S_STOPPING = "停止中...";
+	private static SettingWindow sw;
+	private static FSViewer fsv;
+	private static OnCloseServer cs;
+	private static OnStartServer ss;
+	private static GetServerStatus st;
+	private static GetServerTime ti;
+	private static JButton start;
+	private static JButton stop;
+	private static JButton resatrt;
+	private static JButton setting;
+	private static JButton fileIOUtil;
+	private static JButton exit;
+	private static JLabel serverStatusLab;
+	private static JLabel portStatusLab;
+	private static JLabel logLevelLab;
+	private static JLabel bufferSizeLab;
+	private static final String S_STOP = "停止[Stopped]";
+	private static final String S_START = "运行[Running]";
+	private static final String S_STARTING = "启动中[Starting]...";
+	private static final String S_STOPPING = "停止中[Stopping]...";
 	protected static final String L_ALL = "记录全部(ALL)";
 	protected static final String L_EXCEPTION = "仅异常(EXCEPTION)";
 	protected static final String L_NONE = "不记录(NONE)";
-	private static final ThreadLocal<SimpleDateFormat> SDF_HOLDER = ThreadLocal
-			.withInitial(() -> new SimpleDateFormat("yyyy-MM-dd hh:mm:ss"));
+	private SimpleDateFormat sdf;
+	/**
+	 * 窗口原始宽度
+	 */
 	private final int OriginSize_Width = 520;
-	private final int OriginSize_Height = 600;
-	private MenuItem filesViewer;
-	private static final Color LED_GREEN = new Color(0x2ecc71);
-	private static final Color LED_GRAY = new Color(0xbdc3c7);
-	private static final Color LED_ORANGE = new Color(0xf39c12);
-	private static final Color LABEL_COLOR = new Color(0x555555);
-	private static final Color BUTTON_BG = new Color(0xf8f9fa);
-	private static final Color BTN_START = new Color(0x2ecc71);
-	private static final Color BTN_STOP = new Color(0xe74c3c);
-	private static final Color BTN_RESTART = new Color(0xf39c12);
-	private static final Color BTN_NORMAL = new Color(0xf8f9fa);
-	private static final Color BTN_NORMAL_TEXT = new Color(0x2c3e50);
-	private static final String PREFS_NODE = "kohgylw/kiftd/server/ui";
-	private static final String KEY_WIN_X = "windowX";
-	private static final String KEY_WIN_Y = "windowY";
-	private static final String KEY_WIN_W = "windowWidth";
-	private static final String KEY_WIN_H = "windowHeight";
-	private static final String KEY_AUTO_SCROLL = "autoScroll";
+	/**
+	 * 窗口原始高度
+	 */
+	private final int OriginSize_Height = 680;
+	private static MenuItem filesViewer;
 
 	private ServerUIModule() throws Exception {
 		setUIFont();
-		prefs = Preferences.userRoot().node(PREFS_NODE);
-		window = new JFrame("Cloudflow \u2014 \u63a7\u5236\u53f0");
-		window.setSize(OriginSize_Width, OriginSize_Height);
-		window.setLocation(100, 100);
-		restoreWindowBounds();
-		window.setMinimumSize(new Dimension(450, 500));
-		window.addComponentListener(new ComponentAdapter() {
-			@Override
-			public void componentResized(ComponentEvent e) {
-				saveWindowBounds();
-			}
-
-			@Override
-			public void componentMoved(ComponentEvent e) {
-				saveWindowBounds();
-			}
-
-			@Override
-			public void componentHidden(ComponentEvent e) {
-				saveWindowBounds();
-			}
-		});
+		(ServerUIModule.window = new JFrame("kiftd-服务器控制台")).setSize(OriginSize_Width, OriginSize_Height);
+		centerWindow(ServerUIModule.window);
+		ServerUIModule.window.setResizable(true);
+		setMinSize(ServerUIModule.window, 400, 500);
 		try {
-			window.setIconImage(
+			ServerUIModule.window.setIconImage(
 					ImageIO.read(this.getClass().getResourceAsStream("/kohgylw/kiftd/ui/resource/icon.png")));
 		} catch (NullPointerException ex) {
 		} catch (IOException ex2) {
 		}
 		if (SystemTray.isSupported()) {
-			window.setDefaultCloseOperation(WindowConstants.HIDE_ON_CLOSE);
-			tray = SystemTray.getSystemTray();
+			ServerUIModule.window.setDefaultCloseOperation(1);
+			ServerUIModule.tray = SystemTray.getSystemTray();
 			String iconType = "/kohgylw/kiftd/ui/resource/icon_tray.png";
 			if (System.getProperty("os.name").toLowerCase().indexOf("window") >= 0) {
 				iconType = "/kohgylw/kiftd/ui/resource/icon_tray_w.png";
 			}
-			trayIcon = new TrayIcon(ImageIO.read(this.getClass().getResourceAsStream(iconType)));
-			trayIcon.setToolTip("\u4e91\u6d41-Cloudflow");
+			(ServerUIModule.trayIcon = new TrayIcon(ImageIO.read(this.getClass().getResourceAsStream(iconType))))
+					.setToolTip("青阳网络文件系统-kiftd");
 			trayIcon.setImageAutoSize(true);
 			final PopupMenu pMenu = new PopupMenu();
-			final MenuItem exitItem = new MenuItem("\u9000\u51fa(Exit)");
-			filesViewer = new MenuItem("\u6587\u4ef6...(Files)");
-			final MenuItem show = new MenuItem("\u663e\u793a\u4e3b\u7a97\u53e3(Show)");
-			trayIcon.addMouseListener(new MouseAdapter() {
+			final MenuItem exit = new MenuItem("退出(Exit)");
+			filesViewer = new MenuItem("文件...(Files)");
+			final MenuItem show = new MenuItem("显示主窗口(Show)");
+			trayIcon.addMouseListener(new MouseListener() {
+
+				@Override
+				public void mouseReleased(MouseEvent e) {
+				}
+
+				@Override
+				public void mousePressed(MouseEvent e) {
+				}
+
+				@Override
+				public void mouseExited(MouseEvent e) {
+				}
+
+				@Override
+				public void mouseEntered(MouseEvent e) {
+				}
+
 				@Override
 				public void mouseClicked(MouseEvent e) {
-					if (e.getClickCount() == 1 && e.getButton() == MouseEvent.BUTTON1) {
-						showWindow();
+					if (e.getClickCount() == MouseEvent.BUTTON1) {
+						show();
 					}
 				}
 			});
-			exitItem.addActionListener(e -> exitApp());
-			filesViewer.addActionListener(e -> {
+			exit.addActionListener(new ActionListener() {
+
+				@Override
+				public void actionPerformed(ActionEvent e) {
+					exit();
+				}
+			});
+			filesViewer.addActionListener((e) -> {
 				filesViewer.setEnabled(false);
 				fileIOUtil.setEnabled(false);
 				Thread t = new Thread(() -> {
 					try {
-						fsv = FSViewer.getInstance();
+						ServerUIModule.fsv = FSViewer.getInstance();
 						fsv.show();
 					} catch (SQLException e1) {
-						SwingUtilities.invokeLater(() -> {
-							JOptionPane.showMessageDialog(window, "\u9519\u8bef\uff1a\u65e0\u6cd5\u6253\u5f00\u6587\u4ef6\uff0c\u6587\u4ef6\u7cfb\u7edf\u53ef\u80fd\u5df2\u635f\u574f\uff0c\u60a8\u53ef\u4ee5\u5c1d\u8bd5\u91cd\u542f\u5e94\u7528\u3002", "\u9519\u8bef",
-									JOptionPane.ERROR_MESSAGE);
-						});
+						JOptionPane.showMessageDialog(window, "错误：无法打开文件，文件系统可能已损坏，您可以尝试重启应用。", "错误",
+								JOptionPane.ERROR_MESSAGE);
 					}
-					SwingUtilities.invokeLater(() -> {
-						filesViewer.setEnabled(true);
-						fileIOUtil.setEnabled(true);
-					});
+					filesViewer.setEnabled(true);
+					fileIOUtil.setEnabled(true);
 				});
 				t.start();
 			});
-			show.addActionListener(e -> showWindow());
-			pMenu.add(exitItem);
+			show.addActionListener(new ActionListener() {
+
+				@Override
+				public void actionPerformed(ActionEvent e) {
+					show();
+				}
+			});
+			pMenu.add(exit);
 			pMenu.addSeparator();
 			pMenu.add(filesViewer);
 			pMenu.add(show);
-			trayIcon.setPopupMenu(pMenu);
-			tray.add(trayIcon);
+			ServerUIModule.trayIcon.setPopupMenu(pMenu);
+			ServerUIModule.tray.add(ServerUIModule.trayIcon);
+
 		} else {
-			window.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
-			window.addWindowListener(new WindowAdapter() {
-				@Override
-				public void windowClosing(WindowEvent e) {
-					exitApp();
-				}
-			});
+			ServerUIModule.window.setDefaultCloseOperation(1);
 		}
-		buildLayout();
-		bindEvents();
-		modifyComponentSize(window);
-	}
+		ServerUIModule.window.setLayout(new BoxLayout(ServerUIModule.window.getContentPane(), 3));
+		final JPanel titlebox = new JPanel(new FlowLayout(1));
+		titlebox.setBorder(new EmptyBorder((int) (8 * proportion), 0, 0, 0));
+		final JLabel title = new JLabel("kiftd");
+		title.setFont(new Font("宋体", 1, (int) (30 * proportion)));
+		titlebox.add(title);
+		ServerUIModule.window.add(titlebox);
+		final JPanel subtitlebox = new JPanel(new FlowLayout(1));
+		subtitlebox.setBorder(new EmptyBorder(0, 0, (int) (5 * proportion), 0));
+		final JLabel subtitle = new JLabel("青阳网络文件系统-服务器");
+		subtitle.setFont(new Font("宋体", 0, (int) (13 * proportion)));
+		subtitlebox.add(subtitle);
+		ServerUIModule.window.add(subtitlebox);
+		final JPanel statusBox = new JPanel(new GridLayout(4, 1, 0, (int) (2 * proportion)));
+		statusBox.setBorder(BorderFactory.createTitledBorder("服务器信息"));
+		final JPanel serverStatus = new JPanel(new FlowLayout(FlowLayout.LEFT));
+		serverStatus.setBorder(new EmptyBorder(0, (int) (5 * proportion), 0, 0));
+		serverStatus.add(new JLabel("服务器状态(Status)："));
+		serverStatus.add(ServerUIModule.serverStatusLab = new JLabel("--"));
+		statusBox.add(serverStatus);
+		final JPanel portStatus = new JPanel(new FlowLayout(FlowLayout.LEFT));
+		portStatus.setBorder(new EmptyBorder(0, (int) (5 * proportion), 0, 0));
+		portStatus.add(new JLabel("端口号(Port)："));
+		portStatus.add(ServerUIModule.portStatusLab = new JLabel("--"));
+		statusBox.add(portStatus);
+		final JPanel addrStatus = new JPanel(new FlowLayout(FlowLayout.LEFT));
+		addrStatus.setBorder(new EmptyBorder(0, (int) (5 * proportion), 0, 0));
+		addrStatus.add(new JLabel("日志等级(LogLevel)："));
+		addrStatus.add(ServerUIModule.logLevelLab = new JLabel("--"));
+		statusBox.add(addrStatus);
+		final JPanel bufferStatus = new JPanel(new FlowLayout(FlowLayout.LEFT));
+		bufferStatus.setBorder(new EmptyBorder(0, (int) (5 * proportion), 0, 0));
+		bufferStatus.add(new JLabel("下载缓冲区(Buffer)："));
+		bufferStatus.add(ServerUIModule.bufferSizeLab = new JLabel("--"));
+		statusBox.add(bufferStatus);
+		ServerUIModule.window.add(statusBox);
+		final JPanel buttonBox = new JPanel(new GridLayout(3, 2, (int) (6 * proportion), (int) (4 * proportion)));
+		buttonBox.setBorder(new EmptyBorder((int) (5 * proportion), 0, (int) (5 * proportion), 0));
+		buttonBox.add(ServerUIModule.start = new JButton("开启(Start)>>"));
+		buttonBox.add(ServerUIModule.stop = new JButton("关闭(Stop)||"));
+		buttonBox.add(ServerUIModule.resatrt = new JButton("重启(Restart)~>"));
+		buttonBox.add(ServerUIModule.fileIOUtil = new JButton("文件(Files)[*]"));
+		buttonBox.add(ServerUIModule.setting = new JButton("设置(Setting)[/]"));
+		buttonBox.add(ServerUIModule.exit = new JButton("退出(Exit)[X]"));
+		ServerUIModule.window.add(buttonBox);
+		final JPanel outputBox = new JPanel(new BorderLayout());
+		outputBox.setBorder(new EmptyBorder(0, (int) (2 * proportion), 0, (int) (2 * proportion)));
+		outputBox.add(new JLabel("[输出信息(Server Message)]："), BorderLayout.NORTH);
+		(ServerUIModule.output = new JTextArea()).setLineWrap(true);
+		output.setRows(6);
+		ServerUIModule.output.setEditable(false);
+		ServerUIModule.output.setForeground(Color.GRAY);
+		ServerUIModule.output.getDocument().addDocumentListener(new DocumentListener() {
 
-	private void buildLayout() {
-		Container root = window.getContentPane();
-		root.setLayout(new BorderLayout(0, 0));
-
-		JPanel titleBar = buildTitleBar();
-		root.add(titleBar, BorderLayout.NORTH);
-
-		JPanel centerArea = new JPanel();
-		centerArea.setLayout(new BoxLayout(centerArea, BoxLayout.Y_AXIS));
-		centerArea.setBorder(new EmptyBorder(6, 10, 6, 10));
-
-		JPanel dashboard = buildDashboard();
-		dashboard.setMaximumSize(new Dimension(Integer.MAX_VALUE, dashboard.getPreferredSize().height));
-		centerArea.add(dashboard);
-		centerArea.add(Box.createVerticalStrut(8));
-
-		JPanel buttonBar = buildButtonBar();
-		buttonBar.setMaximumSize(new Dimension(Integer.MAX_VALUE, buttonBar.getPreferredSize().height));
-		centerArea.add(buttonBar);
-		centerArea.add(Box.createVerticalStrut(8));
-
-		JPanel logPanel = buildLogPanel();
-		centerArea.add(logPanel);
-
-		root.add(centerArea, BorderLayout.CENTER);
-
-		JPanel statusBar = buildStatusBar();
-		root.add(statusBar, BorderLayout.SOUTH);
-	}
-
-	private JPanel buildTitleBar() {
-		JPanel panel = new JPanel();
-		panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-		panel.setBorder(new EmptyBorder(12, 16, 6, 16));
-		panel.setBackground(Color.WHITE);
-
-		JPanel titleRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
-		titleRow.setOpaque(false);
-		JLabel title = new JLabel("Cloudflow");
-		title.setFont(new Font(Font.SANS_SERIF, Font.BOLD, (int) (26 * proportion)));
-		title.setForeground(new Color(0x2c3e50));
-		titleRow.add(title);
-		panel.add(titleRow);
-
-		JPanel subRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
-		subRow.setOpaque(false);
-		JLabel subtitle = new JLabel("\u670d\u52a1\u5668\u63a7\u5236\u53f0");
-		subtitle.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, (int) (12 * proportion)));
-		subtitle.setForeground(LABEL_COLOR);
-		subRow.add(subtitle);
-		panel.add(subRow);
-
-		JSeparator sep = new JSeparator();
-		sep.setMaximumSize(new Dimension(Integer.MAX_VALUE, 1));
-		panel.add(sep);
-
-		return panel;
-	}
-
-	private JPanel buildDashboard() {
-		JPanel panel = new JPanel(new GridLayout(1, 4, 4, 0));
-		panel.setBorder(BorderFactory.createCompoundBorder(
-				BorderFactory.createTitledBorder(
-						BorderFactory.createLineBorder(new Color(0xdee2e6)),
-						"\u670d\u52a1\u5668\u72b6\u6001",
-						TitledBorder.LEFT,
-						TitledBorder.TOP,
-						new Font(Font.SANS_SERIF, Font.BOLD, (int) (11 * proportion)),
-						new Color(0x495057)),
-				new EmptyBorder(4, 6, 4, 6)));
-		panel.setBackground(Color.WHITE);
-
-		panel.add(createStatusCard("\u670d\u52a1\u5668", serverStatusLab = new JLabel("--")));
-		panel.add(createStatusCard("\u7aef\u53e3\u53f7", portStatusLab = new JLabel("--")));
-		panel.add(createStatusCard("\u65e5\u5fd7\u7b49\u7ea7", logLevelLab = new JLabel("--")));
-		panel.add(createStatusCard("\u7f13\u51b2\u533a", bufferSizeLab = new JLabel("--")));
-
-		return panel;
-	}
-
-	private JPanel createStatusCard(String label, JLabel valueLabel) {
-		JPanel card = new JPanel();
-		card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
-		card.setBackground(Color.WHITE);
-		card.setBorder(new EmptyBorder(2, 4, 2, 4));
-
-		JLabel title = new JLabel(label);
-		title.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, (int) (10 * proportion)));
-		title.setForeground(LABEL_COLOR);
-		title.setAlignmentX(Component.LEFT_ALIGNMENT);
-		card.add(title);
-
-		card.add(Box.createVerticalStrut(2));
-
-		valueLabel.setFont(new Font(Font.SANS_SERIF, Font.BOLD, (int) (13 * proportion)));
-		valueLabel.setForeground(new Color(0x2c3e50));
-		valueLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-		card.add(valueLabel);
-
-		return card;
-	}
-
-	private JPanel buildButtonBar() {
-		JPanel outer = new JPanel(new FlowLayout(FlowLayout.CENTER, 6, 2));
-		outer.setOpaque(false);
-
-		start = createStyledButton("\u25b6 \u542f\u52a8", BTN_START, Color.WHITE);
-		stop = createStyledButton("\u25a0 \u505c\u6b62", BTN_STOP, Color.WHITE);
-		restart = createStyledButton("\u21bb \u91cd\u542f", BTN_RESTART, Color.WHITE);
-		fileIOUtil = createStyledButton("\uD83D\uDCC1 \u6587\u4ef6", BTN_NORMAL, BTN_NORMAL_TEXT);
-		setting = createStyledButton("\u2699 \u8bbe\u7f6e", BTN_NORMAL, BTN_NORMAL_TEXT);
-		exit = createStyledButton("\u2715 \u9000\u51fa", BTN_NORMAL, BTN_NORMAL_TEXT);
-
-		outer.add(start);
-		outer.add(stop);
-		outer.add(restart);
-		outer.add(fileIOUtil);
-		outer.add(setting);
-		outer.add(exit);
-
-		return outer;
-	}
-
-	private JButton createStyledButton(String text, Color bg, Color fg) {
-		JButton btn = new JButton(text);
-		btn.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, (int) (12 * proportion)));
-		btn.setFocusPainted(false);
-		btn.setMargin(new Insets(4, 8, 4, 8));
-		btn.setBackground(bg);
-		btn.setForeground(fg);
-		btn.setOpaque(true);
-		btn.setContentAreaFilled(true);
-		btn.setBorder(BorderFactory.createEmptyBorder(6, 12, 6, 12));
-		btn.addMouseListener(new MouseAdapter() {
-			@Override
-			public void mouseEntered(MouseEvent e) {
-				btn.setBackground(bg.brighter());
-			}
-
-			@Override
-			public void mouseExited(MouseEvent e) {
-				btn.setBackground(bg);
-			}
-
-			@Override
-			public void mousePressed(MouseEvent e) {
-				btn.setBackground(bg.darker());
-			}
-
-			@Override
-			public void mouseReleased(MouseEvent e) {
-				btn.setBackground(bg.brighter());
-			}
-		});
-		return btn;
-	}
-
-	private JButton createButton(String text) {
-		return createStyledButton(text, BTN_NORMAL, BTN_NORMAL_TEXT);
-	}
-
-	private JPanel buildLogPanel() {
-		JPanel panel = new JPanel(new BorderLayout(0, 2));
-		panel.setBorder(BorderFactory.createCompoundBorder(
-				BorderFactory.createTitledBorder(
-						BorderFactory.createLineBorder(new Color(0xdee2e6)),
-						"\u8f93\u51fa\u65e5\u5fd7",
-						TitledBorder.LEFT,
-						TitledBorder.TOP,
-						new Font(Font.SANS_SERIF, Font.BOLD, (int) (11 * proportion)),
-						new Color(0x495057)),
-				new EmptyBorder(0, 2, 2, 2)));
-
-		JPanel header = new JPanel(new BorderLayout());
-		header.setOpaque(false);
-		header.setBorder(new EmptyBorder(0, 2, 0, 2));
-		autoScrollBox = new JCheckBox("\u81ea\u52a8\u6eda\u52a8", prefs.getBoolean(KEY_AUTO_SCROLL, true));
-		autoScrollBox.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, (int) (10 * proportion)));
-		autoScrollBox.setOpaque(false);
-		autoScrollBox.setFocusPainted(false);
-		autoScrollBox.addItemListener(e -> prefs.putBoolean(KEY_AUTO_SCROLL, autoScrollBox.isSelected()));
-		header.add(autoScrollBox, BorderLayout.WEST);
-		JButton clearBtn = createButton("\u6e05\u7a7a");
-		clearBtn.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, (int) (10 * proportion)));
-		clearBtn.setMargin(new Insets(1, 6, 1, 6));
-		clearBtn.addActionListener(e -> output.setText(""));
-		header.add(clearBtn, BorderLayout.EAST);
-		panel.add(header, BorderLayout.NORTH);
-
-		output = new JTextArea();
-		output.setFont(new Font(Font.MONOSPACED, Font.PLAIN, (int) (12 * proportion)));
-		output.setLineWrap(true);
-		output.setEditable(false);
-		output.setForeground(new Color(0x333333));
-		output.setBackground(new Color(0xfafafa));
-		output.getDocument().addDocumentListener(new DocumentListener() {
 			@Override
 			public void removeUpdate(DocumentEvent e) {
 			}
 
 			@Override
 			public void insertUpdate(DocumentEvent e) {
-				SwingUtilities.invokeLater(() -> {
+				Thread t = new Thread(() -> {
 					if (output.getLineCount() >= 1000) {
 						int end = 0;
 						try {
@@ -389,326 +217,276 @@ public class ServerUIModule extends KiftdDynamicWindow {
 						}
 						output.replaceRange("", 0, end);
 					}
-					if (autoScrollBox.isSelected()) {
-						output.setCaretPosition(output.getText().length());
-					}
+					output.setCaretPosition(output.getText().length());
 				});
+				t.start();
 			}
 
 			@Override
 			public void changedUpdate(DocumentEvent e) {
-				SwingUtilities.invokeLater(() -> {
-					output.selectAll();
-					output.setCaretPosition(output.getSelectedText().length());
-					output.requestFocus();
-				});
+				output.selectAll();
+				output.setCaretPosition(output.getSelectedText().length());
+				output.requestFocus();
 			}
 		});
-		JScrollPane scrollPane = new JScrollPane(output);
-		scrollPane.setPreferredSize(new Dimension(200, 200));
-		panel.add(scrollPane, BorderLayout.CENTER);
+		outputBox.add(new JScrollPane(ServerUIModule.output), BorderLayout.CENTER);
+		ServerUIModule.window.add(outputBox);
+		final JPanel bottombox = new JPanel(new FlowLayout(1));
+		bottombox.setBorder(new EmptyBorder(0, 0, (int) (3 * proportion), 0));
+		bottombox.add(new JLabel("--青阳龙野@kohgylw--"));
+		ServerUIModule.window.add(bottombox);
+		ServerUIModule.start.setEnabled(false);
+		ServerUIModule.stop.setEnabled(false);
+		ServerUIModule.resatrt.setEnabled(false);
+		ServerUIModule.setting.setEnabled(false);
+		ServerUIModule.start.addActionListener(new ActionListener() {
 
-		return panel;
-	}
-
-	private JPanel buildStatusBar() {
-		JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT, 16, 4));
-		panel.setBorder(new CompoundBorder(
-				new MatteBorder(1, 0, 0, 0, new Color(0xdee2e6)),
-				new EmptyBorder(2, 12, 2, 12)));
-		panel.setBackground(new Color(0xf8f9fa));
-
-		statusLed = new JLabel("\u25cf");
-		statusLed.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, (int) (14 * proportion)));
-		statusLed.setForeground(LED_GRAY);
-		panel.add(statusLed);
-
-		JLabel ver = new JLabel("Cloudflow v1.3.0");
-		ver.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, (int) (11 * proportion)));
-		ver.setForeground(LABEL_COLOR);
-		panel.add(ver);
-
-		return panel;
-	}
-
-	private void bindEvents() {
-		start.setEnabled(false);
-		stop.setEnabled(false);
-		restart.setEnabled(false);
-		setting.setEnabled(false);
-		start.addActionListener(e -> {
-			start.setEnabled(false);
-			setting.setEnabled(false);
-			fileIOUtil.setEnabled(false);
-			if (filesViewer != null) {
-				filesViewer.setEnabled(false);
-			}
-			printMessage("\u542f\u52a8\u670d\u52a1\u5668...");
-			if (ss != null) {
-				SwingUtilities.invokeLater(() -> {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				start.setEnabled(false);
+				setting.setEnabled(false);
+				fileIOUtil.setEnabled(false);
+				if (filesViewer != null) {
+					filesViewer.setEnabled(false);
+				}
+				printMessage("启动服务器...");
+				if (ss != null) {
 					serverStatusLab.setText(S_STARTING);
-					statusLed.setForeground(LED_ORANGE);
-				});
-				Thread t = new Thread(() -> {
-					if (ss.start()) {
-						printMessage("\u542f\u52a8\u5b8c\u6210\u3002\u6b63\u5728\u68c0\u67e5\u670d\u52a1\u5668\u72b6\u6001...");
-						if (st.getServerStatus()) {
-							printMessage("Cloudflow\u670d\u52a1\u5668\u5df2\u7ecf\u542f\u52a8\uff0c\u53ef\u4ee5\u6b63\u5e38\u8bbf\u95ee\u4e86\u3002");
-						} else {
-							printMessage("Cloudflow\u670d\u52a1\u5668\u672a\u80fd\u6210\u529f\u542f\u52a8\uff0c\u8bf7\u68c0\u67e5\u8bbe\u7f6e\u6216\u67e5\u770b\u5f02\u5e38\u4fe1\u606f\u3002");
-						}
-					} else {
-						if (ConfigureReader.instance().getPropertiesStatus() != 0) {
-							switch (ConfigureReader.instance().getPropertiesStatus()) {
-							case ConfigureReader.INVALID_PORT:
-								printMessage("Cloudflow\u65e0\u6cd5\u542f\u52a8\uff1a\u7aef\u53e3\u8bbe\u7f6e\u65e0\u6548\u3002");
-								break;
-							case ConfigureReader.INVALID_BUFFER_SIZE:
-								printMessage("Cloudflow\u65e0\u6cd5\u542f\u52a8\uff1a\u7f13\u5b58\u8bbe\u7f6e\u65e0\u6548\u3002");
-								break;
-							case ConfigureReader.INVALID_FILE_SYSTEM_PATH:
-								printMessage("Cloudflow\u65e0\u6cd5\u542f\u52a8\uff1a\u6587\u4ef6\u7cfb\u7edf\u8def\u5f84\u6216\u67d0\u4e00\u6269\u5c55\u5b58\u50a8\u533a\u8bbe\u7f6e\u65e0\u6548\u3002");
-								break;
-							case ConfigureReader.INVALID_LOG:
-								printMessage("Cloudflow\u65e0\u6cd5\u542f\u52a8\uff1a\u65e5\u5fd7\u8bbe\u7f6e\u65e0\u6548\u3002");
-								break;
-							case ConfigureReader.INVALID_VC:
-								printMessage("Cloudflow\u65e0\u6cd5\u542f\u52a8\uff1a\u767b\u5f55\u9a8c\u8bc1\u7801\u8bbe\u7f6e\u65e0\u6548\u3002");
-								break;
-							case ConfigureReader.INVALID_MUST_LOGIN_SETTING:
-								printMessage("Cloudflow\u65e0\u6cd5\u542f\u52a8\uff1a\u5fc5\u987b\u767b\u5165\u8bbe\u7f6e\u65e0\u6548\u3002");
-								break;
-							case ConfigureReader.INVALID_CHANGE_PASSWORD_SETTING:
-								printMessage("Cloudflow\u65e0\u6cd5\u542f\u52a8\uff1a\u7528\u6237\u4fee\u6539\u8d26\u6237\u5bc6\u7801\u8bbe\u7f6e\u65e0\u6548\u3002");
-								break;
-							case ConfigureReader.INVALID_FILE_CHAIN_SETTING:
-								printMessage("Cloudflow\u65e0\u6cd5\u542f\u52a8\uff1a\u6c38\u4e45\u8d44\u6e90\u94fe\u63a5\u8bbe\u7f6e\u65e0\u6548\u3002");
-								break;
-							default:
-								printMessage("Cloudflow\u65e0\u6cd5\u542f\u52a8\uff0c\u8bf7\u68c0\u67e5\u8bbe\u7f6e\u6216\u67e5\u770b\u5f02\u5e38\u4fe1\u606f\u3002");
-								break;
+					Thread t = new Thread(() -> {
+						if (ss.start()) {
+							printMessage("启动完成。正在检查服务器状态...");
+							if (st.getServerStatus()) {
+								printMessage("KIFT服务器已经启动，可以正常访问了。");
+							} else {
+								printMessage("KIFT服务器未能成功启动，请检查设置或查看异常信息。");
 							}
 						} else {
-							printMessage("Cloudflow\u65e0\u6cd5\u542f\u52a8\uff0c\u8bf7\u68c0\u67e5\u8bbe\u7f6e\u6216\u67e5\u770b\u5f02\u5e38\u4fe1\u606f\u3002");
-						}
-						SwingUtilities.invokeLater(() -> {
+							if (ConfigurationManager.instance().getPropertiesStatus() != 0) {
+								switch (ConfigurationManager.instance().getPropertiesStatus()) {
+								case ConfigurationManager.INVALID_PORT:
+									printMessage("KIFT无法启动：端口设置无效。");
+									break;
+								case ConfigurationManager.INVALID_BUFFER_SIZE:
+									printMessage("KIFT无法启动：缓存设置无效。");
+									break;
+								case ConfigurationManager.INVALID_FILE_SYSTEM_PATH:
+									printMessage("KIFT无法启动：文件系统路径或某一扩展存储区设置无效。");
+									break;
+								case ConfigurationManager.INVALID_LOG:
+									printMessage("KIFT无法启动：日志设置无效。");
+									break;
+								case ConfigurationManager.INVALID_VC:
+									printMessage("KIFT无法启动：登录验证码设置无效。");
+									break;
+								case ConfigurationManager.INVALID_MUST_LOGIN_SETTING:
+									printMessage("KIFT无法启动：必须登入设置无效。");
+									break;
+								case ConfigurationManager.INVALID_CHANGE_PASSWORD_SETTING:
+									printMessage("KIFT无法启动：用户修改账户密码设置无效。");
+									break;
+								case ConfigurationManager.INVALID_FILE_CHAIN_SETTING:
+									printMessage("KIFT无法启动：永久资源链接设置无效。");
+									break;
+								default:
+									printMessage("KIFT无法启动，请检查设置或查看异常信息。");
+									break;
+								}
+							} else {
+								printMessage("KIFT无法启动，请检查设置或查看异常信息。");
+							}
 							serverStatusLab.setText(S_STOP);
-							statusLed.setForeground(LED_GRAY);
-						});
+						}
+						updateServerStatus();
+					});
+					t.start();
+				}
+			}
+		});
+		ServerUIModule.stop.addActionListener(new ActionListener() {
+
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				stop.setEnabled(false);
+				resatrt.setEnabled(false);
+				fileIOUtil.setEnabled(false);
+				if (filesViewer != null) {
+					filesViewer.setEnabled(false);
+				}
+				printMessage("关闭服务器...");
+				Thread t = new Thread(() -> {
+					if (cs != null) {
+						serverStatusLab.setText(S_STOPPING);
+						if (cs.close()) {
+							printMessage("关闭完成。正在检查服务器状态...");
+							if (st.getServerStatus()) {
+								printMessage("KIFT服务器未能成功关闭，如有需要，可以强制关闭程序（不安全）。");
+							} else {
+								printMessage("KIFT服务器已经关闭，停止所有访问。");
+							}
+						} else {
+							printMessage("KIFT服务器无法关闭，请手动结束本程序。");
+						}
+						updateServerStatus();
 					}
-					SwingUtilities.invokeLater(() -> updateServerStatus());
 				});
 				t.start();
 			}
 		});
-		stop.addActionListener(e -> {
-			stop.setEnabled(false);
-			restart.setEnabled(false);
-			fileIOUtil.setEnabled(false);
-			if (filesViewer != null) {
-				filesViewer.setEnabled(false);
+		ServerUIModule.exit.addActionListener(new ActionListener() {
+
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				fileIOUtil.setEnabled(false);
+				if (filesViewer != null) {
+					filesViewer.setEnabled(false);
+				}
+				exit();
 			}
-			printMessage("\u5173\u95ed\u670d\u52a1\u5668...");
-			Thread t = new Thread(() -> {
-				if (cs != null) {
-					SwingUtilities.invokeLater(() -> {
-						serverStatusLab.setText(S_STOPPING);
-						statusLed.setForeground(LED_ORANGE);
-					});
+		});
+		ServerUIModule.resatrt.addActionListener(new ActionListener() {
+
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				stop.setEnabled(false);
+				resatrt.setEnabled(false);
+				fileIOUtil.setEnabled(false);
+				if (filesViewer != null) {
+					filesViewer.setEnabled(false);
+				}
+				Thread t = new Thread(() -> {
+					printMessage("正在重启服务器...");
 					if (cs.close()) {
-						printMessage("\u5173\u95ed\u5b8c\u6210\u3002\u6b63\u5728\u68c0\u67e5\u670d\u52a1\u5668\u72b6\u6001...");
-						if (st.getServerStatus()) {
-							printMessage("Cloudflow\u670d\u52a1\u5668\u672a\u80fd\u6210\u529f\u5173\u95ed\uff0c\u5982\u6709\u9700\u8981\uff0c\u53ef\u4ee5\u5f3a\u5236\u5173\u95ed\u7a0b\u5e8f\uff08\u4e0d\u5b89\u5168\uff09\u3002");
+						if (ss.start()) {
+							printMessage("重启成功，可以正常访问了。");
 						} else {
-							printMessage("Cloudflow\u670d\u52a1\u5668\u5df2\u7ecf\u5173\u95ed\uff0c\u505c\u6b62\u6240\u6709\u8bbf\u95ee\u3002");
+							printMessage("错误：服务器已关闭但未能重新启动，请尝试手动启动服务器。");
 						}
 					} else {
-						printMessage("Cloudflow\u670d\u52a1\u5668\u65e0\u6cd5\u5173\u95ed\uff0c\u8bf7\u624b\u52a8\u7ed3\u675f\u672c\u7a0b\u5e8f\u3002");
+						printMessage("错误：无法关闭服务器，请尝试手动关闭。");
 					}
-					SwingUtilities.invokeLater(() -> updateServerStatus());
-				}
-			});
-			t.start();
-		});
-		exit.addActionListener(e -> {
-			fileIOUtil.setEnabled(false);
-			if (filesViewer != null) {
-				filesViewer.setEnabled(false);
+					updateServerStatus();
+				});
+				t.start();
 			}
-			exitApp();
 		});
-		restart.addActionListener(e -> {
-			stop.setEnabled(false);
-			restart.setEnabled(false);
-			fileIOUtil.setEnabled(false);
-			if (filesViewer != null) {
-				filesViewer.setEnabled(false);
+		ServerUIModule.setting.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				ServerUIModule.sw = SettingWindow.getInstance();
+				Thread t = new Thread(() -> {
+					sw.show();
+				});
+				t.start();
 			}
-			Thread t = new Thread(() -> {
-				printMessage("\u6b63\u5728\u91cd\u542f\u670d\u52a1\u5668...");
-				if (cs.close()) {
-					if (ss.start()) {
-						printMessage("\u91cd\u542f\u6210\u529f\uff0c\u53ef\u4ee5\u6b63\u5e38\u8bbf\u95ee\u4e86\u3002");
-					} else {
-						printMessage("Cloudflow\u670d\u52a1\u5668\u672a\u80fd\u6210\u529f\u91cd\u542f\uff0c\u8bf7\u68c0\u67e5\u8bbe\u7f6e\u6216\u67e5\u770b\u5f02\u5e38\u4fe1\u606f\u3002");
-					}
-				} else {
-					printMessage("Cloudflow\u670d\u52a1\u5668\u65e0\u6cd5\u5173\u95ed\uff0c\u8bf7\u5c1d\u8bd5\u624b\u52a8\u5173\u95ed\u3002");
-				}
-				SwingUtilities.invokeLater(() -> updateServerStatus());
-			});
-			t.start();
 		});
-		setting.addActionListener(e -> {
-			sw = SettingWindow.getInstance();
-			Thread t = new Thread(() -> sw.show());
-			t.start();
-		});
-		fileIOUtil.addActionListener(e -> {
-			fileIOUtil.setEnabled(false);
-			if (filesViewer != null) {
-				filesViewer.setEnabled(false);
+		ServerUIModule.fileIOUtil.addActionListener((e) -> {
+			ServerUIModule.fileIOUtil.setEnabled(false);
+			if (ServerUIModule.filesViewer != null) {
+				ServerUIModule.filesViewer.setEnabled(false);
 			}
 			Thread t = new Thread(() -> {
 				try {
-					fsv = FSViewer.getInstance();
+					ServerUIModule.fsv = FSViewer.getInstance();
 					fsv.show();
 				} catch (SQLException e1) {
-					Printer.instance.print("\u9519\u8bef\uff1a\u65e0\u6cd5\u8bfb\u53d6\u6587\u4ef6\uff0c\u6587\u4ef6\u7cfb\u7edf\u53ef\u80fd\u5df2\u7ecf\u635f\u574f\uff0c\u60a8\u53ef\u4ee5\u5c1d\u8bd5\u91cd\u542f\u5e94\u7528\u3002");
+					Printer.instance.print("错误：无法读取文件，文件系统可能已经损坏，您可以尝试重启应用。");
 				}
-				SwingUtilities.invokeLater(() -> {
-					fileIOUtil.setEnabled(true);
-					if (filesViewer != null) {
-						filesViewer.setEnabled(true);
-					}
-				});
+				ServerUIModule.fileIOUtil.setEnabled(true);
+				if (ServerUIModule.filesViewer != null) {
+					ServerUIModule.filesViewer.setEnabled(true);
+				}
 			});
 			t.start();
 		});
+		modifyComponentSize(ServerUIModule.window);
 	}
 
 	public void show() {
-		window.setVisible(true);
+		ServerUIModule.window.setVisible(true);
 		updateServerStatus();
 	}
 
-	public JFrame getWindow() {
-		return window;
-	}
-
-	public static JFrame getMainWindow() {
-		try {
-			return getInsatnce().getWindow();
-		} catch (Exception e) {
-			return null;
-		}
-	}
-
 	public static void setOnCloseServer(final OnCloseServer cs) {
-		try {
-			ServerUIModule ui = getInsatnce();
-			ui.cs = cs;
-		} catch (Exception e) {
-			Printer.instance.print("\u9519\u8bef\uff1a\u65e0\u6cd5\u521d\u59cb\u5316UI\u6a21\u5757\u3002");
-		}
+		ServerUIModule.cs = cs;
 	}
 
 	public static ServerUIModule getInsatnce() throws Exception {
-		if (instance == null) {
-			instance = new ServerUIModule();
+		if (ServerUIModule.instance == null) {
+			ServerUIModule.instance = new ServerUIModule();
 		}
-		return instance;
+		return ServerUIModule.instance;
 	}
 
 	public static void setStartServer(final OnStartServer ss) {
-		try {
-			ServerUIModule ui = getInsatnce();
-			ui.ss = ss;
-		} catch (Exception e) {
-			Printer.instance.print("\u9519\u8bef\uff1a\u65e0\u6cd5\u521d\u59cb\u5316UI\u6a21\u5757\u3002");
-		}
+		ServerUIModule.ss = ss;
 	}
 
 	public static void setGetServerStatus(final GetServerStatus st) {
-		try {
-			ServerUIModule ui = getInsatnce();
-			ui.st = st;
-			SettingWindow.setGetServerStatus(st);
-		} catch (Exception e) {
-			Printer.instance.print("\u9519\u8bef\uff1a\u65e0\u6cd5\u521d\u59cb\u5316UI\u6a21\u5757\u3002");
-		}
+		ServerUIModule.st = st;
+		SettingWindow.st = st;
 	}
 
 	public void updateServerStatus() {
-		if (st != null) {
+		if (ServerUIModule.st != null) {
 			Thread t = new Thread(() -> {
-				if (st.getServerStatus()) {
-					SwingUtilities.invokeLater(() -> {
-						serverStatusLab.setText(S_START);
-						statusLed.setForeground(LED_GREEN);
-						start.setEnabled(false);
-						stop.setEnabled(true);
-						restart.setEnabled(true);
-						setting.setEnabled(false);
-					});
+				if (ServerUIModule.st.getServerStatus()) {
+					ServerUIModule.serverStatusLab.setText(S_START);
+					ServerUIModule.start.setEnabled(false);
+					ServerUIModule.stop.setEnabled(true);
+					ServerUIModule.resatrt.setEnabled(true);
+					ServerUIModule.setting.setEnabled(false);
 				} else {
-					SwingUtilities.invokeLater(() -> {
-						serverStatusLab.setText(S_STOP);
-						statusLed.setForeground(LED_GRAY);
-						start.setEnabled(true);
-						stop.setEnabled(false);
-						restart.setEnabled(false);
-						setting.setEnabled(true);
-					});
+					ServerUIModule.serverStatusLab.setText(S_STOP);
+					ServerUIModule.start.setEnabled(true);
+					ServerUIModule.stop.setEnabled(false);
+					ServerUIModule.resatrt.setEnabled(false);
+					ServerUIModule.setting.setEnabled(true);
 				}
-				SwingUtilities.invokeLater(() -> {
-					fileIOUtil.setEnabled(true);
-					if (filesViewer != null) {
-						filesViewer.setEnabled(true);
+				fileIOUtil.setEnabled(true);
+				if (filesViewer != null) {
+					filesViewer.setEnabled(true);
+				}
+				ServerUIModule.portStatusLab.setText(ServerUIModule.st.getPort() + "");
+				if (ServerUIModule.st.getLogLevel() != null) {
+					switch (ServerUIModule.st.getLogLevel()) {
+					case Event: {
+						ServerUIModule.logLevelLab.setText(L_ALL);
+						break;
 					}
-					portStatusLab.setText(st.getPort() + "");
-					if (st.getLogLevel() != null) {
-						switch (st.getLogLevel()) {
-						case Event: {
-							logLevelLab.setText(L_ALL);
-							break;
-						}
-						case None: {
-							logLevelLab.setText(L_NONE);
-							break;
-						}
-						case Runtime_Exception: {
-							logLevelLab.setText(L_EXCEPTION);
-							break;
-						}
-						default: {
-							logLevelLab.setText("\u65e0\u6cd5\u83b7\u53d6(?)");
-							break;
-						}
-						}
+					case None: {
+						ServerUIModule.logLevelLab.setText(L_NONE);
+						break;
 					}
-					bufferSizeLab.setText(st.getBufferSize() / 1024 + " KB");
-				});
+					case Runtime_Exception: {
+						ServerUIModule.logLevelLab.setText(L_EXCEPTION);
+						break;
+					}
+					default: {
+						ServerUIModule.logLevelLab.setText("无法获取(?)");
+						break;
+					}
+					}
+				}
+				ServerUIModule.bufferSizeLab.setText(ServerUIModule.st.getBufferSize() / 1024 + " KB");
 			});
 			t.start();
 		}
 	}
 
-	private void exitApp() {
-		SwingUtilities.invokeLater(() -> {
-			start.setEnabled(false);
-			stop.setEnabled(false);
-			exit.setEnabled(false);
-			restart.setEnabled(false);
-			setting.setEnabled(false);
-		});
-		printMessage("\u9000\u51fa\u7a0b\u5e8f...");
-		if (cs != null) {
+	private void exit() {
+		ServerUIModule.start.setEnabled(false);
+		ServerUIModule.stop.setEnabled(false);
+		ServerUIModule.exit.setEnabled(false);
+		ServerUIModule.resatrt.setEnabled(false);
+		ServerUIModule.setting.setEnabled(false);
+		this.printMessage("退出程序...");
+		if (ServerUIModule.cs != null) {
 			final Thread t = new Thread(() -> {
-				if (st.getServerStatus()) {
-					cs.close();
+				if (ServerUIModule.st.getServerStatus()) {
+					ServerUIModule.cs.close();
 				}
 				System.exit(0);
+				return;
 			});
 			t.start();
 		} else {
@@ -716,75 +494,26 @@ public class ServerUIModule extends KiftdDynamicWindow {
 		}
 	}
 
-	private void showWindow() {
-		SwingUtilities.invokeLater(() -> {
-			window.setVisible(true);
-			window.setExtendedState(JFrame.NORMAL);
-			window.requestFocus();
-		});
-	}
-
-	private void saveWindowBounds() {
-		if (prefs == null || window == null) {
-			return;
-		}
-		prefs.putInt(KEY_WIN_X, window.getX());
-		prefs.putInt(KEY_WIN_Y, window.getY());
-		prefs.putInt(KEY_WIN_W, window.getWidth());
-		prefs.putInt(KEY_WIN_H, window.getHeight());
-	}
-
-	private void restoreWindowBounds() {
-		if (prefs == null) {
-			return;
-		}
-		int x = prefs.getInt(KEY_WIN_X, window.getX());
-		int y = prefs.getInt(KEY_WIN_Y, window.getY());
-		int w = prefs.getInt(KEY_WIN_W, window.getWidth());
-		int h = prefs.getInt(KEY_WIN_H, window.getHeight());
-		Dimension screen = Toolkit.getDefaultToolkit().getScreenSize();
-		if (w < window.getMinimumSize().width) {
-			w = window.getMinimumSize().width;
-		}
-		if (h < window.getMinimumSize().height) {
-			h = window.getMinimumSize().height;
-		}
-		if (x < 0 || x + w > screen.width) {
-			x = 100;
-		}
-		if (y < 0 || y + h > screen.height) {
-			y = 100;
-		}
-		window.setBounds(x, y, w, h);
-	}
-
 	public void printMessage(final String context) {
-		SwingUtilities.invokeLater(() -> {
-			output.append("[" + getFormateDate() + "]" + context + "\n");
-		});
+		ServerUIModule.output.append("[" + this.getFormateDate() + "]" + context + "\n");
 	}
 
 	private String getFormateDate() {
-		if (ti != null) {
-			final Date d = ti.get();
-			if (d == null) {
-				return "";
-			}
-			return SDF_HOLDER.get().format(d);
+		if (null == sdf) {
+			sdf = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss");
 		}
-		return SDF_HOLDER.get().format(new Date());
+		if (ServerUIModule.ti != null) {
+			final Date d = ServerUIModule.ti.get();
+			return sdf.format(d);
+		}
+		return sdf.format(new Date());
 	}
 
 	public static void setGetServerTime(final GetServerTime ti) {
-		try {
-			ServerUIModule ui = getInsatnce();
-			ui.ti = ti;
-		} catch (Exception e) {
-			Printer.instance.print("\u9519\u8bef\uff1a\u65e0\u6cd5\u521d\u59cb\u5316UI\u6a21\u5757\u3002");
-		}
+		ServerUIModule.ti = ti;
 	}
 
 	public static void setUpdateSetting(final UpdateSetting us) {
-		SettingWindow.setUpdateSetting(us);
+		SettingWindow.us = us;
 	}
 }

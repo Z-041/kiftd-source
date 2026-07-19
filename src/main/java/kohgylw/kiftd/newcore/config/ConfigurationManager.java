@@ -13,12 +13,13 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.stream.Collectors;
 
 import kohgylw.kiftd.printer.Printer;
+import kohgylw.kiftd.util.SizeFormatUtil;
 import kohgylw.kiftd.server.enumeration.AccountAuth;
 import kohgylw.kiftd.server.enumeration.LogLevel;
 import kohgylw.kiftd.server.enumeration.VCLevel;
@@ -97,9 +98,9 @@ public class ConfigurationManager {
 	private String recycleBinPath;
 	private String defaultFileSystemPath;
 
-	private static Thread accountUpdateDaemon;
+	private static volatile Thread accountUpdateDaemon;
 
-	private ConfigurationManager() {
+	protected ConfigurationManager() {
 		this.status = -1;
 		this.basePath = System.getProperty("user.dir");
 		String classPath = System.getProperty("java.class.path");
@@ -171,6 +172,7 @@ public class ConfigurationManager {
 				Printer.instance.print("准备就绪。");
 				startAccountUpdateListener();
 			}
+			instance = this;
 		} catch (Exception e) {
 			Printer.instance.print("错误：无法加载一个或多个配置文件（位于" + this.confDir + "路径下），请尝试删除旧的配置文件并重新启动本应用或查看安装路径的权限（必须可读写）。");
 			Printer.instance.print("详细错误：" + e.getMessage());
@@ -192,8 +194,16 @@ public class ConfigurationManager {
 		return this.status;
 	}
 
+	public int getPropertiesStatus() {
+		return this.status;
+	}
+
 	public void revalidate() {
 		this.status = validate();
+	}
+
+	public void reTestServerPropertiesAndEffect() {
+		revalidate();
 	}
 
 	// ==================== Account Management ====================
@@ -210,8 +220,10 @@ public class ConfigurationManager {
 		if (getImportAccount().equals(account)) {
 			return true;
 		}
-		final String accountPwd = this.accountp.getProperty(account + ".pwd");
-		return accountPwd != null && accountPwd.length() > 0;
+		synchronized (accountp) {
+			final String accountPwd = this.accountp.getProperty(account + ".pwd");
+			return accountPwd != null && accountPwd.length() > 0;
+		}
 	}
 
 	public boolean checkAccountPwd(final String account, final String pwd) {
@@ -220,6 +232,23 @@ public class ConfigurationManager {
 			return false;
 		}
 		return PasswordUtil.verifyPassword(pwd, apwd);
+	}
+
+	public void upgradePasswordHashIfNeeded(String account, String password) {
+		final String apwd = this.accountp.getProperty(account + ".pwd");
+		if (apwd != null && !PasswordUtil.isPasswordHashed(apwd)) {
+			try {
+				synchronized (accountp) {
+					accountp.setProperty(account + ".pwd", PasswordUtil.hashPassword(password));
+					try (FileOutputStream accountSettingOut = new FileOutputStream(
+							this.confDir + "account.properties")) {
+						accountp.store(accountSettingOut, null);
+					}
+				}
+			} catch (Exception e) {
+				Printer.instance.print("警告：密码哈希升级失败，将在下次登录时重试。");
+			}
+		}
 	}
 
 	private void upgradePasswordHash(String account, String password) {
@@ -241,19 +270,21 @@ public class ConfigurationManager {
 		}
 		if (account != null && account.length() > 0) {
 			final StringBuilder auths = new StringBuilder();
-			for (String id : folders) {
-				String addedAuth = accountp.getProperty(account + ".auth." + id);
-				if (addedAuth != null) {
-					auths.append(addedAuth);
+			synchronized (accountp) {
+				for (String id : folders) {
+					String addedAuth = accountp.getProperty(account + ".auth." + id);
+					if (addedAuth != null) {
+						auths.append(addedAuth);
+					}
 				}
-			}
-			final String accauth = this.accountp.getProperty(account + ".auth");
-			final String overall = this.accountp.getProperty("authOverall");
-			if (accauth != null) {
-				auths.append(accauth);
-			}
-			if (overall != null) {
-				auths.append(overall);
+				final String accauth = this.accountp.getProperty(account + ".auth");
+				final String overall = this.accountp.getProperty("authOverall");
+				if (accauth != null) {
+					auths.append(accauth);
+				}
+				if (overall != null) {
+					auths.append(overall);
+				}
 			}
 			return checkAuthChar(auths.toString(), auth);
 		} else {
@@ -352,7 +383,7 @@ public class ConfigurationManager {
 		if (account != null && newPassword != null) {
 			if (accountp.getProperty(account + ".pwd") != null) {
 				synchronized (accountp) {
-					accountp.setProperty(account + ".pwd", newPassword);
+					accountp.setProperty(account + ".pwd", PasswordUtil.hashPassword(newPassword));
 					try (FileOutputStream out = new FileOutputStream(this.confDir + "account.properties")) {
 						accountp.store(out, null);
 						return true;
@@ -367,7 +398,7 @@ public class ConfigurationManager {
 		if (newAccount != null && newPassword != null) {
 			if (accountp.getProperty(newAccount + ".pwd") == null) {
 				synchronized (accountp) {
-					accountp.setProperty(newAccount + ".pwd", newPassword);
+					accountp.setProperty(newAccount + ".pwd", PasswordUtil.hashPassword(newPassword));
 					if (signUpAuth != null) {
 						accountp.setProperty(newAccount + ".auth", signUpAuth);
 					}
@@ -385,15 +416,100 @@ public class ConfigurationManager {
 	}
 
 	public List<String> getAllAddedAuthFoldersId() {
-		List<String> foldersId = new ArrayList<>();
-		for (Iterator<String> it = accountp.stringPropertieNames().iterator(); it.hasNext();) {
-			String config = it.next();
-			int index = config.lastIndexOf(".auth.");
-			if (index >= 0) {
-				foldersId.add(config.substring(index + 6));
+		return accountp.stringPropertieNames().stream()
+				.map(config -> {
+					int index = config.lastIndexOf(".auth.");
+					return index >= 0 ? config.substring(index + 6) : null;
+				})
+				.filter(id -> id != null)
+				.collect(Collectors.toList());
+	}
+
+	public List<String> getAllAccounts() {
+		synchronized (accountp) {
+			return accountp.stringPropertieNames().stream()
+					.filter(config -> config.endsWith(".pwd"))
+					.map(config -> config.substring(0, config.length() - 4))
+					.filter(account -> !account.isEmpty())
+					.sorted(String::compareToIgnoreCase)
+					.collect(Collectors.toList());
+		}
+	}
+
+	public String getAccountAuth(String account) {
+		if (account == null) {
+			return null;
+		}
+		synchronized (accountp) {
+			return accountp.getProperty(account + ".auth");
+		}
+	}
+
+	public String getAccountGroup(String account) {
+		if (account == null) {
+			return null;
+		}
+		synchronized (accountp) {
+			return accountp.getProperty(account + ".group");
+		}
+	}
+
+	public boolean isSuperAdmin(String account) {
+		return hasSuperAuth(account);
+	}
+
+	public boolean resetPassword(String account, String newPassword) throws Exception {
+		if (account == null || newPassword == null || newPassword.isEmpty()) {
+			return false;
+		}
+		synchronized (accountp) {
+			if (accountp.getProperty(account + ".pwd") == null) {
+				return false;
+			}
+			accountp.setProperty(account + ".pwd", PasswordUtil.hashPassword(newPassword));
+			try (FileOutputStream out = new FileOutputStream(this.confDir + "account.properties")) {
+				accountp.store(out, null);
+				return true;
 			}
 		}
-		return foldersId;
+	}
+
+	public boolean deleteAccount(String account) throws Exception {
+		if (account == null || account.isEmpty()) {
+			return false;
+		}
+		synchronized (accountp) {
+			if (accountp.getProperty(account + ".pwd") == null) {
+				return false;
+			}
+			String prefix = account + ".";
+			List<String> keysToRemove = accountp.stringPropertieNames().stream()
+					.filter(config -> config.startsWith(prefix))
+					.collect(Collectors.toList());
+			for (String key : keysToRemove) {
+				accountp.removeProperty(key);
+			}
+			try (FileOutputStream out = new FileOutputStream(this.confDir + "account.properties")) {
+				accountp.store(out, null);
+				return true;
+			}
+		}
+	}
+
+	public boolean updateAccountAuth(String account, String auth) throws Exception {
+		if (account == null || auth == null) {
+			return false;
+		}
+		synchronized (accountp) {
+			if (accountp.getProperty(account + ".pwd") == null) {
+				return false;
+			}
+			accountp.setProperty(account + ".auth", auth);
+			try (FileOutputStream out = new FileOutputStream(this.confDir + "account.properties")) {
+				accountp.store(out, null);
+				return true;
+			}
+		}
 	}
 
 	public boolean removeAddedAuthByFolderId(List<String> fIds) {
@@ -426,20 +542,22 @@ public class ConfigurationManager {
 	public long getUploadFileSize(String account) {
 		String defaultMaxSizeP = accountp.getProperty("defaultMaxSize");
 		if (account == null) {
-			return parseSizeString(defaultMaxSizeP);
+			return SizeFormatUtil.parseSizeString(defaultMaxSizeP);
 		} else {
 			String accountMaxSizeP = accountp.getProperty(account + ".maxSize");
-			return accountMaxSizeP == null ? parseSizeString(defaultMaxSizeP) : parseSizeString(accountMaxSizeP);
+			return accountMaxSizeP == null ? SizeFormatUtil.parseSizeString(defaultMaxSizeP)
+					: SizeFormatUtil.parseSizeString(accountMaxSizeP);
 		}
 	}
 
 	public long getDownloadMaxRate(String account) {
 		String defaultMaxRateP = accountp.getProperty("defaultMaxRate");
 		if (account == null) {
-			return parseRateString(defaultMaxRateP);
+			return SizeFormatUtil.parseRateString(defaultMaxRateP);
 		} else {
 			String accountMaxRateP = accountp.getProperty(account + ".maxRate");
-			return accountMaxRateP == null ? parseRateString(defaultMaxRateP) : parseRateString(accountMaxRateP);
+			return accountMaxRateP == null ? SizeFormatUtil.parseRateString(defaultMaxRateP)
+					: SizeFormatUtil.parseRateString(accountMaxRateP);
 		}
 	}
 
@@ -475,6 +593,10 @@ public class ConfigurationManager {
 	}
 
 	public String getBasePath() {
+		return this.basePath;
+	}
+
+	public String getPath() {
 		return this.basePath;
 	}
 
@@ -590,6 +712,10 @@ public class ConfigurationManager {
 		return openHttps;
 	}
 
+	public boolean openHttps() {
+		return openHttps;
+	}
+
 	public String getHttpsKeyType() {
 		return httpsKeyType;
 	}
@@ -624,6 +750,14 @@ public class ConfigurationManager {
 
 	public boolean useMySQL() {
 		return serverp == null ? false : "true".equals(serverp.getProperty("mysql.enable"));
+	}
+
+	public String getCorsAllowedOrigins() {
+		return serverp == null ? "" : serverp.getProperty("cors.allowedOrigins", "");
+	}
+
+	public String getHttpsRedirectHost() {
+		return serverp == null ? null : serverp.getProperty("https.redirect.host");
 	}
 
 	public String getRecycleBinPath() {
@@ -1085,59 +1219,63 @@ public class ConfigurationManager {
 		}
 	}
 
-	private void startAccountUpdateListener() {
+	public void startAccountUpdateListener() {
 		if (accountUpdateDaemon == null) {
-			Path confPath = Paths.get(confDir);
-			accountUpdateDaemon = new Thread(() -> {
-				WatchService ws = null;
-				try {
-					ws = confPath.getFileSystem().newWatchService();
-					confPath.register(ws, StandardWatchEventKinds.ENTRY_MODIFY,
-							StandardWatchEventKinds.ENTRY_DELETE, StandardWatchEventKinds.ENTRY_CREATE);
-					while (true) {
-						WatchKey wk = ws.take();
-						List<WatchEvent<?>> es = wk.pollEvents();
-						for (WatchEvent<?> we : es) {
-							if ("account.properties".equals(we.context().toString())) {
-								Printer.instance.print("正在更新账户配置信息...");
-								final File accountProp = new File(this.confDir + "account.properties");
-								if (accountProp.isFile() && accountProp.canRead()) {
-									try (final FileInputStream accountPropIn = new FileInputStream(accountProp)) {
-										synchronized (accountp) {
-											this.accountp.load(accountPropIn);
+			synchronized (ConfigurationManager.class) {
+				if (accountUpdateDaemon == null) {
+					Path confPath = Paths.get(confDir);
+					accountUpdateDaemon = new Thread(() -> {
+						WatchService ws = null;
+						try {
+							ws = confPath.getFileSystem().newWatchService();
+							confPath.register(ws, StandardWatchEventKinds.ENTRY_MODIFY,
+									StandardWatchEventKinds.ENTRY_DELETE, StandardWatchEventKinds.ENTRY_CREATE);
+							while (true) {
+								WatchKey wk = ws.take();
+								List<WatchEvent<?>> es = wk.pollEvents();
+								for (WatchEvent<?> we : es) {
+									if ("account.properties".equals(we.context().toString())) {
+										Printer.instance.print("正在更新账户配置信息...");
+										final File accountProp = new File(this.confDir + "account.properties");
+										if (accountProp.isFile() && accountProp.canRead()) {
+											try (final FileInputStream accountPropIn = new FileInputStream(accountProp)) {
+												synchronized (accountp) {
+													this.accountp.load(accountPropIn);
+												}
+												initIPRules();
+												initSignUpRules();
+												Printer.instance.print("账户配置更新完成，已加载最新配置。");
+											}
+										} else {
+											accountp.clear();
+											Printer.instance.print("警告：账户配置文件已被删除或无法读取，账户信息已清空。");
 										}
-										initIPRules();
-										initSignUpRules();
-										Printer.instance.print("账户配置更新完成，已加载最新配置。");
 									}
-								} else {
-									accountp.clear();
-									Printer.instance.print("警告：账户配置文件已被删除或无法读取，账户信息已清空。");
+								}
+								if (!wk.reset()) {
+									break;
+								}
+							}
+						} catch (Exception e) {
+							Printer.instance.print(
+									"错误：用户配置文件更改监听失败，该功能已失效，kiftd无法实时更新用户配置（可尝试重启程序以恢复该功能）。");
+						} finally {
+							if (ws != null) {
+								try {
+									ws.close();
+								} catch (Exception ignored) {
 								}
 							}
 						}
-						if (!wk.reset()) {
-							break;
-						}
-					}
-				} catch (Exception e) {
-					Printer.instance.print(
-							"错误：用户配置文件更改监听失败，该功能已失效，kiftd无法实时更新用户配置（可尝试重启程序以恢复该功能）。");
-				} finally {
-					if (ws != null) {
-						try {
-							ws.close();
-						} catch (Exception ignored) {
-						}
-					}
+					});
+					accountUpdateDaemon.setDaemon(true);
+					accountUpdateDaemon.start();
 				}
-			});
-			accountUpdateDaemon.setDaemon(true);
-			accountUpdateDaemon.start();
+			}
 		}
 	}
 
-	private void createDefaultServerPropertiesFile() {
+	public void createDefaultServerPropertiesFile() {
 		Printer.instance.print("正在生成初始服务器配置文件（" + this.confDir + "server.properties）...");
 		final java.util.Properties dsp = new java.util.Properties();
 		dsp.setProperty("mustLogin", "O");
@@ -1159,7 +1297,7 @@ public class ConfigurationManager {
 	private void createDefaultAccountPropertiesFile() {
 		Printer.instance.print("正在生成初始账户配置文件（" + this.confDir + "account.properties）...");
 		final java.util.Properties dap = new java.util.Properties();
-		dap.setProperty("admin.pwd", "000000");
+		dap.setProperty("admin.pwd", PasswordUtil.hashPassword("000000"));
 		dap.setProperty("admin.auth", "cudrm");
 		dap.setProperty("authOverall", "l");
 		try (FileOutputStream accountSettingOut = new FileOutputStream(this.confDir + "account.properties")) {
@@ -1168,79 +1306,5 @@ public class ConfigurationManager {
 		} catch (Exception e) {
 			Printer.instance.print("错误：无法生成初始账户配置文件，存储路径不存在或写入失败。");
 		}
-	}
-
-	private long parseSizeString(String in) {
-		long r = 0L;
-		if (in == null || in.length() <= 0) {
-			return -1L;
-		}
-		try {
-			if (in.length() > 1) {
-				String value = in.substring(0, in.length() - 1).trim();
-				String unit = in.substring(in.length() - 1).toLowerCase();
-				if (in.length() > 2) {
-					if (in.toLowerCase().charAt(in.length() - 1) == 'b') {
-						unit = in.substring(in.length() - 2, in.length() - 1).toLowerCase();
-						value = in.substring(0, in.length() - 2).trim();
-					}
-				}
-				switch (unit) {
-				case "k":
-					r = Integer.parseInt(value) * 1024L;
-					break;
-				case "m":
-					r = Integer.parseInt(value) * 1048576L;
-					break;
-				case "g":
-					r = Integer.parseInt(value) * 1073741824L;
-					break;
-				default:
-					r = Integer.parseInt(in.trim());
-					break;
-				}
-			} else {
-				r = Integer.parseInt(in.trim());
-			}
-		} catch (Exception ignored) {
-		}
-		return r;
-	}
-
-	private long parseRateString(String in) {
-		long r = 0L;
-		if (in == null || in.length() <= 0) {
-			return -1L;
-		}
-		try {
-			if (in.length() > 1) {
-				String value = in.substring(0, in.length() - 1).trim();
-				String unit = in.substring(in.length() - 1).toLowerCase();
-				if (in.length() > 2) {
-					if (in.toLowerCase().charAt(in.length() - 1) == 'b') {
-						unit = in.substring(in.length() - 2, in.length() - 1).toLowerCase();
-						value = in.substring(0, in.length() - 2).trim();
-					}
-				}
-				switch (unit) {
-				case "k":
-					r = Integer.parseInt(value) * 1024L;
-					break;
-				case "m":
-					r = Integer.parseInt(value) * 1048576L;
-					break;
-				case "g":
-					r = Integer.parseInt(value) * 1073741824L;
-					break;
-				default:
-					r = Integer.parseInt(in.trim()) * 1024L;
-					break;
-				}
-			} else {
-				r = Integer.parseInt(in.trim()) * 1024L;
-			}
-		} catch (Exception ignored) {
-		}
-		return r;
 	}
 }

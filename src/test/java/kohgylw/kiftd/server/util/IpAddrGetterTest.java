@@ -1,5 +1,7 @@
 package kohgylw.kiftd.server.util;
 
+import kohgylw.kiftd.newcore.config.ConfigurationManager;
+
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -20,9 +22,9 @@ class IpAddrGetterTest {
 
     @Test
     void testGetIpAddrFromRemoteAddr() {
-        try (MockedStatic<ConfigureReader> mockedCr = mockStatic(ConfigureReader.class)) {
-            ConfigureReader mockReader = mock(ConfigureReader.class);
-            mockedCr.when(ConfigureReader::instance).thenReturn(mockReader);
+        try (MockedStatic<ConfigurationManager> mockedCr = mockStatic(ConfigurationManager.class)) {
+            ConfigurationManager mockReader = mock(ConfigurationManager.class);
+            mockedCr.when(ConfigurationManager::instance).thenReturn(mockReader);
             when(mockReader.isIpXFFAnalysis()).thenReturn(false);
 
             HttpServletRequest request = mock(HttpServletRequest.class);
@@ -35,9 +37,9 @@ class IpAddrGetterTest {
 
     @Test
     void testGetIpAddrWithXForwardedFor() {
-        try (MockedStatic<ConfigureReader> mockedCr = mockStatic(ConfigureReader.class)) {
-            ConfigureReader mockReader = mock(ConfigureReader.class);
-            mockedCr.when(ConfigureReader::instance).thenReturn(mockReader);
+        try (MockedStatic<ConfigurationManager> mockedCr = mockStatic(ConfigurationManager.class)) {
+            ConfigurationManager mockReader = mock(ConfigurationManager.class);
+            mockedCr.when(ConfigurationManager::instance).thenReturn(mockReader);
             when(mockReader.isIpXFFAnalysis()).thenReturn(true);
 
             HttpServletRequest request = mock(HttpServletRequest.class);
@@ -51,9 +53,9 @@ class IpAddrGetterTest {
 
     @Test
     void testGetIpAddrWithProxyClientIP() {
-        try (MockedStatic<ConfigureReader> mockedCr = mockStatic(ConfigureReader.class)) {
-            ConfigureReader mockReader = mock(ConfigureReader.class);
-            mockedCr.when(ConfigureReader::instance).thenReturn(mockReader);
+        try (MockedStatic<ConfigurationManager> mockedCr = mockStatic(ConfigurationManager.class)) {
+            ConfigurationManager mockReader = mock(ConfigurationManager.class);
+            mockedCr.when(ConfigurationManager::instance).thenReturn(mockReader);
             when(mockReader.isIpXFFAnalysis()).thenReturn(true);
 
             HttpServletRequest request = mock(HttpServletRequest.class);
@@ -66,9 +68,9 @@ class IpAddrGetterTest {
 
     @Test
     void testGetIpAddrXFFDisabledFallsBackToRemoteAddr() {
-        try (MockedStatic<ConfigureReader> mockedCr = mockStatic(ConfigureReader.class)) {
-            ConfigureReader mockReader = mock(ConfigureReader.class);
-            mockedCr.when(ConfigureReader::instance).thenReturn(mockReader);
+        try (MockedStatic<ConfigurationManager> mockedCr = mockStatic(ConfigurationManager.class)) {
+            ConfigurationManager mockReader = mock(ConfigurationManager.class);
+            mockedCr.when(ConfigurationManager::instance).thenReturn(mockReader);
             when(mockReader.isIpXFFAnalysis()).thenReturn(false);
 
             HttpServletRequest request = mock(HttpServletRequest.class);
@@ -81,9 +83,9 @@ class IpAddrGetterTest {
 
     @Test
     void testGetIpAddrWhenRemoteAddrIsNull() {
-        try (MockedStatic<ConfigureReader> mockedCr = mockStatic(ConfigureReader.class)) {
-            ConfigureReader mockReader = mock(ConfigureReader.class);
-            mockedCr.when(ConfigureReader::instance).thenReturn(mockReader);
+        try (MockedStatic<ConfigurationManager> mockedCr = mockStatic(ConfigurationManager.class)) {
+            ConfigurationManager mockReader = mock(ConfigurationManager.class);
+            mockedCr.when(ConfigurationManager::instance).thenReturn(mockReader);
             when(mockReader.isIpXFFAnalysis()).thenReturn(false);
 
             HttpServletRequest request = mock(HttpServletRequest.class);
@@ -96,9 +98,9 @@ class IpAddrGetterTest {
 
     @Test
     void testGetIpAddrWithUnknownHeader() {
-        try (MockedStatic<ConfigureReader> mockedCr = mockStatic(ConfigureReader.class)) {
-            ConfigureReader mockReader = mock(ConfigureReader.class);
-            mockedCr.when(ConfigureReader::instance).thenReturn(mockReader);
+        try (MockedStatic<ConfigurationManager> mockedCr = mockStatic(ConfigurationManager.class)) {
+            ConfigurationManager mockReader = mock(ConfigurationManager.class);
+            mockedCr.when(ConfigurationManager::instance).thenReturn(mockReader);
             when(mockReader.isIpXFFAnalysis()).thenReturn(true);
 
             HttpServletRequest request = mock(HttpServletRequest.class);
@@ -107,6 +109,53 @@ class IpAddrGetterTest {
 
             String ip = getter.getIpAddr(request);
             assertEquals("172.16.0.1", ip);
+        }
+    }
+
+    @Test
+    void testGetIpAddrSkipsInvalidXffEntries() {
+        try (MockedStatic<ConfigurationManager> mockedCr = mockStatic(ConfigurationManager.class)) {
+            ConfigurationManager mockReader = mock(ConfigurationManager.class);
+            mockedCr.when(ConfigurationManager::instance).thenReturn(mockReader);
+            when(mockReader.isIpXFFAnalysis()).thenReturn(true);
+
+            HttpServletRequest request = mock(HttpServletRequest.class);
+            when(request.getHeader("X-Forwarded-For")).thenReturn("not-an-ip, 203.0.113.195, 198.51.100.14");
+            when(request.getRemoteAddr()).thenReturn("10.0.0.1");
+
+            String ip = getter.getIpAddr(request);
+            assertEquals("203.0.113.195", ip);
+        }
+    }
+
+    @Test
+    void testGetIpAddrFallsBackWhenAllXffInvalid() {
+        try (MockedStatic<ConfigurationManager> mockedCr = mockStatic(ConfigurationManager.class)) {
+            ConfigurationManager mockReader = mock(ConfigurationManager.class);
+            mockedCr.when(ConfigurationManager::instance).thenReturn(mockReader);
+            when(mockReader.isIpXFFAnalysis()).thenReturn(true);
+
+            HttpServletRequest request = mock(HttpServletRequest.class);
+            when(request.getHeader("X-Forwarded-For")).thenReturn("hack, another-fake");
+            when(request.getRemoteAddr()).thenReturn("198.51.100.10");
+
+            String ip = getter.getIpAddr(request);
+            assertEquals("198.51.100.10", ip);
+        }
+    }
+
+    @Test
+    void testGetIpAddrInvalidRemoteAddrReturnsFailure() {
+        try (MockedStatic<ConfigurationManager> mockedCr = mockStatic(ConfigurationManager.class)) {
+            ConfigurationManager mockReader = mock(ConfigurationManager.class);
+            mockedCr.when(ConfigurationManager::instance).thenReturn(mockReader);
+            when(mockReader.isIpXFFAnalysis()).thenReturn(false);
+
+            HttpServletRequest request = mock(HttpServletRequest.class);
+            when(request.getRemoteAddr()).thenReturn("not-an-ip");
+
+            String ip = getter.getIpAddr(request);
+            assertEquals("获取失败", ip);
         }
     }
 

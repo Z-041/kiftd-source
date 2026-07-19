@@ -3,6 +3,8 @@ package kohgylw.kiftd.mc;
 import java.util.ArrayList;
 import java.util.List;
 
+import javax.swing.SwingUtilities;
+
 import kohgylw.kiftd.printer.*;
 import kohgylw.kiftd.ui.module.*;
 import kohgylw.kiftd.ui.pojo.FileSystemPath;
@@ -20,9 +22,22 @@ public class UIRunner {
 	private static UIRunner ui;
 
 	private UIRunner() throws Exception {
-		Printer.init(true);
+		System.err.println("[STARTUP] UIRunner constructor started");
+		System.err.println("[STARTUP] Calling Printer.init(true) on EDT...");
+		SwingUtilities.invokeAndWait(() -> {
+			try {
+				Printer.init(true);
+				System.err.println("[STARTUP] Printer.init(true) completed on EDT");
+			} catch (Exception e) {
+				System.err.println("[STARTUP] Printer.init(true) FAILED: " + e);
+				throw new RuntimeException(e);
+			}
+		});
+		System.err.println("[STARTUP] Getting ServerUIModule instance...");
 		final ServerUIModule ui = ServerUIModule.getInsatnce();
+		System.err.println("[STARTUP] ServerUIModule instance obtained, creating KiftdApplication...");
 		KiftdApplication app = new KiftdApplication();
+		System.err.println("[STARTUP] KiftdApplication created, setting up callbacks...");
 		ServerUIModule.setStartServer(() -> app.start());
 		ServerUIModule.setOnCloseServer(() -> app.stop());
 		ServerUIModule.setGetServerTime(() -> ServerTimeUtil.getServerTime());
@@ -128,7 +143,13 @@ public class UIRunner {
 				return ConfigurationManager.instance().doUpdate(s);
 			}
 		});
-		ui.show();
+		System.err.println("[STARTUP] Callbacks setup complete, showing UI on EDT...");
+		SwingUtilities.invokeLater(() -> {
+			System.err.println("[STARTUP] ui.show() called on EDT");
+			ui.show();
+			System.err.println("[STARTUP] ui.show() completed on EDT");
+		});
+		System.err.println("[STARTUP] UIRunner constructor completed");
 	}
 
 	public static UIRunner build() throws Exception {

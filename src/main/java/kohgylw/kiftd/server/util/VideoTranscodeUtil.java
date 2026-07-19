@@ -1,9 +1,12 @@
 package kohgylw.kiftd.server.util;
 
+import kohgylw.kiftd.newcore.config.ConfigurationManager;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 import jakarta.annotation.Resource;
 
@@ -41,6 +44,7 @@ public class VideoTranscodeUtil {
 	public static Map<String, VideoTranscodeThread> videoTranscodeThreads = new HashMap<>();
 
 	private static final int MAX_CONCURRENT_TRANSCODES = 3;
+	private static final Set<String> SUPPORTED_VIDEO_SUFFIXES = Set.of("mp4", "webm", "mov", "avi", "wmv", "mkv", "flv");
 
 	{
 		AudioAttributes audio = new AudioAttributes();
@@ -80,7 +84,7 @@ public class VideoTranscodeUtil {
 					try (FileInputStream fis = new FileInputStream(f)) {
 						String md5 = DigestUtils.md5Hex(fis);
 						if (md5.equals(vtt.getMd5())
-								&& new File(ConfigureReader.instance().getTemporaryfilePath(), vtt.getOutputFileName())
+								&& new File(ConfigurationManager.instance().getTemporaryfilePath(), vtt.getOutputFileName())
 										.isFile()) {
 							return vtt.getProgress();
 						} else {
@@ -96,24 +100,12 @@ public class VideoTranscodeUtil {
 				return null;
 			}
 			String suffix = n.getFileName().substring(dotIndex + 1).toLowerCase();
-			switch (suffix) {
-			case "mp4":
-			case "webm":
-			case "mov":
-			case "avi":
-			case "wmv":
-			case "mkv":
-			case "flv":
-				break;
-			default:
+			if (!SUPPORTED_VIDEO_SUFFIXES.contains(suffix)) {
 				throw new IllegalArgumentException();
 			}
-			int activeCount = 0;
-			for (VideoTranscodeThread t : videoTranscodeThreads.values()) {
-				if (!"FIN".equals(t.getProgress())) {
-					activeCount++;
-				}
-			}
+			long activeCount = videoTranscodeThreads.values().stream()
+					.filter(t -> !"FIN".equals(t.getProgress()))
+					.count();
 			if (activeCount >= MAX_CONCURRENT_TRANSCODES) {
 				return "WAIT";
 			}

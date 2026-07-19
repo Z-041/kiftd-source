@@ -1,5 +1,7 @@
 package kohgylw.kiftd.server.util;
 
+import kohgylw.kiftd.newcore.config.ConfigurationManager;
+
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -7,6 +9,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
+import java.nio.charset.StandardCharsets;
 
 import jakarta.annotation.Resource;
 
@@ -65,8 +68,8 @@ public class NoticeUtil {
 	 * @author 青阳龙野(kohgylw)
 	 */
 	public void loadNotice() {
-		File noticeMD = new File(ConfigureReader.instance().getPath(), NOTICE_FILE_NAME);
-		File noticeHTML = new File(ConfigureReader.instance().getTemporaryfilePath(), NOTICE_OUTPUT_NAME);// 转化后的输出位置
+		File noticeMD = new File(ConfigurationManager.instance().getPath(), NOTICE_FILE_NAME);
+		File noticeHTML = new File(ConfigurationManager.instance().getTemporaryfilePath(), NOTICE_OUTPUT_NAME);// 转化后的输出位置
 		if (noticeMD.isFile() && noticeMD.canRead()) {
 			Printer.instance.print("正在载入公告信息...");
 			try (FileInputStream fis1 = new FileInputStream(noticeMD)) {
@@ -76,7 +79,7 @@ public class NoticeUtil {
 						BufferedReader reader = new BufferedReader(
 								new InputStreamReader(fis2, inputFileEncode));
 						BufferedWriter writer = new BufferedWriter(
-								new OutputStreamWriter(fos, "UTF-8"))) {
+								new OutputStreamWriter(fos, StandardCharsets.UTF_8))) {
 					Parser parser = Parser.builder(options).build();
 					HtmlRenderer renderer = HtmlRenderer.builder(options).build();
 					String line = null;

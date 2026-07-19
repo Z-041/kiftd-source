@@ -1,5 +1,7 @@
 package kohgylw.kiftd.server.filter;
 
+import kohgylw.kiftd.newcore.config.ConfigurationManager;
+
 import jakarta.servlet.annotation.*;
 import jakarta.servlet.*;
 import kohgylw.kiftd.server.util.*;
@@ -33,7 +35,7 @@ public class MastLoginFilter implements Filter {
 	@Override
 	public void doFilter(final ServletRequest request, final ServletResponse response, final FilterChain chain)
 			throws IOException, ServletException {
-		final ConfigureReader cr = ConfigureReader.instance();
+		final ConfigurationManager cr = ConfigurationManager.instance();
 		final boolean s = cr.mustLogin();
 		final HttpServletRequest hsq = (HttpServletRequest) request;
 		final HttpServletResponse hsr = (HttpServletResponse) response;

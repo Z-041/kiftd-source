@@ -1,5 +1,7 @@
 package kohgylw.kiftd.server.listener;
 
+import kohgylw.kiftd.newcore.config.ConfigurationManager;
+
 import jakarta.servlet.annotation.*;
 
 import org.springframework.context.ApplicationContext;
@@ -57,7 +59,7 @@ public class ServerInitListener implements ServletContextListener {
 		FileNodeUtil.initNodeTableToDataBase();
 		// 2，校对文件块并清理临时文件夹
 		Printer.instance.print("文件系统节点信息校对...");
-		final String fsp = ConfigureReader.instance().getFileSystemPath();
+		final String fsp = ConfigurationManager.instance().getFileSystemPath();
 		final File fspf = new File(fsp);
 		if (fspf.isDirectory() && fspf.canRead() && fspf.canWrite()) {
 			fbu = context.getBean(FileBlockUtil.class);
@@ -101,7 +103,7 @@ public class ServerInitListener implements ServletContextListener {
 		// 之后当监听到改动操作时再重载内容
 		if (pathWatchServiceThread == null) {
 			// 对服务器主目录进行监听，主要监听文件改动事件
-			Path confPath = Paths.get(ConfigureReader.instance().getPath());
+			Path confPath = Paths.get(ConfigurationManager.instance().getPath());
 			pathWatchServiceThread = new Thread(() -> {
 				try (WatchService ws = confPath.getFileSystem().newWatchService()) {
 					confPath.register(ws, StandardWatchEventKinds.ENTRY_MODIFY,
@@ -140,14 +142,14 @@ public class ServerInitListener implements ServletContextListener {
 				while (continueCheck) {
 					if (needCheck) {
 						List<String> invalidIdList = new ArrayList<>();
-						List<String> idList = ConfigureReader.instance().getAllAddedAuthFoldersId();
+						List<String> idList = ConfigurationManager.instance().getAllAddedAuthFoldersId();
 						for (String id : idList) {
 							if (nm.selectById(id) == null) {
 								invalidIdList.add(id);
 								Printer.instance.print("文件夹ID：" + id + "对应的文件夹不存在或已被删除，相关的额外权限设置将被清理。");
 							}
 						}
-						if (ConfigureReader.instance().removeAddedAuthByFolderId(invalidIdList)) {
+						if (ConfigurationManager.instance().removeAddedAuthByFolderId(invalidIdList)) {
 							Printer.instance.print("失效的额外权限设置已经清理完成。");
 						}
 						needCheck = false;

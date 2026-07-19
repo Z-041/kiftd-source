@@ -28,24 +28,61 @@ public class PasswordUtil {
 	}
 
 	public static boolean verifyPassword(String password, String stored) {
+		if (password == null) {
+			password = "";
+		}
 		if (stored == null) {
-			return false;
+			// 使用 dummy 盐值与哈希执行完整派生，避免"账户不存在"与"密码错误"之间出现时序差
+			byte[] salt = new byte[SALT_LENGTH];
+			byte[] expectedHash = new byte[KEY_LENGTH / 8];
+			byte[] actualHash = deriveKey(password, salt);
+			return ConstantTimeComparator.isEqual(expectedHash, actualHash);
 		}
 		if (stored.startsWith(HASH_PREFIX)) {
 			String[] parts = stored.substring(HASH_PREFIX.length()).split("\\$", 2);
 			if (parts.length == 2) {
-				byte[] salt = DECODER.decode(parts[0]);
-				byte[] expectedHash = DECODER.decode(parts[1]);
-				byte[] actualHash = deriveKey(password, salt);
-				return ConstantTimeComparator.isEqual(expectedHash, actualHash);
+				try {
+					byte[] salt = DECODER.decode(parts[0]);
+					byte[] expectedHash = DECODER.decode(parts[1]);
+					// 校验盐值和哈希长度是否合法，防止格式损坏
+					if (salt.length != SALT_LENGTH || expectedHash.length != KEY_LENGTH / 8) {
+						// 格式损坏，使用dummy派生保持时序一致
+						byte[] dummySalt = new byte[SALT_LENGTH];
+						byte[] dummyHash = new byte[KEY_LENGTH / 8];
+						byte[] actualHash = deriveKey(password, dummySalt);
+						return ConstantTimeComparator.isEqual(dummyHash, actualHash);
+					}
+					byte[] actualHash = deriveKey(password, salt);
+					return ConstantTimeComparator.isEqual(expectedHash, actualHash);
+				} catch (IllegalArgumentException e) {
+					// Base64解码失败（格式损坏），使用dummy派生保持时序一致，避免泄露信息
+					byte[] dummySalt = new byte[SALT_LENGTH];
+					byte[] dummyHash = new byte[KEY_LENGTH / 8];
+					byte[] actualHash = deriveKey(password, dummySalt);
+					return ConstantTimeComparator.isEqual(dummyHash, actualHash);
+				}
 			}
-			return false;
+			// 格式不正确（只有一个$分隔符但内容不足），使用dummy派生保持时序一致
+			byte[] dummySalt = new byte[SALT_LENGTH];
+			byte[] dummyHash = new byte[KEY_LENGTH / 8];
+			byte[] actualHash = deriveKey(password, dummySalt);
+			return ConstantTimeComparator.isEqual(dummyHash, actualHash);
 		}
-		return stored.equals(password);
+		// 旧版明文密码也使用恒定时间比较，避免逐字符短路返回
+		return constantTimeStringEquals(stored, password);
 	}
 
 	public static boolean isPasswordHashed(String stored) {
 		return stored != null && stored.startsWith(HASH_PREFIX);
+	}
+
+	private static boolean constantTimeStringEquals(String a, String b) {
+		if (a == null || b == null) {
+			return a == b;
+		}
+		byte[] ab = a.getBytes(StandardCharsets.UTF_8);
+		byte[] bb = b.getBytes(StandardCharsets.UTF_8);
+		return ConstantTimeComparator.isEqual(ab, bb);
 	}
 
 	private static byte[] deriveKey(String password, byte[] salt) {

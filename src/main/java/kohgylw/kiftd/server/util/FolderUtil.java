@@ -1,18 +1,24 @@
 package kohgylw.kiftd.server.util;
 
-import org.springframework.stereotype.*;
-import jakarta.annotation.*;
+import org.springframework.stereotype.Component;
+import jakarta.annotation.Resource;
 
+import kohgylw.kiftd.newcore.config.ConfigurationManager;
 import kohgylw.kiftd.server.enumeration.AccountAuth;
 import kohgylw.kiftd.server.exception.FoldersTotalOutOfLimitException;
-import kohgylw.kiftd.server.mapper.*;
-import kohgylw.kiftd.server.model.*;
+import kohgylw.kiftd.server.mapper.FolderMapper;
+import kohgylw.kiftd.server.mapper.NodeMapper;
+import kohgylw.kiftd.server.model.Folder;
+import kohgylw.kiftd.server.model.Node;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
-
-import kohgylw.kiftd.server.util.TextFormateUtil;
 
 @Component
 public class FolderUtil {
@@ -62,6 +68,50 @@ public class FolderUtil {
 	}
 
 	/**
+	 *
+	 * <h2>获取指定文件夹的所有后代文件夹</h2>
+	 * <p>
+	 * 该方法通过按层级批量查询，避免递归遍历中的 N+1 查询问题。
+	 * </p>
+	 *
+	 * @param fid 目标文件夹ID
+	 * @return 所有后代文件夹列表（不包含自身）
+	 */
+	public List<Folder> getAllDescendantFolders(final String fid) {
+		final List<Folder> result = new ArrayList<>();
+		final Set<String> visited = new HashSet<>();
+		List<String> currentLevel = new ArrayList<>();
+		currentLevel.add(fid);
+		visited.add(fid);
+		while (!currentLevel.isEmpty()) {
+			final List<Folder> children = this.fm.queryByParentIds(currentLevel);
+			currentLevel = new ArrayList<>();
+			for (final Folder child : children) {
+				final String childId = child.getFolderId();
+				if (visited.add(childId)) {
+					result.add(child);
+					currentLevel.add(childId);
+				}
+			}
+		}
+		return result;
+	}
+
+	/**
+	 *
+	 * <h2>获取指定文件夹的所有后代文件夹ID</h2>
+	 * <p>
+	 * 该方法通过按层级批量查询，避免递归遍历中的 N+1 查询问题。
+	 * </p>
+	 *
+	 * @param fid 目标文件夹ID
+	 * @return 所有后代文件夹ID列表（不包含自身）
+	 */
+	public List<String> getAllDescendantFolderIds(final String fid) {
+		return getAllDescendantFolders(fid).stream().map(Folder::getFolderId).collect(Collectors.toList());
+	}
+
+	/**
 	 * 
 	 * <h2>删除一个文件夹树</h2>
 	 * <p>
@@ -90,32 +140,25 @@ public class FolderUtil {
 
 	public Folder createNewFolder(final String parentId, String account, String folderName, String folderConstraint)
 			throws FoldersTotalOutOfLimitException {
-		if (!ConfigureReader.instance().authorized(account, AccountAuth.CREATE_NEW_FOLDER, getAllFoldersId(parentId))) {
+		if (!ConfigurationManager.instance().authorized(account, AccountAuth.CREATE_NEW_FOLDER, getAllFoldersId(parentId))) {
 			return null;
 		}
 		if (parentId == null || folderName == null || parentId.length() <= 0 || folderName.length() <= 0) {
 			return null;
 		}
-		if (folderName.equals(".") || folderName.equals("..")
-				|| !TextFormateUtil.instance().matcherFolderName(folderName)
-				|| folderName.indexOf(".") == 0) {
+		if (!TextFormateUtil.instance().matcherFolderName(folderName)) {
 			return null;
 		}
 		final Folder parentFolder = this.fm.selectById(parentId);
 		if (parentFolder == null) {
 			return null;
 		}
-		if (!ConfigureReader.instance().accessFolder(parentFolder, account)) {
-			return null;
-		}
-		if (fm.queryByParentId(parentId).stream().anyMatch((e) -> e.getFolderName().equals(folderName))) {
+		if (!ConfigurationManager.instance().accessFolder(parentFolder, account)) {
 			return null;
 		}
 		if (fm.selectCount(Wrappers.<Folder>lambdaQuery().eq(Folder::getFolderParent, parentId)) >= FileNodeUtil.MAXIMUM_NUM_OF_SINGLE_FOLDER) {
 			throw new FoldersTotalOutOfLimitException();
 		}
-		Folder f = new Folder();
-		// 设置子文件夹约束等级，不允许子文件夹的约束等级比父文件夹低
 		int pc = parentFolder.getFolderConstraint();
 		if (folderConstraint != null) {
 			try {
@@ -125,8 +168,6 @@ public class FolderUtil {
 				}
 				if (ifc < pc) {
 					return null;
-				} else {
-					f.setFolderConstraint(ifc);
 				}
 			} catch (Exception e) {
 				return null;
@@ -134,30 +175,44 @@ public class FolderUtil {
 		} else {
 			return null;
 		}
-		f.setFolderId(UUID.randomUUID().toString());
-		f.setFolderName(folderName);
-		f.setFolderCreationDate(ServerTimeUtil.accurateToDay());
-		if (account != null) {
-			f.setFolderCreator(account);
-		} else {
-			f.setFolderCreator("匿名用户");
-		}
-		f.setFolderParent(parentId);
-		int i = 0;
-		while (true) {
+		int retryCount = 0;
+		while (retryCount < 3) {
+			if (fm.queryByParentId(parentId).stream().anyMatch((e) -> e.getFolderName().equals(folderName))) {
+				return null;
+			}
+			Folder f = new Folder();
 			try {
-				final int r = this.fm.insert(f);
-				if (r > 0) {
-					return f;
-				}
-				break;
+				int ifc = Integer.parseInt(folderConstraint);
+				f.setFolderConstraint(ifc);
 			} catch (Exception e) {
-				f.setFolderId(UUID.randomUUID().toString());
-				i++;
+				return null;
 			}
-			if (i >= 10) {
-				break;
+			f.setFolderId(UUID.randomUUID().toString());
+			f.setFolderName(folderName);
+			f.setFolderCreationDate(ServerTimeUtil.accurateToDay());
+			if (account != null) {
+				f.setFolderCreator(account);
+			} else {
+				f.setFolderCreator("匿名用户");
 			}
+			f.setFolderParent(parentId);
+			int i = 0;
+			while (true) {
+				try {
+					final int r = this.fm.insert(f);
+					if (r > 0) {
+						return f;
+					}
+					break;
+				} catch (Exception e) {
+					f.setFolderId(UUID.randomUUID().toString());
+					i++;
+				}
+				if (i >= 10) {
+					break;
+				}
+			}
+			retryCount++;
 		}
 		return null;
 	}
@@ -290,7 +345,7 @@ public class FolderUtil {
 		List<Folder> l = getParentList(f.getFolderId());
 		StringBuilder pl = new StringBuilder();
 		for (Folder i : l) {
-			pl.append(i.getFolderName() + "/");
+			pl.append(i.getFolderName()).append("/");
 		}
 		pl.append(f.getFolderName());
 		return pl.toString();
@@ -309,14 +364,12 @@ public class FolderUtil {
 	 * @param c        约束等级
 	 */
 	public void changeChildFolderConstraint(String folderId, int c) {
-		List<Folder> cfs = fm.queryByParentId(folderId);
-		for (Folder cf : cfs) {
-			if (cf.getFolderConstraint() < c) {
-				fm.update(null, Wrappers.<Folder>lambdaUpdate()
-						.set(Folder::getFolderConstraint, c)
-						.eq(Folder::getFolderId, cf.getFolderId()));
-			}
-			changeChildFolderConstraint(cf.getFolderId(), c);
+		final List<String> descendantIds = getAllDescendantFolderIds(folderId);
+		if (!descendantIds.isEmpty()) {
+			fm.update(null, Wrappers.<Folder>lambdaUpdate()
+					.set(Folder::getFolderConstraint, c)
+					.lt(Folder::getFolderConstraint, c)
+					.in(Folder::getFolderId, descendantIds));
 		}
 	}
 }

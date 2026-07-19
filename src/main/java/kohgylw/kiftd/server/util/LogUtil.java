@@ -1,7 +1,10 @@
 package kohgylw.kiftd.server.util;
 
+import kohgylw.kiftd.newcore.config.ConfigurationManager;
+
 import org.springframework.stereotype.*;
-import jakarta.annotation.*;
+import jakarta.annotation.PreDestroy;
+import jakarta.annotation.Resource;
 import kohgylw.kiftd.server.mapper.*;
 import kohgylw.kiftd.printer.Printer;
 import kohgylw.kiftd.server.enumeration.*;
@@ -78,7 +81,7 @@ public class LogUtil {
 
 	public LogUtil() {
 		sep = File.separator;
-		logs = ConfigureReader.instance().getPath() + sep + "logs";
+		logs = ConfigurationManager.instance().getPath() + sep + "logs";
 		writerThread = Executors.newSingleThreadExecutor();
 		this.cleanable = CLEANER.register(this, new LogUtilCleanup(this, writerThread));
 		File l = new File(logs);
@@ -89,6 +92,35 @@ public class LogUtil {
 				l.delete();
 				l.mkdir();
 			}
+		}
+	}
+
+	@PreDestroy
+	public void cleanup() {
+		Printer.instance.print("正在关闭日志服务...");
+		try {
+			if (writerThread != null && !writerThread.isShutdown()) {
+				writerThread.shutdown();
+				try {
+					if (!writerThread.awaitTermination(5, java.util.concurrent.TimeUnit.SECONDS)) {
+						writerThread.shutdownNow();
+					}
+				} catch (InterruptedException e) {
+					writerThread.shutdownNow();
+					Thread.currentThread().interrupt();
+				}
+			}
+			if (writer != null) {
+				try {
+					writer.close();
+				} catch (IOException e) {
+				}
+				writer = null;
+			}
+			cleanable.clean();
+			Printer.instance.print("日志服务已关闭。");
+		} catch (Exception e) {
+			Printer.instance.print("关闭日志服务时发生错误: " + e.getMessage());
 		}
 	}
 
@@ -108,8 +140,12 @@ public class LogUtil {
 		return pl.toString();
 	}
 
+	private String normalizeAccount(String account) {
+		return (account == null || account.length() == 0) ? "Anonymous" : account;
+	}
+
 	public void writeException(Exception e) {
-		if (ConfigureReader.instance().inspectLogLevel(LogLevel.Runtime_Exception)) {
+		if (ConfigurationManager.instance().inspectLogLevel(LogLevel.Runtime_Exception)) {
 			StringBuilder exceptionInfo = new StringBuilder(e.toString());
 			StackTraceElement[] stes = e.getStackTrace();
 			for (int i = 0; i < stes.length && i < 10; i++) {
@@ -131,11 +167,8 @@ public class LogUtil {
 	 * </p>
 	 */
 	public void writeCreateFolderEvent(String account, String ip, Folder f) {
-		if (ConfigureReader.instance().inspectLogLevel(LogLevel.Event)) {
-			if (account == null || account.length() == 0) {
-				account = "Anonymous";
-			}
-			String a = account;// 方便下方使用终态操作
+		if (ConfigurationManager.instance().inspectLogLevel(LogLevel.Event)) {
+			final String a = normalizeAccount(account);
 			writerThread.execute(() -> {
 				List<Folder> l = fu.getParentList(f.getFolderId());
 				String pl = buildParentPath(l);
@@ -154,11 +187,8 @@ public class LogUtil {
 	 */
 	public void writeRenameFolderEvent(String account, String ip, String folderId, String oldName, String newName,
 			String oldConstraint, String newConstraint) {
-		if (ConfigureReader.instance().inspectLogLevel(LogLevel.Event)) {
-			if (account == null || account.length() == 0) {
-				account = "Anonymous";
-			}
-			String a = account;
+		if (ConfigurationManager.instance().inspectLogLevel(LogLevel.Event)) {
+			final String a = normalizeAccount(account);
 			writerThread.execute(() -> {
 				List<Folder> l = fu.getParentList(folderId);
 				String pl = buildParentPath(l);
@@ -177,12 +207,9 @@ public class LogUtil {
 	 * </p>
 	 */
 	public void writeDeleteFolderEvent(HttpServletRequest request, Folder f, List<Folder> l) {
-		if (ConfigureReader.instance().inspectLogLevel(LogLevel.Event)) {
+		if (ConfigurationManager.instance().inspectLogLevel(LogLevel.Event)) {
 			String account = (String) request.getSession().getAttribute("ACCOUNT");
-			if (account == null || account.length() == 0) {
-				account = "Anonymous";
-			}
-			String a = account;
+			final String a = normalizeAccount(account);
 			String ip = idg.getIpAddr(request);
 			writerThread.execute(() -> {
 				String pl = buildParentPath(l);
@@ -200,12 +227,9 @@ public class LogUtil {
 	 * </p>
 	 */
 	public void writeDeleteFileEvent(HttpServletRequest request, Node f) {
-		if (ConfigureReader.instance().inspectLogLevel(LogLevel.Event)) {
+		if (ConfigurationManager.instance().inspectLogLevel(LogLevel.Event)) {
 			String account = (String) request.getSession().getAttribute("ACCOUNT");
-			if (account == null || account.length() == 0) {
-				account = "Anonymous";
-			}
-			String a = account;
+			final String a = normalizeAccount(account);
 			String ip = idg.getIpAddr(request);
 			writerThread.execute(() -> {
 				Folder folder = fm.selectById(f.getFileParentFolder());
@@ -228,11 +252,8 @@ public class LogUtil {
 	 * </p>
 	 */
 	public void writeUploadFileEvent(HttpServletRequest request, Node f, String account) {
-		if (ConfigureReader.instance().inspectLogLevel(LogLevel.Event)) {
-			if (account == null || account.length() == 0) {
-				account = "Anonymous";
-			}
-			String a = account;
+		if (ConfigurationManager.instance().inspectLogLevel(LogLevel.Event)) {
+			final String a = normalizeAccount(account);
 			String ip = idg.getIpAddr(request);
 			writerThread.execute(() -> {
 				Folder folder = fm.selectById(f.getFileParentFolder());
@@ -255,11 +276,8 @@ public class LogUtil {
 	 * </p>
 	 */
 	public void writeDownloadFileEvent(String account, String ip, Node f) {
-		if (ConfigureReader.instance().inspectLogLevel(LogLevel.Event)) {
-			if (account == null || account.length() == 0) {
-				account = "Anonymous";
-			}
-			String a = account;
+		if (ConfigurationManager.instance().inspectLogLevel(LogLevel.Event)) {
+			final String a = normalizeAccount(account);
 			writerThread.execute(() -> {
 				Folder folder = fm.selectById(f.getFileParentFolder());
 				if (folder == null) {
@@ -281,7 +299,7 @@ public class LogUtil {
 	 * </p>
 	 */
 	public void writeChainEvent(HttpServletRequest request, Node f) {
-		if (ConfigureReader.instance().inspectLogLevel(LogLevel.Event)) {
+		if (ConfigurationManager.instance().inspectLogLevel(LogLevel.Event)) {
 			String ip = idg.getIpAddr(request);
 			writerThread.execute(() -> {
 				Folder folder = fm.selectById(f.getFileParentFolder());
@@ -308,7 +326,7 @@ public class LogUtil {
 	 * @param f kohgylw.kiftd.server.model.Node 下载目标
 	 */
 	public void writeDownloadFileByKeyEvent(HttpServletRequest request, Node f) {
-		if (ConfigureReader.instance().inspectLogLevel(LogLevel.Event)) {
+		if (ConfigurationManager.instance().inspectLogLevel(LogLevel.Event)) {
 			String ip = idg.getIpAddr(request);
 			writerThread.execute(() -> {
 				Folder folder = fm.selectById(f.getFileParentFolder());
@@ -334,12 +352,9 @@ public class LogUtil {
 	 * @author 青阳龙野(kohgylw)
 	 */
 	public void writeShareFileURLEvent(HttpServletRequest request, Node f) {
-		if (ConfigureReader.instance().inspectLogLevel(LogLevel.Event)) {
+		if (ConfigurationManager.instance().inspectLogLevel(LogLevel.Event)) {
 			String account = (String) request.getSession().getAttribute("ACCOUNT");
-			if (account == null || account.length() == 0) {
-				account = "Anonymous";
-			}
-			String a = account;
+			final String a = normalizeAccount(account);
 			String ip = idg.getIpAddr(request);
 			writerThread.execute(() -> {
 				Folder folder = fm.selectById(f.getFileParentFolder());
@@ -363,11 +378,8 @@ public class LogUtil {
 	 * </p>
 	 */
 	public void writeRenameFileEvent(String account, String ip, String parentFolderId, String oldName, String newName) {
-		if (ConfigureReader.instance().inspectLogLevel(LogLevel.Event)) {
-			if (account == null || account.length() == 0) {
-				account = "Anonymous";
-			}
-			String a = account;
+		if (ConfigurationManager.instance().inspectLogLevel(LogLevel.Event)) {
+			final String a = normalizeAccount(account);
 			writerThread.execute(() -> {
 				Folder folder = fm.selectById(parentFolderId);
 				if (folder == null) {
@@ -397,11 +409,8 @@ public class LogUtil {
 	 * @param isCopy     boolean 是否为复制模式
 	 */
 	public void writeMoveFileEvent(String account, String ip, String originPath, String finalPath, boolean isCopy) {
-		if (ConfigureReader.instance().inspectLogLevel(LogLevel.Event)) {
-			if (account == null || account.length() == 0) {
-				account = "Anonymous";
-			}
-			String a = account;
+		if (ConfigurationManager.instance().inspectLogLevel(LogLevel.Event)) {
+			final String a = normalizeAccount(account);
 			writerThread.execute(() -> {
 				String content = ">IP [" + ip + "]\r\n>ACCOUNT [" + a + "]\r\n>OPERATE ["
 						+ (isCopy ? "Copy file" : "Move file") + "]\r\n>FROM [" + originPath + "]\r\n>TO   ["
@@ -426,11 +435,8 @@ public class LogUtil {
 	 * @param isCopy     boolean 是否为复制模式
 	 */
 	public void writeMoveFolderEvent(String account, String ip, String originPath, String finalPath, boolean isCopy) {
-		if (ConfigureReader.instance().inspectLogLevel(LogLevel.Event)) {
-			if (account == null || account.length() == 0) {
-				account = "Anonymous";
-			}
-			String a = account;
+		if (ConfigurationManager.instance().inspectLogLevel(LogLevel.Event)) {
+			final String a = normalizeAccount(account);
 			writerThread.execute(() -> {
 				String content = ">IP [" + ip + "]\r\n>ACCOUNT [" + a + "]\r\n>OPERATE ["
 						+ (isCopy ? "Copy Folder" : "Move Folder") + "]\r\n>FROM [" + originPath + "]\r\n>TO   ["
@@ -473,12 +479,9 @@ public class LogUtil {
 	 * </p>
 	 */
 	public void writeDownloadCheckedFileEvent(HttpServletRequest request, List<String> idList, List<String> fidList) {
-		if (ConfigureReader.instance().inspectLogLevel(LogLevel.Event)) {
+		if (ConfigurationManager.instance().inspectLogLevel(LogLevel.Event)) {
 			String account = (String) request.getSession().getAttribute("ACCOUNT");
-			if (account == null || account.length() == 0) {
-				account = "Anonymous";
-			}
-			String a = account;
+			final String a = normalizeAccount(account);
 			String ip = idg.getIpAddr(request);
 			writerThread.execute(() -> {
 				StringBuilder content = new StringBuilder(">IP [" + ip + "]\r\n>ACCOUNT [" + a
@@ -508,7 +511,7 @@ public class LogUtil {
 	 * </p>
 	 */
 	public void writeChangePasswordEvent(HttpServletRequest request, String account) {
-		if (ConfigureReader.instance().inspectLogLevel(LogLevel.Event)) {
+		if (ConfigurationManager.instance().inspectLogLevel(LogLevel.Event)) {
 			String ip = idg.getIpAddr(request);
 			writerThread.execute(() -> {
 				String content = ">IP [" + ip + "]\r\n>ACCOUNT [" + account
@@ -525,7 +528,7 @@ public class LogUtil {
 	 * </p>
 	 */
 	public void writeSignUpEvent(HttpServletRequest request, String account) {
-		if (ConfigureReader.instance().inspectLogLevel(LogLevel.Event)) {
+		if (ConfigurationManager.instance().inspectLogLevel(LogLevel.Event)) {
 			String ip = idg.getIpAddr(request);
 			writerThread.execute(() -> {
 				String content = ">IP [" + ip + "]\r\n>OPERATE [Sign Up]\r\n>NEW ACCOUNT [" + account + "]";

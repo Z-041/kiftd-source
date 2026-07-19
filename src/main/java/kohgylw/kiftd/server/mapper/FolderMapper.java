@@ -13,6 +13,9 @@ public interface FolderMapper extends BaseMapper<Folder> {
 	@Select("SELECT * FROM FOLDER WHERE folder_parent = #{pid} LIMIT 0,2147483647")
 	List<Folder> queryByParentId(@Param("pid") final String pid);
 
+	@Select("<script>SELECT * FROM FOLDER WHERE folder_parent IN <foreach item='pid' index='index' collection='pids' open='(' separator=',' close=')'>#{pid}</foreach> LIMIT 0,2147483647</script>")
+	List<Folder> queryByParentIds(@Param("pids") List<String> pids);
+
 	@Select("SELECT * FROM FOLDER WHERE folder_parent = #{parentId} AND folder_name = #{folderName} LIMIT 0,2147483647")
 	Folder queryByParentIdAndFolderName(Map<String, String> map);
 }

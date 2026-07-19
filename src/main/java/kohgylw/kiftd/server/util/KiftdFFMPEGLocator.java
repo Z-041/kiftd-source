@@ -1,5 +1,7 @@
 package kohgylw.kiftd.server.util;
 
+import kohgylw.kiftd.newcore.config.ConfigurationManager;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -72,7 +74,7 @@ public class KiftdFFMPEGLocator implements ProcessLocator {
 	// 1，判断正确的程序版本；2，根据版本判断程序是否就位；3，如果未就位则将程序拷贝到临时文件夹中；4，返回正确的程序路径或null。
 	private String initFFMPEGExecutablePath() {
 		// 首先判断是否启用了在线解码功能，若未启用则无需初始化ffmpeg执行路径
-		if (!ConfigureReader.instance().isEnableFFMPEG()) {
+		if (!ConfigurationManager.instance().isEnableFFMPEG()) {
 			enableFFmpeg = false;
 			return null;
 		}
@@ -87,7 +89,7 @@ public class KiftdFFMPEGLocator implements ProcessLocator {
 		}
 		// 是否在程序主目录下放置了自定义的ffmpeg可执行文件“ffmpeg.exe”/“ffmpeg”？
 		File ffmpegFile;
-		File customFFMPEGexef = new File(ConfigureReader.instance().getPath(), isWindows ? "ffmpeg.exe" : "ffmpeg");
+		File customFFMPEGexef = new File(ConfigurationManager.instance().getPath(), isWindows ? "ffmpeg.exe" : "ffmpeg");
 		// 如果有，那么优先使用自定义的ffmpeg可执行文件。
 		if (customFFMPEGexef.isFile() && customFFMPEGexef.canRead()) {
 			ffmpegFile = new File(dirFolder, customFFMPEGexef.getName());
@@ -152,10 +154,8 @@ public class KiftdFFMPEGLocator implements ProcessLocator {
 			is = classloader.getResourceAsStream(resourceName);
 		}
 		if (is != null) {
-			boolean copyResult = copy(is, dest.getAbsolutePath());
-			try {
-				is.close();
-				return copyResult;
+			try (InputStream stream = is) {
+				return copy(stream, dest.getAbsolutePath());
 			} catch (IOException ioex) {
 				Printer.instance.print(ioex.toString());
 				Printer.instance.print("警告：无法在临时文件夹内生成ffmpeg引擎可执行文件，视频播放的在线解码功能将不可用。");
@@ -166,13 +166,12 @@ public class KiftdFFMPEGLocator implements ProcessLocator {
 
 	// 以文件的形式把流存入指定文件夹内
 	private boolean copy(InputStream source, String destination) {
-		boolean success = true;
 		try {
 			Files.copy(source, Paths.get(destination), StandardCopyOption.REPLACE_EXISTING);
+			return true;
 		} catch (IOException ex) {
-			success = false;
+			return false;
 		}
-		return success;
 	}
 
 	public boolean isEnableFFmpeg() {

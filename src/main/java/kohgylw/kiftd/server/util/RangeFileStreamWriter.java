@@ -1,5 +1,7 @@
 package kohgylw.kiftd.server.util;
 
+import kohgylw.kiftd.newcore.config.ConfigurationManager;
+
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.IOException;
@@ -90,6 +92,11 @@ public class RangeFileStreamWriter {
 	 * @param sendBody     boolean 是否发送具体的文件内容，若设置为false，则仅返回响应头
 	 * @return int 操作结束时返回的状态码
 	 */
+	private static int setAndReturnStatus(HttpServletResponse response, int status) {
+		response.setStatus(status);
+		return status;
+	}
+
 	private static int writeRangeFile(HttpServletRequest request, HttpServletResponse response, File fo, String fname,
 			String contentType, long maxRate, String eTag, boolean isAttachment, boolean sendBody) {
 		long fileLength = fo.length();// 文件总大小
@@ -109,31 +116,23 @@ public class RangeFileStreamWriter {
 			if (ifNoneMatch != null) {
 				// 是，则只检查Etag，理论上其比Last-Modified更准确
 				if (ifNoneMatch.trim().equals(eTag)) {
-					status = HttpServletResponse.SC_NOT_MODIFIED;
-					response.setStatus(status);// 304
-					return status;
+					return setAndReturnStatus(response, HttpServletResponse.SC_NOT_MODIFIED);
 				}
 			} else {
 				// 不是，则再检查Last-Modified
 				if (ifModifiedSince.trim().equals(lastModified)) {
-					status = HttpServletResponse.SC_NOT_MODIFIED;
-					response.setStatus(status);// 304
-					return status;
+					return setAndReturnStatus(response, HttpServletResponse.SC_NOT_MODIFIED);
 				}
 			}
 		}
 		// 检查断点续传请求是否过期，两个条件，有就要满足，没有就算了
 		String ifUnmodifiedSince = request.getHeader("If-Unmodified-Since");
 		if (ifUnmodifiedSince != null && !(ifUnmodifiedSince.trim().equals(lastModified))) {
-			status = HttpServletResponse.SC_PRECONDITION_FAILED;
-			response.setStatus(status);// 412
-			return status;
+			return setAndReturnStatus(response, HttpServletResponse.SC_PRECONDITION_FAILED);
 		}
 		String ifMatch = request.getHeader("If-Match");
 		if (ifMatch != null && !(ifMatch.trim().equals(eTag))) {
-			status = HttpServletResponse.SC_PRECONDITION_FAILED;
-			response.setStatus(status);// 412
-			return status;
+			return setAndReturnStatus(response, HttpServletResponse.SC_PRECONDITION_FAILED);
 		}
 		// 设置请求头，基于kiftd文件系统推荐使用application/octet-stream
 		response.setContentType(contentType);
@@ -161,9 +160,7 @@ public class RangeFileStreamWriter {
 			rangeBytes = rangeTag.replace("bytes=", "");
 			if (rangeBytes.indexOf("-") < 0) {
 				// 数据范围请求格式不正确，应为?-?的格式
-				status = HttpServletResponse.SC_BAD_REQUEST;
-				response.setStatus(status);
-				return status;
+				return setAndReturnStatus(response, HttpServletResponse.SC_BAD_REQUEST);
 			}
 			if (rangeBytes.endsWith("-")) {
 				// 解析请求参数范围为仅有起始偏移量而无结束偏移量的情况
@@ -171,9 +168,7 @@ public class RangeFileStreamWriter {
 					startOffset = Long.parseLong(rangeBytes.substring(0, rangeBytes.indexOf('-')).trim());
 				} catch (NumberFormatException e) {
 					// 数据范围请求不正确
-					status = HttpServletResponse.SC_BAD_REQUEST;
-					response.setStatus(status);
-					return status;
+					return setAndReturnStatus(response, HttpServletResponse.SC_BAD_REQUEST);
 				}
 				// 仅具备起始偏移量时，例如文件长为13，请求为5-，则响应体长度为8
 				contentLength = fileLength - startOffset;
@@ -192,44 +187,30 @@ public class RangeFileStreamWriter {
 					}
 				} catch (NumberFormatException e) {
 					// 数据范围请求不正确
-					status = HttpServletResponse.SC_BAD_REQUEST;
-					response.setStatus(status);
-					return status;
+					return setAndReturnStatus(response, HttpServletResponse.SC_BAD_REQUEST);
 				}
 				// 具备结束偏移量时，例如文件长为10，请求为0-9或-10，则响应体长度为10
 				contentLength = endOffset - startOffset + 1;
 			}
 			if (contentLength > fileLength || contentLength <= 0) {
 				// 数据范围请求不正确
-				status = HttpServletResponse.SC_REQUESTED_RANGE_NOT_SATISFIABLE;
-				response.setStatus(status);
-				return status;
+				return setAndReturnStatus(response, HttpServletResponse.SC_REQUESTED_RANGE_NOT_SATISFIABLE);
 			}
 			// 设置响应状态为206
 			status = HttpServletResponse.SC_PARTIAL_CONTENT;
 			response.setStatus(status);
 			// 设置Content-Range，格式为“bytes 起始偏移-结束偏移/文件的总大小”
-			String contentRange;
-			if (!hasEnd) {
-				contentRange = new StringBuilder("bytes ").append(startOffset).append("-")
-						.append(fileLength - 1).append("/").append(fileLength).toString();
-			} else {
-				contentRange = new StringBuilder("bytes ").append(startOffset).append("-")
-						.append(endOffset).append("/").append(fileLength).toString();
-			}
+			long rangeEnd = hasEnd ? endOffset : fileLength - 1;
+			String contentRange = "bytes " + startOffset + "-" + rangeEnd + "/" + fileLength;
 			response.setHeader("Content-Range", contentRange);
 		} else {
 			// 不进行断点续传
 			contentLength = fileLength;
 		}
-		if (sendBody) {
-			response.setHeader("Content-Length", "" + contentLength);// 设置请求体长度
-		} else {
-			response.setHeader("Content-Length", "0");
-		}
+		response.setHeader("Content-Length", sendBody ? String.valueOf(contentLength) : "0");
 		if (sendBody) {
 			// 写出缓冲
-			byte[] buf = new byte[ConfigureReader.instance().getBuffSize()];
+			byte[] buf = new byte[ConfigurationManager.instance().getBuffSize()];
 			// 读取文件并写处至输出流
 			try (RandomAccessFile raf = new RandomAccessFile(fo, "r")) {
 				HttpSession session = request.getSession(false);

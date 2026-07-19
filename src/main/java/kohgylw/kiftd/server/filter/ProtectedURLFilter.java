@@ -14,7 +14,7 @@ import jakarta.servlet.http.HttpServletResponse;
 
 import org.springframework.core.annotation.Order;
 
-import kohgylw.kiftd.server.util.ConfigureReader;
+import kohgylw.kiftd.newcore.config.ConfigurationManager;
 
 /**
  * 
@@ -51,7 +51,7 @@ public class ProtectedURLFilter implements Filter {
 			break;
 		case "/prv/login.html":
 			final String account = (String) hsq.getSession().getAttribute("ACCOUNT");
-			if (ConfigureReader.instance().foundAccount(account)) {
+			if (ConfigurationManager.instance().foundAccount(account)) {
 				hsr.sendRedirect("/home.html");
 			} else {
 				chain.doFilter(request, response);

@@ -15,7 +15,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
-import kohgylw.kiftd.server.util.ConfigureReader;
+import kohgylw.kiftd.newcore.config.ConfigurationManager;
 
 @ExtendWith(MockitoExtension.class)
 class MastLoginFilterTest {
@@ -35,9 +35,9 @@ class MastLoginFilterTest {
         when(request.getSession()).thenReturn(session);
         when(request.getServletPath()).thenReturn("/homeController/anyAction.do");
 
-        try (var cr = mockStatic(ConfigureReader.class)) {
-            ConfigureReader reader = mock(ConfigureReader.class);
-            cr.when(ConfigureReader::instance).thenReturn(reader);
+        try (var cr = mockStatic(ConfigurationManager.class)) {
+            ConfigurationManager reader = mock(ConfigurationManager.class);
+            cr.when(ConfigurationManager::instance).thenReturn(reader);
             when(reader.mustLogin()).thenReturn(false);
 
             filter.doFilter(request, response, chain);
@@ -52,9 +52,9 @@ class MastLoginFilterTest {
         when(request.getSession()).thenReturn(session);
         when(request.getServletPath()).thenReturn("/prv/login.html");
 
-        try (var cr = mockStatic(ConfigureReader.class)) {
-            ConfigureReader reader = mock(ConfigureReader.class);
-            cr.when(ConfigureReader::instance).thenReturn(reader);
+        try (var cr = mockStatic(ConfigurationManager.class)) {
+            ConfigurationManager reader = mock(ConfigurationManager.class);
+            cr.when(ConfigurationManager::instance).thenReturn(reader);
 
             filter.doFilter(request, response, chain);
 
@@ -68,9 +68,9 @@ class MastLoginFilterTest {
         when(request.getSession()).thenReturn(session);
         when(request.getServletPath()).thenReturn("/externalLinksController/view.do");
 
-        try (var cr = mockStatic(ConfigureReader.class)) {
-            ConfigureReader reader = mock(ConfigureReader.class);
-            cr.when(ConfigureReader::instance).thenReturn(reader);
+        try (var cr = mockStatic(ConfigurationManager.class)) {
+            ConfigurationManager reader = mock(ConfigurationManager.class);
+            cr.when(ConfigurationManager::instance).thenReturn(reader);
 
             filter.doFilter(request, response, chain);
 
@@ -85,9 +85,9 @@ class MastLoginFilterTest {
         when(request.getServletPath()).thenReturn("/homeController/listFile.do");
         when(session.getAttribute("ACCOUNT")).thenReturn(null);
 
-        try (var cr = mockStatic(ConfigureReader.class)) {
-            ConfigureReader reader = mock(ConfigureReader.class);
-            cr.when(ConfigureReader::instance).thenReturn(reader);
+        try (var cr = mockStatic(ConfigurationManager.class)) {
+            ConfigurationManager reader = mock(ConfigurationManager.class);
+            cr.when(ConfigurationManager::instance).thenReturn(reader);
             when(reader.mustLogin()).thenReturn(true);
 
             filter.doFilter(request, response, chain);
@@ -104,9 +104,9 @@ class MastLoginFilterTest {
         when(request.getServletPath()).thenReturn("/homeController/listFile.do");
         when(session.getAttribute("ACCOUNT")).thenReturn("unknownUser");
 
-        try (var cr = mockStatic(ConfigureReader.class)) {
-            ConfigureReader reader = mock(ConfigureReader.class);
-            cr.when(ConfigureReader::instance).thenReturn(reader);
+        try (var cr = mockStatic(ConfigurationManager.class)) {
+            ConfigurationManager reader = mock(ConfigurationManager.class);
+            cr.when(ConfigurationManager::instance).thenReturn(reader);
             when(reader.mustLogin()).thenReturn(true);
             when(reader.foundAccount("unknownUser")).thenReturn(false);
 
@@ -124,9 +124,9 @@ class MastLoginFilterTest {
         when(request.getServletPath()).thenReturn("/homeController/listFile.do");
         when(session.getAttribute("ACCOUNT")).thenReturn("admin");
 
-        try (var cr = mockStatic(ConfigureReader.class)) {
-            ConfigureReader reader = mock(ConfigureReader.class);
-            cr.when(ConfigureReader::instance).thenReturn(reader);
+        try (var cr = mockStatic(ConfigurationManager.class)) {
+            ConfigurationManager reader = mock(ConfigurationManager.class);
+            cr.when(ConfigurationManager::instance).thenReturn(reader);
             when(reader.mustLogin()).thenReturn(true);
             when(reader.foundAccount("admin")).thenReturn(true);
 
@@ -146,9 +146,9 @@ class MastLoginFilterTest {
         when(session.getAttribute("ACCOUNT")).thenReturn(null);
         when(response.getWriter()).thenReturn(pw);
 
-        try (var cr = mockStatic(ConfigureReader.class)) {
-            ConfigureReader reader = mock(ConfigureReader.class);
-            cr.when(ConfigureReader::instance).thenReturn(reader);
+        try (var cr = mockStatic(ConfigurationManager.class)) {
+            ConfigurationManager reader = mock(ConfigurationManager.class);
+            cr.when(ConfigurationManager::instance).thenReturn(reader);
             when(reader.mustLogin()).thenReturn(true);
 
             filter.doFilter(request, response, chain);
@@ -166,9 +166,9 @@ class MastLoginFilterTest {
         when(request.getSession()).thenReturn(session);
         when(request.getServletPath()).thenReturn("/homeController/doLogin.ajax");
 
-        try (var cr = mockStatic(ConfigureReader.class)) {
-            ConfigureReader reader = mock(ConfigureReader.class);
-            cr.when(ConfigureReader::instance).thenReturn(reader);
+        try (var cr = mockStatic(ConfigurationManager.class)) {
+            ConfigurationManager reader = mock(ConfigurationManager.class);
+            cr.when(ConfigurationManager::instance).thenReturn(reader);
             when(reader.mustLogin()).thenReturn(true);
 
             filter.doFilter(request, response, chain);
@@ -183,9 +183,9 @@ class MastLoginFilterTest {
         when(request.getSession()).thenReturn(session);
         when(request.getServletPath()).thenReturn("/css/style.css");
 
-        try (var cr = mockStatic(ConfigureReader.class)) {
-            ConfigureReader reader = mock(ConfigureReader.class);
-            cr.when(ConfigureReader::instance).thenReturn(reader);
+        try (var cr = mockStatic(ConfigurationManager.class)) {
+            ConfigurationManager reader = mock(ConfigurationManager.class);
+            cr.when(ConfigurationManager::instance).thenReturn(reader);
             when(reader.mustLogin()).thenReturn(true);
 
             filter.doFilter(request, response, chain);
