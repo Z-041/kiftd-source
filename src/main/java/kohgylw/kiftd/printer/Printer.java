@@ -23,10 +23,8 @@ public class Printer {
 		if (uiModel) {
 			try {
 				sum = ServerUIModule.getInsatnce();
-				System.err.println("[STARTUP] Printer got ServerUIModule instance: " + (sum != null));
 			} catch (Exception e) {
 				isUIModel = false;
-				System.err.println("[STARTUP] Printer FAILED to get ServerUIModule: " + e);
 				instance.print("错误：无法以UI模式输出信息，自动切换至命令模式输出。详细信息：" + e);
 			}
 		}

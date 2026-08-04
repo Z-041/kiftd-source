@@ -56,7 +56,6 @@ public class FolderRepositoryImpl implements FolderRepository {
 
 	@Override
 	public long countByParentId(String parentId) {
-		List<Folder> list = folderMapper.queryByParentId(parentId);
-		return list != null ? list.size() : 0L;
+		return folderMapper.countByParentId(parentId);
 	}
 }

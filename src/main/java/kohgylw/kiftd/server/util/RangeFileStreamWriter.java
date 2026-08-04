@@ -1,6 +1,5 @@
 package kohgylw.kiftd.server.util;
 
-import kohgylw.kiftd.newcore.config.ConfigurationManager;
 
 import java.io.BufferedOutputStream;
 import java.io.File;
@@ -226,13 +225,17 @@ public class RangeFileStreamWriter {
 					}
 				} else {
 					// 有结束偏移量时，将其从起始偏移量开始写至指定偏移量结束。
-					int n = 0;
-					long readLength = 0;// 写出量，用于确定结束位置
-					while (readLength < contentLength) {
-						n = raf.read(buf);
-						readLength += n;
-						out.write(buf, 0, (int) (readLength <= contentLength ? n : n - (readLength - contentLength)));
+				int n = 0;
+				long readLength = 0;// 写出量，用于确定结束位置
+				while (readLength < contentLength) {
+					n = raf.read(buf);
+					if (n == -1) {
+						// 源文件被截断或提前结束，避免 readLength 回退导致的死循环
+						break;
 					}
+					readLength += n;
+					out.write(buf, 0, (int) (readLength <= contentLength ? n : n - (readLength - contentLength)));
+				}
 				}
 				out.flush();
 				}

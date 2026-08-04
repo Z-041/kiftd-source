@@ -120,6 +120,9 @@ function sendLoginInfo(encrypted) {
 			case "error":
 				showAlert("提示：登录失败，登录请求无法通过效验（可能是请求耗时过长导致的）");
 				break;
+			case "attemptslimit":
+				showAlert("提示：登录失败次数过多，该账户已被临时锁定，请15分钟后再试");
+				break;
 			default:
 				showAlert("提示：无法登录，未知错误");
 				break;

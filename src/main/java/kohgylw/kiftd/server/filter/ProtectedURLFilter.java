@@ -14,7 +14,7 @@ import jakarta.servlet.http.HttpServletResponse;
 
 import org.springframework.core.annotation.Order;
 
-import kohgylw.kiftd.newcore.config.ConfigurationManager;
+import kohgylw.kiftd.server.util.ConfigurationManager;
 
 /**
  * 

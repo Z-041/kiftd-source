@@ -1,28 +1,42 @@
 package kohgylw.kiftd.server.util;
 
-import org.springframework.context.annotation.Lazy;
-import org.springframework.stereotype.*;
-
-import kohgylw.kiftd.newcore.config.ConfigurationManager;
-import kohgylw.kiftd.printer.Printer;
-import kohgylw.kiftd.server.enumeration.AccountAuth;
-import kohgylw.kiftd.server.mapper.*;
-import jakarta.annotation.*;
-import org.springframework.web.multipart.*;
-import java.io.*;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-
-import kohgylw.kiftd.server.model.*;
-import kohgylw.kiftd.server.pojo.ExtendStores;
-
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 
-import org.zeroturnaround.zip.*;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.stereotype.Component;
+import org.springframework.web.multipart.MultipartFile;
+import org.zeroturnaround.zip.FileSource;
+import org.zeroturnaround.zip.ZipEntrySource;
+import org.zeroturnaround.zip.ZipUtil;
+
+import jakarta.annotation.Resource;
+
+import kohgylw.kiftd.printer.Printer;
+import kohgylw.kiftd.server.enumeration.AccountAuth;
+import kohgylw.kiftd.server.mapper.FolderMapper;
+import kohgylw.kiftd.server.mapper.NodeMapper;
+import kohgylw.kiftd.server.model.Folder;
+import kohgylw.kiftd.server.model.Node;
+import kohgylw.kiftd.server.pojo.ExtendStores;
 
 /**
  * 
@@ -520,25 +534,60 @@ public class FileBlockUtil {
 			final List<ZipEntrySource> zs = new ArrayList<>();
 			// 避免压缩时出现同名文件导致打不开：
 			final List<Folder> folders = new ArrayList<>();
+			// 同一批目标通常共享相同的父级，缓存祖先链查询结果，避免逐项重复查询
+			final Map<String, List<String>> ancestorCache = new HashMap<>();
 			for (String fid : fidList) {
 				Folder fo = flm.selectById(fid);
-				if (ConfigurationManager.instance().accessFolder(fo, account) && ConfigurationManager.instance()
-						.authorized(account, AccountAuth.DOWNLOAD_FILES, fu.getAllFoldersId(fo.getFolderParent()))) {
-					if (fo != null) {
-						folders.add(fo);
-					}
+				if (fo != null && ConfigurationManager.instance().accessFolder(fo, account) && ConfigurationManager.instance()
+						.authorized(account, AccountAuth.DOWNLOAD_FILES,
+								ancestorCache.computeIfAbsent(fo.getFolderParent(), fu::getAllFoldersId))) {
+					folders.add(fo);
 				}
 			}
 			final List<Node> nodes = new ArrayList<>();
 			for (String id : idList) {
 				Node n = fm.selectById(id);
-				if (ConfigurationManager.instance().accessFolder(flm.selectById(n.getFileParentFolder()), account)
-						&& ConfigurationManager.instance().authorized(account, AccountAuth.DOWNLOAD_FILES,
-								fu.getAllFoldersId(n.getFileParentFolder()))) {
-					if (n != null) {
+				if (n != null) {
+					Folder parent = flm.selectById(n.getFileParentFolder());
+					if (ConfigurationManager.instance().accessFolder(parent, account)
+							&& ConfigurationManager.instance().authorized(account, AccountAuth.DOWNLOAD_FILES,
+									ancestorCache.computeIfAbsent(n.getFileParentFolder(), fu::getAllFoldersId))) {
 						nodes.add(n);
 					}
 				}
+			}
+			// 批量预加载 ZIP 打包树：先按层级一次性查询所有可访问的后代文件夹与节点，
+			// 避免递归打包时每个文件夹各查两次数据库（N+1 查询）
+			final Map<String, List<Folder>> folderChildren = new HashMap<>();
+			final Map<String, List<Node>> folderNodes = new HashMap<>();
+			final Map<String, Folder> folderById = new HashMap<>();
+			final Set<String> accessibleFolderIds = new HashSet<>();
+			for (Folder fo : folders) {
+				accessibleFolderIds.add(fo.getFolderId());
+				folderById.put(fo.getFolderId(), fo);
+			}
+			List<String> currentLevel = new ArrayList<>(accessibleFolderIds);
+			while (!currentLevel.isEmpty()) {
+				final List<Folder> children = flm.queryByParentIds(currentLevel);
+				currentLevel.clear();
+				for (Folder child : children) {
+					// 仅保留有访问权限的后代文件夹，与原递归行为保持一致
+					if (ConfigurationManager.instance().accessFolder(child, account)
+							&& accessibleFolderIds.add(child.getFolderId())) {
+						folderById.put(child.getFolderId(), child);
+						currentLevel.add(child.getFolderId());
+					}
+				}
+			}
+			// 构建"父ID -> 子文件夹列表"映射
+			for (Folder fo : folderById.values()) {
+				if (fo.getFolderParent() != null) {
+					folderChildren.computeIfAbsent(fo.getFolderParent(), k -> new ArrayList<>()).add(fo);
+				}
+			}
+			// 一次性查询全部后代节点，并按父文件夹分组
+			for (Node node : fm.queryByParentFolderIds(new ArrayList<>(accessibleFolderIds))) {
+				folderNodes.computeIfAbsent(node.getFileParentFolder(), k -> new ArrayList<>()).add(node);
 			}
 			for (Folder fo : folders) {
 				int i = 1;
@@ -552,7 +601,7 @@ public class FileBlockUtil {
 						break;
 					}
 				}
-				addFoldersToZipEntrySourceArray(fo, zs, account, "");
+				addFoldersToZipEntrySourceArray(fo, zs, account, "", folderChildren, folderNodes);
 			}
 			for (Node node : nodes) {
 				if (ConfigurationManager.instance().accessFolder(flm.selectById(node.getFileParentFolder()), account)) {
@@ -586,8 +635,9 @@ public class FileBlockUtil {
 	}
 
 	// 迭代生成ZIP文件夹单元，将一个文件夹内的文件和文件夹也进行打包
-	private void addFoldersToZipEntrySourceArray(Folder f, List<ZipEntrySource> zs, String account, String parentPath) {
-		if (f != null && ConfigurationManager.instance().accessFolder(f, account)) {
+	private void addFoldersToZipEntrySourceArray(Folder f, List<ZipEntrySource> zs, String account, String parentPath,
+			Map<String, List<Folder>> folderChildren, Map<String, List<Node>> folderNodes) {
+		if (f != null) {
 			String folderName = f.getFolderName();
 			String thisPath = parentPath + folderName + "/";
 			zs.add(new ZipEntrySource() {
@@ -607,7 +657,7 @@ public class FileBlockUtil {
 					return new ZipEntry(thisPath);
 				}
 			});
-			List<Folder> folders = flm.queryByParentId(f.getFolderId());
+			List<Folder> folders = folderChildren.getOrDefault(f.getFolderId(), Collections.emptyList());
 			for (Folder fo : folders) {
 				int i = 1;
 				String flname = fo.getFolderName();
@@ -620,9 +670,9 @@ public class FileBlockUtil {
 						break;
 					}
 				}
-				addFoldersToZipEntrySourceArray(fo, zs, account, thisPath);
+				addFoldersToZipEntrySourceArray(fo, zs, account, thisPath, folderChildren, folderNodes);
 			}
-			List<Node> nodes = fm.queryByParentFolderId(f.getFolderId());
+			List<Node> nodes = folderNodes.getOrDefault(f.getFolderId(), Collections.emptyList());
 			for (Node node : nodes) {
 				int i = 1;
 				String fname = node.getFileName();

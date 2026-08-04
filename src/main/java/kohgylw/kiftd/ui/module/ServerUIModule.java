@@ -1,20 +1,46 @@
 package kohgylw.kiftd.ui.module;
 
-import javax.imageio.*;
-import java.io.*;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.FlowLayout;
+import java.awt.Font;
+import java.awt.GridLayout;
+import java.awt.MenuItem;
+import java.awt.PopupMenu;
+import java.awt.SystemTray;
+import java.awt.TrayIcon;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
+import java.io.IOException;
 import java.sql.SQLException;
-import java.awt.event.*;
-import javax.swing.border.*;
-import java.awt.*;
-import javax.swing.event.*;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
-import javax.swing.*;
-import java.text.*;
-import java.util.*;
+import javax.imageio.ImageIO;
+import javax.swing.BorderFactory;
+import javax.swing.BoxLayout;
+import javax.swing.JButton;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
+import javax.swing.SwingUtilities;
+import javax.swing.WindowConstants;
+import javax.swing.border.EmptyBorder;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 
 import kohgylw.kiftd.printer.Printer;
-import kohgylw.kiftd.newcore.config.ConfigurationManager;
-import kohgylw.kiftd.ui.callback.*;
+import kohgylw.kiftd.server.util.ConfigurationManager;
+import kohgylw.kiftd.ui.callback.GetServerStatus;
+import kohgylw.kiftd.ui.callback.GetServerTime;
+import kohgylw.kiftd.ui.callback.OnCloseServer;
+import kohgylw.kiftd.ui.callback.OnStartServer;
+import kohgylw.kiftd.ui.callback.UpdateSetting;
 
 public class ServerUIModule extends KiftdDynamicWindow {
 
@@ -146,7 +172,8 @@ public class ServerUIModule extends KiftdDynamicWindow {
 			ServerUIModule.tray.add(ServerUIModule.trayIcon);
 
 		} else {
-			ServerUIModule.window.setDefaultCloseOperation(1);
+			// 无系统托盘环境下，关闭窗口即退出程序，避免进程驻留后台无法退出
+			ServerUIModule.window.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
 		}
 		ServerUIModule.window.setLayout(new BoxLayout(ServerUIModule.window.getContentPane(), 3));
 		final JPanel titlebox = new JPanel(new FlowLayout(1));
@@ -208,7 +235,8 @@ public class ServerUIModule extends KiftdDynamicWindow {
 
 			@Override
 			public void insertUpdate(DocumentEvent e) {
-				Thread t = new Thread(() -> {
+				// 在 EDT 上处理输出区更新，避免非 EDT 线程直接操作 Swing 组件
+				SwingUtilities.invokeLater(() -> {
 					if (output.getLineCount() >= 1000) {
 						int end = 0;
 						try {
@@ -219,14 +247,12 @@ public class ServerUIModule extends KiftdDynamicWindow {
 					}
 					output.setCaretPosition(output.getText().length());
 				});
-				t.start();
 			}
 
 			@Override
 			public void changedUpdate(DocumentEvent e) {
-				output.selectAll();
-				output.setCaretPosition(output.getSelectedText().length());
-				output.requestFocus();
+				// 仅滚动到输出末尾，不做全选、不抢焦点，避免打断用户操作
+				SwingUtilities.invokeLater(() -> output.setCaretPosition(output.getText().length()));
 			}
 		});
 		outputBox.add(new JScrollPane(ServerUIModule.output), BorderLayout.CENTER);

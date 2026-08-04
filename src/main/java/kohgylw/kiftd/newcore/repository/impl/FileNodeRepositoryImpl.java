@@ -71,7 +71,6 @@ public class FileNodeRepositoryImpl implements FileNodeRepository {
 
 	@Override
 	public long countByParentFolderId(String parentFolderId) {
-		List<Node> list = nodeMapper.queryByParentFolderId(parentFolderId);
-		return list != null ? list.size() : 0L;
+		return nodeMapper.countByParentFolderId(parentFolderId);
 	}
 }

@@ -1,22 +1,33 @@
 package kohgylw.kiftd.ui.module;
 
-import java.io.*;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.Font;
+import java.awt.GridLayout;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+
+import javax.swing.BorderFactory;
+import javax.swing.BoxLayout;
+import javax.swing.JButton;
+import javax.swing.JComboBox;
+import javax.swing.JDialog;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JTextField;
+import javax.swing.border.EmptyBorder;
 
 import kohgylw.kiftd.printer.Printer;
 import kohgylw.kiftd.server.enumeration.LogLevel;
 import kohgylw.kiftd.server.enumeration.VCLevel;
 import kohgylw.kiftd.server.pojo.ExtendStores;
 import kohgylw.kiftd.server.pojo.ServerSetting;
-import kohgylw.kiftd.ui.callback.*;
+import kohgylw.kiftd.ui.callback.GetServerStatus;
+import kohgylw.kiftd.ui.callback.UpdateSetting;
 import kohgylw.kiftd.ui.pojo.FileSystemPath;
-
-import javax.swing.*;
-import javax.swing.border.*;
-
-import java.awt.*;
-import java.awt.event.*;
 
 /**
  * 

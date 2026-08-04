@@ -2,6 +2,13 @@ package kohgylw.kiftd.server.util;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
+
 import org.junit.jupiter.api.Test;
 
 class ContentTypeMapTest {
@@ -114,6 +121,29 @@ class ContentTypeMapTest {
     @Test
     void testSuffixWithoutDot() {
         assertEquals("application/octet-stream", map.getContentType("txt"));
+    }
+
+    /**
+     * 映射表一致性校验：解析 ContentTypeMap 源码中声明的全部 case 分支，逐一验证
+     * 每个后缀都能解析出对应的具体 ContentType，避免出现被错误映射为默认二进制流的
+     * 死分支或漏分支。
+     */
+    @Test
+    void testAllDeclaredSuffixesResolveToSpecificContentType() throws Exception {
+        Path source = Paths.get("src/main/java/kohgylw/kiftd/server/util/ContentTypeMap.java");
+        assertTrue(Files.exists(source), "未找到 ContentTypeMap 源码文件: " + source);
+        List<String> suffixes = new ArrayList<>();
+        for (String line : Files.readAllLines(source, StandardCharsets.UTF_8)) {
+            String trimmed = line.trim();
+            if (trimmed.startsWith("case \".") && trimmed.endsWith("\":")) {
+                suffixes.add(trimmed.substring(6, trimmed.length() - 2));
+            }
+        }
+        assertTrue(suffixes.size() > 100, "解析到的 case 分支数量异常: " + suffixes.size());
+        for (String suffix : suffixes) {
+            String type = map.getContentType(suffix);
+            assertNotEquals("application/octet-stream", type, "后缀 " + suffix + " 不应被映射为默认类型");
+        }
     }
 
 }

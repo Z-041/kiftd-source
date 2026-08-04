@@ -1,7 +1,9 @@
 package kohgylw.kiftd.server.pojo;
 
-import java.util.*;
-import kohgylw.kiftd.server.model.*;
+import java.util.List;
+
+import kohgylw.kiftd.server.model.Folder;
+import kohgylw.kiftd.server.model.Node;
 
 /**
  * 

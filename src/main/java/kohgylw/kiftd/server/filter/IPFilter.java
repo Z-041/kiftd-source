@@ -16,7 +16,7 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.core.annotation.Order;
 import org.springframework.web.context.support.WebApplicationContextUtils;
 
-import kohgylw.kiftd.newcore.config.ConfigurationManager;
+import kohgylw.kiftd.server.util.ConfigurationManager;
 import kohgylw.kiftd.server.util.IpAddrGetter;
 
 /**

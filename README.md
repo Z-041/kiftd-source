@@ -1,7 +1,7 @@
 ## 欢迎访问kiftd源代码资源库！
 ### Welcome to visit source of kiftd!
 
-_当前版本：v1.2.3-SNAPSHOT_
+_当前版本：v1.3.0_
 
 ### 简介
 _kiftd——一款便捷、开源、功能完善的个人&团队&小型团队网盘服务器系统。_
@@ -18,37 +18,36 @@ kiftd能够帮助您快速搭建起一个面向家庭、团队或组织的网盘
 
 ### 构建说明
 _下列条目为kiftd开发环境的基本信息，如需对源代码进行查看及编译，推荐使用所列配置。_
-+ JDK版本：1.8.0
-+ 项目管理框架：Maven（m2e 1.8.0 for Eclipse）,Archetype：mavem-archetype-quickstart 1.1。
++ JDK版本：21（LTS）
++ 项目管理框架：Maven 3.9+
++ Web框架：Spring Boot 3.4.3（Undertow），持久层：MyBatis Plus 3.5.9（H2 / MySQL 可选）
 + 编码格式：UTF-8
-+ 项目资源及配置：Spring Boot+MyBatis+H2 DB，详见pom.xml文档。
++ 质量门禁：`mvn clean package`（含单元测试与 JaCoCo 覆盖率检查）
 
 ### 快速开始
-+ 使用Eclipse(javaEE)以项目方式导入本资源文件夹，并设置构建路径中的JDK版本。
++ 使用 Eclipse(javaEE)或 IntelliJ IDEA 以项目方式导入本资源文件夹，并设置构建路径中的 JDK 版本（21）。
 + 使用Maven选项更新项目，并确保pom文件中引入的所有外部资源能够正确引入至本地。
-+ 打开kohgylw.kiftd.mc.MC类，进行测试运行。
-+ 右键项目，执行Run with选项中的Maven install操作以在target文件夹内编译生成jar程序。
-+ 将生成的jar程序拷贝到项目主目录下（即与libs等文件夹同级）并开始使用。
++ 命令行构建：`mvn clean package`，产物为 `target/Cloudflow-1.3.0.jar`（依赖位于 `target/libs/`）。
++ 打开 `kohgylw.kiftd.mc.MC` 类，以命令行模式运行（`-s` 参数开启图形界面模式），或直接运行编译后的 jar：`java -jar target/Cloudflow-1.3.0.jar`。
++ 首次运行后将在程序主目录生成 `conf/` 配置文件夹（账户与服务器设置），Web 界面默认端口 8080。
 
 _提示：源代码路径下包含了一些程序运行所需的非源代码资源（例如程序图标等），某些集成式开发环境（例如IDEA）在编译过程中可能会自动忽略非源代码资源。您需要设置并保证这些资源也能够被正确打包至最终的jar程序内，否则将会导致编译出的程序无法顺利运行。_
 
 ### 程序基本结构说明
 + 源代码资源文件夹：/src/main/java/
 + 入口类：kohgylw.kiftd.mc.MC
-+ web界面请求处理包：kohgylw.kiftd.server.controller、kohgylw.kiftd.server.filter
-+ web界面操作逻辑包：kohgylw.kiftd.server.service
-+ 核心功能及文件系统实现包：kohgylw.server.util、kohgylw.kiftd.server.listener、kohgylw.kiftd.server.mapper、kohgylw.kiftd.server.model
-+ 服务器行为控制类：kohgylw.server.ctl.KiftdCtl
++ 领域层（controller / service / repository / infrastructure / config）：kohgylw.kiftd.newcore
++ 服务端基础设施包（util / filter / mapper / model / listener）：kohgylw.kiftd.server
++ 服务器行为控制与命令模式：kohgylw.kiftd.mc（MC、ConsoleRunner、AccountCommandHandler 等）
 + 服务器界面相关包：kohgylw.kiftd.ui、kohgylw.kiftd.printer
 + 独立文件管理模块相关包：kohgylw.kiftd.util.file_system_manager
 + 第三方工具使用许可证包：kohgylw.kiftd.util.licenses
 + web页面静态资源文件夹：/webContext/
-+ mybatis映射表文件夹：/mybatisResource/
-+ 外部引用资源（编译后生成）文件夹：/libs/
-+ 引用字体文件夹：/fonts/
++ 外部引用资源（编译后生成）文件夹：/target/libs/
 + 设置文件（程序第一次运行后生成）文件夹：/conf/
 + 日志文件夹：/logs/
 + 编译输出文件夹：/target/
++ 技术/重构文档：/docs/（TECHNICAL-DOC.md、REFACTOR-NOTES.md）
 + maven配置文件：/pom.xml
 
 ### 常见问题&解决方案

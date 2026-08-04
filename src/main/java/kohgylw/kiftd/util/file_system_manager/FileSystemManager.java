@@ -15,9 +15,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Stream;
 import java.nio.file.Path;
@@ -27,7 +27,7 @@ import kohgylw.kiftd.server.exception.FilesTotalOutOfLimitException;
 import kohgylw.kiftd.server.exception.FoldersTotalOutOfLimitException;
 import kohgylw.kiftd.server.model.Node;
 import kohgylw.kiftd.server.pojo.ExtendStores;
-import kohgylw.kiftd.newcore.config.ConfigurationManager;
+import kohgylw.kiftd.server.util.ConfigurationManager;
 import kohgylw.kiftd.server.util.FileBlockUtil;
 import kohgylw.kiftd.server.util.FileNodeUtil;
 import kohgylw.kiftd.server.util.ServerTimeUtil;
@@ -1091,7 +1091,12 @@ public class FileSystemManager {
 	private String getNativePath(final Node n) throws SQLException {
 		List<String> parentList = new ArrayList<String>();
 		Folder f = selectFolderById(n.getFileParentFolder());
+		Set<String> visited = new HashSet<>();
 		while (f != null) {
+			// 防止数据库中出现环形引用（parent 指向自身或成环）导致死循环
+			if (!visited.add(f.getFolderId())) {
+				break;
+			}
 			parentList.add(f.getFolderName());
 			if (f.getFolderParent().equals("null")) {
 				break;

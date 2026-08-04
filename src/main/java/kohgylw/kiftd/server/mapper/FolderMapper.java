@@ -1,9 +1,14 @@
 package kohgylw.kiftd.server.mapper;
 
-import kohgylw.kiftd.server.model.*;
+import java.util.List;
+import java.util.Map;
+
+import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
+
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import org.apache.ibatis.annotations.*;
-import java.util.*;
+
+import kohgylw.kiftd.server.model.Folder;
 
 public interface FolderMapper extends BaseMapper<Folder> {
 
@@ -18,4 +23,7 @@ public interface FolderMapper extends BaseMapper<Folder> {
 
 	@Select("SELECT * FROM FOLDER WHERE folder_parent = #{parentId} AND folder_name = #{folderName} LIMIT 0,2147483647")
 	Folder queryByParentIdAndFolderName(Map<String, String> map);
+
+	@Select("SELECT COUNT(*) FROM FOLDER WHERE folder_parent = #{pid}")
+	long countByParentId(@Param("pid") final String pid);
 }

@@ -11,19 +11,16 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import kohgylw.kiftd.newcore.domain.ApiResponse;
 import kohgylw.kiftd.newcore.domain.ResultCode;
-import kohgylw.kiftd.newcore.exception.BusinessException;
 import kohgylw.kiftd.printer.Printer;
-import kohgylw.kiftd.server.util.FileBlockUtil;
 import kohgylw.kiftd.server.util.LogUtil;
 
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @ControllerAdvice
 public class GlobalExceptionHandler {
-
-	private final FileBlockUtil fbu;
 
 	private final LogUtil lu;
 
@@ -32,27 +29,9 @@ public class GlobalExceptionHandler {
 	private static final AtomicLong totalExceptionCount = new AtomicLong(0);
 	private static final Map<String, AtomicLong> exceptionTypeCount = new ConcurrentHashMap<>();
 
-	public GlobalExceptionHandler(FileBlockUtil fbu, LogUtil lu, Gson gson) {
-		this.fbu = fbu;
+	public GlobalExceptionHandler(LogUtil lu, Gson gson) {
 		this.lu = lu;
 		this.gson = gson;
-	}
-
-	@ExceptionHandler({ BusinessException.class })
-	public void handleBusinessException(final BusinessException e, final HttpServletRequest request,
-			final HttpServletResponse response) {
-		boolean isApiRequest = request.getRequestURI().startsWith("/api/");
-
-		countException(e);
-
-		Printer.instance.print("业务异常：" + e.getResultCode().getCode() + " - " + e.getMessage());
-
-		if (isApiRequest) {
-			int statusCode = mapResultCodeToHttpStatus(e.getResultCode());
-			writeJsonError(response, statusCode, e.getResultCode(), e.getMessage());
-		} else {
-			sendErrorSafe(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e.getMessage());
-		}
 	}
 
 	@ExceptionHandler({ Exception.class })
@@ -70,6 +49,18 @@ public class GlobalExceptionHandler {
 			return;
 		}
 
+		// 保留 ResponseStatusException 携带的状态码（如 403 权限不足），避免被统一降级为 500
+		if (e instanceof ResponseStatusException) {
+			ResponseStatusException rse = (ResponseStatusException) e;
+			int status = rse.getStatusCode().value();
+			if (isApiRequest) {
+				writeJsonError(response, status, ResultCode.FORBIDDEN, rse.getReason());
+			} else {
+				sendErrorSafe(response, status, rse.getReason());
+			}
+			return;
+		}
+
 		this.lu.writeException(e);
 		Printer.instance.print("处理请求时发生错误：" + e.getClass().getName() + " - " + e.getMessage());
 
@@ -78,7 +69,9 @@ public class GlobalExceptionHandler {
 		} else {
 			sendErrorSafe(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, null);
 		}
-		this.fbu.checkFileBlocks();
+		// 不再在此处调用 fbu.checkFileBlocks()：该操作会删除"数据库无对应节点"的文件块，
+		// 若异常源于数据库瞬时不可用，会误删正常文件块造成数据丢失。文件块一致性校验
+		// 由 ServerInitListener 启动校队与文件系统管理操作中按需执行。
 	}
 
 	private void countException(Exception e) {
@@ -114,39 +107,6 @@ public class GlobalExceptionHandler {
 				response.getWriter().flush();
 			}
 		} catch (IOException ignored) {
-		}
-	}
-
-	private int mapResultCodeToHttpStatus(ResultCode resultCode) {
-		switch (resultCode) {
-		case SUCCESS:
-			return HttpServletResponse.SC_OK;
-		case BAD_REQUEST:
-		case VERIFICATION_CODE_ERROR:
-		case VERIFICATION_CODE_EXPIRED:
-		case PASSWORD_TOO_WEAK:
-		case FILE_SIZE_EXCEEDED:
-		case FILE_TYPE_NOT_ALLOWED:
-		case FOLDER_LIMIT_EXCEEDED:
-			return HttpServletResponse.SC_BAD_REQUEST;
-		case UNAUTHORIZED:
-		case USERNAME_OR_PASSWORD_ERROR:
-			return HttpServletResponse.SC_UNAUTHORIZED;
-		case FORBIDDEN:
-		case USER_NOT_FOUND:
-		case FOLDER_ACCESS_DENIED:
-		case FILE_ACCESS_DENIED:
-		case FILE_CHAIN_INVALID:
-		case FILE_CHAIN_EXPIRED:
-		case SIGN_UP_NOT_ALLOWED:
-		case PASSWORD_CHANGE_NOT_ALLOWED:
-			return HttpServletResponse.SC_FORBIDDEN;
-		case NOT_FOUND:
-		case FOLDER_NOT_FOUND:
-		case FILE_NOT_FOUND:
-			return HttpServletResponse.SC_NOT_FOUND;
-		default:
-			return HttpServletResponse.SC_INTERNAL_SERVER_ERROR;
 		}
 	}
 

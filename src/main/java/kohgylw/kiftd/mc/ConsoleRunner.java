@@ -5,7 +5,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import kohgylw.kiftd.newcore.KiftdApplication;
-import kohgylw.kiftd.newcore.config.ConfigurationManager;
+import kohgylw.kiftd.server.util.ConfigurationManager;
 import kohgylw.kiftd.printer.Printer;
 import kohgylw.kiftd.util.file_system_manager.FileSystemManager;
 

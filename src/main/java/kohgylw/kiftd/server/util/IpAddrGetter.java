@@ -1,6 +1,5 @@
 package kohgylw.kiftd.server.util;
 
-import kohgylw.kiftd.newcore.config.ConfigurationManager;
 
 import java.net.InetAddress;
 

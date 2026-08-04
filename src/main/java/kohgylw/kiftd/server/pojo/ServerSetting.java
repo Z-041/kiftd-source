@@ -2,7 +2,8 @@ package kohgylw.kiftd.server.pojo;
 
 import java.util.List;
 
-import kohgylw.kiftd.server.enumeration.*;
+import kohgylw.kiftd.server.enumeration.LogLevel;
+import kohgylw.kiftd.server.enumeration.VCLevel;
 
 /**
  *

@@ -23,10 +23,10 @@ import kohgylw.kiftd.printer.Printer;
 import kohgylw.kiftd.server.enumeration.VCLevel;
 import kohgylw.kiftd.server.pojo.ChangePasswordInfoPojo;
 import kohgylw.kiftd.server.pojo.LoginInfoPojo;
-import kohgylw.kiftd.server.pojo.PublicKeyInfo;
 import kohgylw.kiftd.server.pojo.SignUpInfoPojo;
-import kohgylw.kiftd.newcore.config.ConfigurationManager;
+import kohgylw.kiftd.server.util.ConfigurationManager;
 import kohgylw.kiftd.newcore.domain.OperationResult;
+import kohgylw.kiftd.server.util.IpAddrGetter;
 import kohgylw.kiftd.server.util.LogUtil;
 import kohgylw.kiftd.server.util.RSADecryptUtil;
 import kohgylw.kiftd.server.util.RSAKeyUtil;
@@ -41,6 +41,8 @@ class AuthServiceImplTest {
     private RSAKeyUtil rsaKeyUtil;
     @Mock
     private LogUtil logUtil;
+    @Mock
+    private IpAddrGetter ipAddrGetter;
     private Gson gson;
     @Mock
     private HttpServletRequest request;
@@ -62,7 +64,7 @@ class AuthServiceImplTest {
             ConfigurationManager reader = mock(ConfigurationManager.class);
             crMock.when(ConfigurationManager::instance).thenReturn(reader);
             when(reader.getVCLevel()).thenReturn(VCLevel.Close);
-            return new AuthServiceImpl(rsaKeyUtil, logUtil, gson);
+            return new AuthServiceImpl(rsaKeyUtil, logUtil, gson, ipAddrGetter);
         }
     }
 
@@ -80,7 +82,7 @@ class AuthServiceImplTest {
             crMock.when(ConfigurationManager::instance).thenReturn(reader);
             when(reader.getVCLevel()).thenReturn(VCLevel.Close);
 
-            AuthServiceImpl authService = new AuthServiceImpl(rsaKeyUtil, logUtil, gson);
+            AuthServiceImpl authService = new AuthServiceImpl(rsaKeyUtil, logUtil, gson, ipAddrGetter);
 
             String publicKey = "testPublicKey";
             when(rsaKeyUtil.getPublicKey()).thenReturn(publicKey);
@@ -125,7 +127,7 @@ class AuthServiceImplTest {
             when(reader.getVCLevel()).thenReturn(VCLevel.Close);
             when(reader.isAllowSignUp()).thenReturn(true);
 
-            AuthServiceImpl authService = new AuthServiceImpl(rsaKeyUtil, logUtil, gson);
+            AuthServiceImpl authService = new AuthServiceImpl(rsaKeyUtil, logUtil, gson, ipAddrGetter);
 
             boolean result = authService.isAllowSignUp();
 
@@ -141,7 +143,7 @@ class AuthServiceImplTest {
             when(reader.getVCLevel()).thenReturn(VCLevel.Close);
             when(reader.isAllowSignUp()).thenReturn(false);
 
-            AuthServiceImpl authService = new AuthServiceImpl(rsaKeyUtil, logUtil, gson);
+            AuthServiceImpl authService = new AuthServiceImpl(rsaKeyUtil, logUtil, gson, ipAddrGetter);
 
             boolean result = authService.isAllowSignUp();
 
@@ -157,7 +159,7 @@ class AuthServiceImplTest {
             crMock.when(ConfigurationManager::instance).thenReturn(reader);
             when(reader.getVCLevel()).thenReturn(VCLevel.Close);
 
-            AuthServiceImpl authService = new AuthServiceImpl(rsaKeyUtil, logUtil, gson);
+            AuthServiceImpl authService = new AuthServiceImpl(rsaKeyUtil, logUtil, gson, ipAddrGetter);
 
             when(reader.foundAccount("user1")).thenReturn(true);
             when(reader.checkAccountPwd(eq("user1"), eq("password123"))).thenReturn(true);
@@ -188,7 +190,7 @@ class AuthServiceImplTest {
             crMock.when(ConfigurationManager::instance).thenReturn(reader);
             when(reader.getVCLevel()).thenReturn(VCLevel.Close);
 
-            AuthServiceImpl authService = new AuthServiceImpl(rsaKeyUtil, logUtil, gson);
+            AuthServiceImpl authService = new AuthServiceImpl(rsaKeyUtil, logUtil, gson, ipAddrGetter);
 
             when(reader.foundAccount("nonexistent")).thenReturn(false);
             when(reader.checkAccountPwd(eq("nonexistent"), anyString())).thenReturn(false);
@@ -217,7 +219,7 @@ class AuthServiceImplTest {
             crMock.when(ConfigurationManager::instance).thenReturn(reader);
             when(reader.getVCLevel()).thenReturn(VCLevel.Close);
 
-            AuthServiceImpl authService = new AuthServiceImpl(rsaKeyUtil, logUtil, gson);
+            AuthServiceImpl authService = new AuthServiceImpl(rsaKeyUtil, logUtil, gson, ipAddrGetter);
 
             when(reader.foundAccount("user1")).thenReturn(true);
             when(reader.checkAccountPwd(eq("user1"), eq("wrongpwd"))).thenReturn(false);
@@ -246,7 +248,7 @@ class AuthServiceImplTest {
             crMock.when(ConfigurationManager::instance).thenReturn(reader);
             when(reader.getVCLevel()).thenReturn(VCLevel.Close);
 
-            AuthServiceImpl authService = new AuthServiceImpl(rsaKeyUtil, logUtil, gson);
+            AuthServiceImpl authService = new AuthServiceImpl(rsaKeyUtil, logUtil, gson, ipAddrGetter);
 
             LoginInfoPojo loginInfo = new LoginInfoPojo();
             loginInfo.setAccountId("user1");
@@ -272,7 +274,7 @@ class AuthServiceImplTest {
             crMock.when(ConfigurationManager::instance).thenReturn(reader);
             when(reader.getVCLevel()).thenReturn(VCLevel.Close);
 
-            AuthServiceImpl authService = new AuthServiceImpl(rsaKeyUtil, logUtil, gson);
+            AuthServiceImpl authService = new AuthServiceImpl(rsaKeyUtil, logUtil, gson, ipAddrGetter);
 
             when(request.getParameter("encrypted")).thenReturn("encryptedData");
             when(rsaKeyUtil.getPrivateKey()).thenReturn("privateKey");
@@ -294,7 +296,7 @@ class AuthServiceImplTest {
             crMock.when(ConfigurationManager::instance).thenReturn(reader);
             when(reader.getVCLevel()).thenReturn(VCLevel.Standard);
 
-            AuthServiceImpl authService = new AuthServiceImpl(rsaKeyUtil, logUtil, gson);
+            AuthServiceImpl authService = new AuthServiceImpl(rsaKeyUtil, logUtil, gson, ipAddrGetter);
 
             when(reader.foundAccount("user1")).thenReturn(true);
             when(reader.checkAccountPwd(eq("user1"), eq("password123"))).thenReturn(true);
@@ -333,7 +335,7 @@ class AuthServiceImplTest {
             crMock.when(ConfigurationManager::instance).thenReturn(reader);
             when(reader.getVCLevel()).thenReturn(VCLevel.Standard);
 
-            AuthServiceImpl authService = new AuthServiceImpl(rsaKeyUtil, logUtil, gson);
+            AuthServiceImpl authService = new AuthServiceImpl(rsaKeyUtil, logUtil, gson, ipAddrGetter);
 
             when(reader.foundAccount("user1")).thenReturn(true);
             when(reader.checkAccountPwd(eq("user1"), eq("password123"))).thenReturn(true);
@@ -370,7 +372,7 @@ class AuthServiceImplTest {
             crMock.when(ConfigurationManager::instance).thenReturn(reader);
             when(reader.getVCLevel()).thenReturn(VCLevel.Close);
 
-            AuthServiceImpl authService = new AuthServiceImpl(rsaKeyUtil, logUtil, gson);
+            AuthServiceImpl authService = new AuthServiceImpl(rsaKeyUtil, logUtil, gson, ipAddrGetter);
 
             authService.getVerificationCode(request, response, session);
 
@@ -385,7 +387,7 @@ class AuthServiceImplTest {
             crMock.when(ConfigurationManager::instance).thenReturn(reader);
             when(reader.getVCLevel()).thenReturn(VCLevel.Standard);
 
-            AuthServiceImpl authService = new AuthServiceImpl(rsaKeyUtil, logUtil, gson);
+            AuthServiceImpl authService = new AuthServiceImpl(rsaKeyUtil, logUtil, gson, ipAddrGetter);
 
             when(response.getOutputStream()).thenThrow(new java.io.IOException("io error"));
 
@@ -403,7 +405,7 @@ class AuthServiceImplTest {
             when(reader.getVCLevel()).thenReturn(VCLevel.Close);
             when(reader.isAllowChangePassword()).thenReturn(false);
 
-            AuthServiceImpl authService = new AuthServiceImpl(rsaKeyUtil, logUtil, gson);
+            AuthServiceImpl authService = new AuthServiceImpl(rsaKeyUtil, logUtil, gson, ipAddrGetter);
 
             OperationResult result = authService.changePassword(request);
 
@@ -420,7 +422,7 @@ class AuthServiceImplTest {
             when(reader.getVCLevel()).thenReturn(VCLevel.Close);
             when(reader.isAllowChangePassword()).thenReturn(true);
 
-            AuthServiceImpl authService = new AuthServiceImpl(rsaKeyUtil, logUtil, gson);
+            AuthServiceImpl authService = new AuthServiceImpl(rsaKeyUtil, logUtil, gson, ipAddrGetter);
 
             when(request.getSession()).thenReturn(session);
             when(session.getAttribute("ACCOUNT")).thenReturn(null);
@@ -440,7 +442,7 @@ class AuthServiceImplTest {
             crMock.when(ConfigurationManager::instance).thenReturn(reader);
             when(reader.getVCLevel()).thenReturn(VCLevel.Close);
 
-            AuthServiceImpl authService = new AuthServiceImpl(rsaKeyUtil, logUtil, gson);
+            AuthServiceImpl authService = new AuthServiceImpl(rsaKeyUtil, logUtil, gson, ipAddrGetter);
 
             when(reader.isAllowChangePassword()).thenReturn(true);
             when(reader.checkAccountPwd(eq("user1"), eq("oldpwd"))).thenReturn(true);
@@ -473,7 +475,7 @@ class AuthServiceImplTest {
             crMock.when(ConfigurationManager::instance).thenReturn(reader);
             when(reader.getVCLevel()).thenReturn(VCLevel.Close);
 
-            AuthServiceImpl authService = new AuthServiceImpl(rsaKeyUtil, logUtil, gson);
+            AuthServiceImpl authService = new AuthServiceImpl(rsaKeyUtil, logUtil, gson, ipAddrGetter);
 
             when(reader.isAllowChangePassword()).thenReturn(true);
             when(reader.checkAccountPwd(eq("user1"), eq("wrongoldpwd"))).thenReturn(false);
@@ -504,7 +506,7 @@ class AuthServiceImplTest {
             crMock.when(ConfigurationManager::instance).thenReturn(reader);
             when(reader.getVCLevel()).thenReturn(VCLevel.Close);
 
-            AuthServiceImpl authService = new AuthServiceImpl(rsaKeyUtil, logUtil, gson);
+            AuthServiceImpl authService = new AuthServiceImpl(rsaKeyUtil, logUtil, gson, ipAddrGetter);
 
             when(reader.isAllowChangePassword()).thenReturn(true);
             when(reader.checkAccountPwd(eq("user1"), eq("oldpwd"))).thenReturn(true);
@@ -535,7 +537,7 @@ class AuthServiceImplTest {
             crMock.when(ConfigurationManager::instance).thenReturn(reader);
             when(reader.getVCLevel()).thenReturn(VCLevel.Close);
 
-            AuthServiceImpl authService = new AuthServiceImpl(rsaKeyUtil, logUtil, gson);
+            AuthServiceImpl authService = new AuthServiceImpl(rsaKeyUtil, logUtil, gson, ipAddrGetter);
 
             when(reader.isAllowChangePassword()).thenReturn(true);
 
@@ -565,7 +567,7 @@ class AuthServiceImplTest {
             crMock.when(ConfigurationManager::instance).thenReturn(reader);
             when(reader.getVCLevel()).thenReturn(VCLevel.Close);
 
-            AuthServiceImpl authService = new AuthServiceImpl(rsaKeyUtil, logUtil, gson);
+            AuthServiceImpl authService = new AuthServiceImpl(rsaKeyUtil, logUtil, gson, ipAddrGetter);
 
             when(reader.isAllowChangePassword()).thenReturn(true);
 
@@ -591,7 +593,7 @@ class AuthServiceImplTest {
             when(reader.getVCLevel()).thenReturn(VCLevel.Close);
             when(reader.isAllowSignUp()).thenReturn(false);
 
-            AuthServiceImpl authService = new AuthServiceImpl(rsaKeyUtil, logUtil, gson);
+            AuthServiceImpl authService = new AuthServiceImpl(rsaKeyUtil, logUtil, gson, ipAddrGetter);
 
             OperationResult result = authService.signUp(request);
 
@@ -608,7 +610,7 @@ class AuthServiceImplTest {
             when(reader.getVCLevel()).thenReturn(VCLevel.Close);
             when(reader.isAllowSignUp()).thenReturn(true);
 
-            AuthServiceImpl authService = new AuthServiceImpl(rsaKeyUtil, logUtil, gson);
+            AuthServiceImpl authService = new AuthServiceImpl(rsaKeyUtil, logUtil, gson, ipAddrGetter);
 
             when(request.getSession()).thenReturn(session);
             when(session.getAttribute("ACCOUNT")).thenReturn("existingUser");
@@ -628,7 +630,7 @@ class AuthServiceImplTest {
             crMock.when(ConfigurationManager::instance).thenReturn(reader);
             when(reader.getVCLevel()).thenReturn(VCLevel.Close);
 
-            AuthServiceImpl authService = new AuthServiceImpl(rsaKeyUtil, logUtil, gson);
+            AuthServiceImpl authService = new AuthServiceImpl(rsaKeyUtil, logUtil, gson, ipAddrGetter);
 
             when(reader.isAllowSignUp()).thenReturn(true);
             when(reader.foundAccount("newuser")).thenReturn(false);
@@ -663,7 +665,7 @@ class AuthServiceImplTest {
             crMock.when(ConfigurationManager::instance).thenReturn(reader);
             when(reader.getVCLevel()).thenReturn(VCLevel.Close);
 
-            AuthServiceImpl authService = new AuthServiceImpl(rsaKeyUtil, logUtil, gson);
+            AuthServiceImpl authService = new AuthServiceImpl(rsaKeyUtil, logUtil, gson, ipAddrGetter);
 
             when(reader.isAllowSignUp()).thenReturn(true);
             when(reader.foundAccount("existinguser")).thenReturn(true);
@@ -694,7 +696,7 @@ class AuthServiceImplTest {
             crMock.when(ConfigurationManager::instance).thenReturn(reader);
             when(reader.getVCLevel()).thenReturn(VCLevel.Close);
 
-            AuthServiceImpl authService = new AuthServiceImpl(rsaKeyUtil, logUtil, gson);
+            AuthServiceImpl authService = new AuthServiceImpl(rsaKeyUtil, logUtil, gson, ipAddrGetter);
 
             when(reader.isAllowSignUp()).thenReturn(true);
             when(reader.foundAccount("ab")).thenReturn(false);
@@ -725,7 +727,7 @@ class AuthServiceImplTest {
             crMock.when(ConfigurationManager::instance).thenReturn(reader);
             when(reader.getVCLevel()).thenReturn(VCLevel.Close);
 
-            AuthServiceImpl authService = new AuthServiceImpl(rsaKeyUtil, logUtil, gson);
+            AuthServiceImpl authService = new AuthServiceImpl(rsaKeyUtil, logUtil, gson, ipAddrGetter);
 
             when(reader.isAllowSignUp()).thenReturn(true);
             when(reader.foundAccount("user=name")).thenReturn(false);
@@ -746,7 +748,7 @@ class AuthServiceImplTest {
             OperationResult result = authService.signUp(request);
 
             assertFalse(result.isSuccess());
-            assertEquals("illegalaccount", result.getCode());
+            assertEquals("invalidaccount", result.getCode());
         }
     }
 
@@ -758,7 +760,7 @@ class AuthServiceImplTest {
             crMock.when(ConfigurationManager::instance).thenReturn(reader);
             when(reader.getVCLevel()).thenReturn(VCLevel.Close);
 
-            AuthServiceImpl authService = new AuthServiceImpl(rsaKeyUtil, logUtil, gson);
+            AuthServiceImpl authService = new AuthServiceImpl(rsaKeyUtil, logUtil, gson, ipAddrGetter);
 
             when(reader.isAllowSignUp()).thenReturn(true);
             when(reader.foundAccount("newuser")).thenReturn(false);
@@ -788,7 +790,7 @@ class AuthServiceImplTest {
             crMock.when(ConfigurationManager::instance).thenReturn(reader);
             when(reader.getVCLevel()).thenReturn(VCLevel.Standard);
 
-            AuthServiceImpl authService = new AuthServiceImpl(rsaKeyUtil, logUtil, gson);
+            AuthServiceImpl authService = new AuthServiceImpl(rsaKeyUtil, logUtil, gson, ipAddrGetter);
 
             when(reader.isAllowSignUp()).thenReturn(true);
 
@@ -812,7 +814,7 @@ class AuthServiceImplTest {
             crMock.when(ConfigurationManager::instance).thenReturn(reader);
             when(reader.getVCLevel()).thenReturn(VCLevel.Close);
 
-            AuthServiceImpl authService = new AuthServiceImpl(rsaKeyUtil, logUtil, gson);
+            AuthServiceImpl authService = new AuthServiceImpl(rsaKeyUtil, logUtil, gson, ipAddrGetter);
 
             when(reader.isAllowSignUp()).thenReturn(true);
 
@@ -838,7 +840,7 @@ class AuthServiceImplTest {
             crMock.when(ConfigurationManager::instance).thenReturn(reader);
             when(reader.getVCLevel()).thenReturn(VCLevel.Close);
 
-            AuthServiceImpl authService = new AuthServiceImpl(rsaKeyUtil, logUtil, gson);
+            AuthServiceImpl authService = new AuthServiceImpl(rsaKeyUtil, logUtil, gson, ipAddrGetter);
 
             when(reader.isAllowSignUp()).thenReturn(true);
             when(reader.foundAccount("newuser")).thenReturn(false);

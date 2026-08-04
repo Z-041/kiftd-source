@@ -7,6 +7,7 @@ import jakarta.servlet.MultipartConfigElement;
 import jakarta.servlet.SessionCookieConfig;
 import jakarta.servlet.ServletContext;
 
+import org.springframework.boot.web.servlet.server.CookieSameSiteSupplier;
 import org.springframework.boot.web.server.WebServerFactoryCustomizer;
 import org.springframework.boot.web.servlet.ServletComponentScan;
 import org.springframework.boot.web.servlet.ServletContextInitializer;
@@ -21,6 +22,8 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+
+import kohgylw.kiftd.server.util.ConfigurationManager;
 
 @Configuration
 @ComponentScan({ "kohgylw.kiftd.newcore.controller", "kohgylw.kiftd.newcore.service.impl", "kohgylw.kiftd.newcore.repository.impl", "kohgylw.kiftd.newcore.infrastructure", "kohgylw.kiftd.server.service.impl", "kohgylw.kiftd.server.util" })
@@ -69,10 +72,19 @@ public class WebMvcConfig implements WebMvcConfigurer {
 	}
 
 	@Bean
-	public ServletContextInitializer sessionCookieInitializer() {
+	public ServletContextInitializer sessionCookieInitializer(ConfigurationManager cm) {
 		return servletContext -> {
 			SessionCookieConfig config = servletContext.getSessionCookieConfig();
 			config.setHttpOnly(true);
+			config.setSecure(cm.isHttpsEnabled());
 		};
+	}
+
+	/**
+	 * 为所有响应 Cookie 追加 SameSite=Lax，缓解跨站请求伪造（CSRF）。
+	 */
+	@Bean
+	public CookieSameSiteSupplier cookieSameSiteSupplier() {
+		return CookieSameSiteSupplier.ofLax();
 	}
 }

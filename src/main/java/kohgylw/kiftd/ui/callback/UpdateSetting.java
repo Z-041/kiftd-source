@@ -1,6 +1,6 @@
 package kohgylw.kiftd.ui.callback;
 
-import kohgylw.kiftd.server.pojo.*;
+import kohgylw.kiftd.server.pojo.ServerSetting;
 
 /**
  *

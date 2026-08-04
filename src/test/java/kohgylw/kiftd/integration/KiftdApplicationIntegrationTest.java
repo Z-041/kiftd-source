@@ -18,7 +18,7 @@ import kohgylw.kiftd.newcore.controller.AuthController;
 import kohgylw.kiftd.newcore.controller.FileController;
 import kohgylw.kiftd.newcore.controller.FolderController;
 import kohgylw.kiftd.newcore.config.DataSourceConfig;
-import kohgylw.kiftd.newcore.config.ConfigurationManager;
+import kohgylw.kiftd.server.util.ConfigurationManager;
 
 import javax.sql.DataSource;
 

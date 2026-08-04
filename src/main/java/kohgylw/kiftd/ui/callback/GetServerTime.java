@@ -1,6 +1,6 @@
 package kohgylw.kiftd.ui.callback;
 
-import java.util.*;
+import java.util.Date;
 
 /**
  *

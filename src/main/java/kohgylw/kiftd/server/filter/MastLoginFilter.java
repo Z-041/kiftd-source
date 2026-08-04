@@ -1,15 +1,22 @@
 package kohgylw.kiftd.server.filter;
 
-import kohgylw.kiftd.newcore.config.ConfigurationManager;
-
-import jakarta.servlet.annotation.*;
-import jakarta.servlet.*;
-import kohgylw.kiftd.server.util.*;
-import jakarta.servlet.http.*;
+import java.io.IOException;
+import java.io.PrintWriter;
 
 import org.springframework.core.annotation.Order;
 
-import java.io.*;
+import jakarta.servlet.Filter;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.FilterConfig;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.ServletRequest;
+import jakarta.servlet.ServletResponse;
+import jakarta.servlet.annotation.WebFilter;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
+
+import kohgylw.kiftd.server.util.ConfigurationManager;
 
 /**
  *
@@ -58,7 +65,7 @@ public class MastLoginFilter implements Filter {
 		}
 		if (s) {
 			if (url.equals("/") || url.endsWith(".html") || url.endsWith(".do")) {
-				if (session.getAttribute("ACCOUNT") != null) {
+				if (session != null && session.getAttribute("ACCOUNT") != null) {
 					final String account = (String) session.getAttribute("ACCOUNT");
 					if (cr.foundAccount(account)) {
 						chain.doFilter(request, response);
@@ -72,7 +79,7 @@ public class MastLoginFilter implements Filter {
 				if (url.equals("/homeController/doLogin.ajax") || url.equals("/homeController/getPublicKey.ajax")
 						|| url.equals("/homeController/doSigUp.ajax")) {
 					chain.doFilter(request, response);
-				} else if (session.getAttribute("ACCOUNT") != null) {
+				} else if (session != null && session.getAttribute("ACCOUNT") != null) {
 					final String account = (String) session.getAttribute("ACCOUNT");
 					if (cr.foundAccount(account)) {
 						chain.doFilter(request, response);
@@ -88,7 +95,7 @@ public class MastLoginFilter implements Filter {
 					pw2.print("mustLogin");
 					pw2.flush();
 				}
-			} else if (session.getAttribute("ACCOUNT") != null) {
+			} else if (session != null && session.getAttribute("ACCOUNT") != null) {
 				final String account = (String) session.getAttribute("ACCOUNT");
 				if (cr.foundAccount(account)) {
 					chain.doFilter(request, response);

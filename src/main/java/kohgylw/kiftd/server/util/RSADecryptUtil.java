@@ -36,10 +36,14 @@ public class RSADecryptUtil {
 	}
 
 	public static String dncryption(final String context, final String privateKey) {
-		final byte[] b = RSADecryptUtil.DECODER.decode(privateKey);
-		final byte[] s = RSADecryptUtil.DECODER.decode(context);
-		final PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(b);
+		// 空入参与格式非法的密文直接判定为解密失败，避免向 Base64/密码学接口传入 null 引发 NPE
+		if (context == null || context.isEmpty() || privateKey == null || privateKey.isEmpty()) {
+			return null;
+		}
 		try {
+			final byte[] b = RSADecryptUtil.DECODER.decode(privateKey);
+			final byte[] s = RSADecryptUtil.DECODER.decode(context);
+			final PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(b);
 			final PrivateKey key = RSADecryptUtil.KEY_FACTORY.generatePrivate(spec);
 			final Cipher cipher = Cipher.getInstance(CIPHER_ALGORITHM);
 			cipher.init(Cipher.DECRYPT_MODE, key);

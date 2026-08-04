@@ -23,7 +23,7 @@ import kohgylw.kiftd.server.mapper.FolderMapper;
 import kohgylw.kiftd.server.mapper.NodeMapper;
 import kohgylw.kiftd.server.model.Folder;
 import kohgylw.kiftd.server.model.Node;
-import kohgylw.kiftd.newcore.config.ConfigurationManager;
+import kohgylw.kiftd.server.util.ConfigurationManager;
 import kohgylw.kiftd.server.util.ContentTypeMap;
 import kohgylw.kiftd.server.util.FileBlockUtil;
 import kohgylw.kiftd.server.util.FolderUtil;
@@ -274,25 +274,61 @@ class ResourceServiceImplTest {
 
     @Test
     void testGetVideoTranscodeStatus_Success() throws Exception {
-        when(kfl.isEnableFFmpeg()).thenReturn(true);
-        when(request.getParameter("fileId")).thenReturn("file1");
-        when(vtu.getTranscodeProcess("file1")).thenReturn("50%");
+        try (MockedStatic<ConfigurationManager> crMock = mockStatic(ConfigurationManager.class)) {
+            ConfigurationManager reader = mock(ConfigurationManager.class);
+            crMock.when(ConfigurationManager::instance).thenReturn(reader);
 
-        String result = resourceService.getVideoTranscodeStatus(request);
+            when(kfl.isEnableFFmpeg()).thenReturn(true);
+            when(request.getParameter("fileId")).thenReturn("file1");
+            when(session.getAttribute("ACCOUNT")).thenReturn("user1");
 
-        assertEquals("50%", result);
+            Node node = new Node();
+            node.setFileId("file1");
+            node.setFileParentFolder("folder1");
+            Folder folder = new Folder();
+            folder.setFolderId("folder1");
+
+            when(nm.selectById("file1")).thenReturn(node);
+            when(fu.getAllFoldersId("folder1")).thenReturn(Collections.singletonList("folder1"));
+            when(reader.authorized(anyString(), any(AccountAuth.class), anyList())).thenReturn(true);
+            when(reader.accessFolder(any(Folder.class), anyString())).thenReturn(true);
+            when(fm.selectById("folder1")).thenReturn(folder);
+            when(vtu.getTranscodeProcess("file1")).thenReturn("50%");
+
+            String result = resourceService.getVideoTranscodeStatus(request);
+
+            assertEquals("50%", result);
+        }
     }
 
     @Test
     void testGetVideoTranscodeStatus_Exception() throws Exception {
-        when(kfl.isEnableFFmpeg()).thenReturn(true);
-        when(request.getParameter("fileId")).thenReturn("file1");
-        when(vtu.getTranscodeProcess("file1")).thenThrow(new RuntimeException("error"));
+        try (MockedStatic<ConfigurationManager> crMock = mockStatic(ConfigurationManager.class)) {
+            ConfigurationManager reader = mock(ConfigurationManager.class);
+            crMock.when(ConfigurationManager::instance).thenReturn(reader);
 
-        String result = resourceService.getVideoTranscodeStatus(request);
+            when(kfl.isEnableFFmpeg()).thenReturn(true);
+            when(request.getParameter("fileId")).thenReturn("file1");
+            when(session.getAttribute("ACCOUNT")).thenReturn("user1");
 
-        assertEquals("ERROR", result);
-        verify(lu, times(1)).writeException(any(Exception.class));
+            Node node = new Node();
+            node.setFileId("file1");
+            node.setFileParentFolder("folder1");
+            Folder folder = new Folder();
+            folder.setFolderId("folder1");
+
+            when(nm.selectById("file1")).thenReturn(node);
+            when(fu.getAllFoldersId("folder1")).thenReturn(Collections.singletonList("folder1"));
+            when(reader.authorized(anyString(), any(AccountAuth.class), anyList())).thenReturn(true);
+            when(reader.accessFolder(any(Folder.class), anyString())).thenReturn(true);
+            when(fm.selectById("folder1")).thenReturn(folder);
+            when(vtu.getTranscodeProcess("file1")).thenThrow(new RuntimeException("error"));
+
+            String result = resourceService.getVideoTranscodeStatus(request);
+
+            assertEquals("ERROR", result);
+            verify(lu, times(1)).writeException(any(Exception.class));
+        }
     }
 
     @Test

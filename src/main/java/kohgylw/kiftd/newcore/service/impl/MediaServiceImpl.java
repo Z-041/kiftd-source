@@ -1,6 +1,6 @@
 package kohgylw.kiftd.newcore.service.impl;
 
-import kohgylw.kiftd.newcore.config.ConfigurationManager;
+import kohgylw.kiftd.server.util.ConfigurationManager;
 import kohgylw.kiftd.newcore.service.MediaService;
 import kohgylw.kiftd.newcore.repository.FileNodeRepository;
 import kohgylw.kiftd.newcore.repository.FolderRepository;
@@ -104,6 +104,10 @@ public class MediaServiceImpl implements MediaService {
 							pi.setFileName(fileName);
 							long pSize = Long.parseLong(n.getFileSize());
 							File block = fileBlockUtil.getFileFromBlocks(n);
+							if (block == null) {
+								// 文件块缺失（数据库记录存在但磁盘文件已被清理）时跳过，避免 NPE
+								continue;
+							}
 							long lastModified = block.lastModified();
 							if (pSize > 1 && !suffix.equals("gif")) {
 								pi.setUrl("homeController/showCondensedPicture.do?fileId=" + n.getFileId()

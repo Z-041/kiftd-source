@@ -12,7 +12,7 @@ import org.mockito.Mockito;
 
 import kohgylw.kiftd.printer.Printer;
 import kohgylw.kiftd.server.model.Node;
-import kohgylw.kiftd.newcore.config.ConfigurationManager;
+import kohgylw.kiftd.server.util.ConfigurationManager;
 
 class FileSystemManagerTest {
 

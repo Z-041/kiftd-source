@@ -25,7 +25,7 @@ import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 
 import kohgylw.kiftd.printer.Printer;
-import kohgylw.kiftd.newcore.config.ConfigurationManager;
+import kohgylw.kiftd.server.util.ConfigurationManager;
 import kohgylw.kiftd.ui.pojo.FileSystemPath;
 import kohgylw.kiftd.ui.util.PathsTable;
 import kohgylw.kiftd.util.file_system_manager.FileSystemManager;

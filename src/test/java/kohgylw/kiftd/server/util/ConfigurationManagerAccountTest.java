@@ -1,9 +1,8 @@
-package kohgylw.kiftd.newcore.config;
+package kohgylw.kiftd.server.util;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.io.File;

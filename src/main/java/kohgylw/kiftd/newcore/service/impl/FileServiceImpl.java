@@ -1,6 +1,6 @@
 package kohgylw.kiftd.newcore.service.impl;
 
-import kohgylw.kiftd.newcore.config.ConfigurationManager;
+import kohgylw.kiftd.server.util.ConfigurationManager;
 import kohgylw.kiftd.newcore.service.FileService;
 import kohgylw.kiftd.newcore.repository.FileNodeRepository;
 import kohgylw.kiftd.newcore.repository.FolderRepository;

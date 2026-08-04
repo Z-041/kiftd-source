@@ -1,9 +1,10 @@
 package kohgylw.kiftd.newcore.service.impl;
 
-import kohgylw.kiftd.newcore.config.ConfigurationManager;
+import kohgylw.kiftd.server.util.ConfigurationManager;
 import kohgylw.kiftd.newcore.domain.OperationResult;
 import kohgylw.kiftd.newcore.service.AuthService;
 import kohgylw.kiftd.server.util.RSAKeyUtil;
+import kohgylw.kiftd.server.util.IpAddrGetter;
 import kohgylw.kiftd.server.util.LogUtil;
 import kohgylw.kiftd.server.util.VerificationCodeFactory;
 import kohgylw.kiftd.server.util.VerificationCode;
@@ -27,7 +28,10 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Pattern;
 
 @Service
 @Primary
@@ -39,15 +43,32 @@ public class AuthServiceImpl implements AuthService {
 
 	private static final long TIME_OUT = 30000L;
 	private static final java.nio.charset.CharsetEncoder ISO_8859_1_ENCODER = StandardCharsets.ISO_8859_1.newEncoder();
+	// 账户名白名单：仅允许字母、数字、下划线、点号与连字符（3-32位），
+	// 排除空白、控制字符及配置文件/HTML 特殊字符，防止配置注入与存储型XSS
+	private static final Pattern ACCOUNT_NAME_PATTERN = Pattern.compile("^[A-Za-z0-9_.\\-]{3,32}$");
+	// 密码白名单：允许任意非空白字符（3-32位），排除空白与控制字符
+	private static final Pattern PASSWORD_PATTERN = Pattern.compile("^\\S{3,32}$");
 
 	private VerificationCodeFactory vcf;
 
 	private static final Set<String> focusAccount = new HashSet<>();
+	// 登录失败限速：以 IP+账户 为维度统计连续失败次数，达到阈值后锁定一段时间，防止暴力破解
+	private static final int MAX_LOGIN_FAILURES = 5;
+	private static final long LOGIN_LOCK_DURATION_MS = 15 * 60 * 1000L;
+	private final Map<String, LoginFailRecord> loginFailRecords = new ConcurrentHashMap<>();
+	private final IpAddrGetter ipAddrGetter;
 
-	public AuthServiceImpl(RSAKeyUtil ku, LogUtil lu, Gson gson) {
+	// 登录失败计数记录
+	private static class LoginFailRecord {
+		volatile int count;
+		volatile long lockUntil;
+	}
+
+	public AuthServiceImpl(RSAKeyUtil ku, LogUtil lu, Gson gson, IpAddrGetter ipAddrGetter) {
 		this.ku = ku;
 		this.lu = lu;
 		this.gson = gson;
+		this.ipAddrGetter = ipAddrGetter;
 		VCLevel vcLevel = ConfigurationManager.instance().getVCLevel();
 		if (!vcLevel.equals(VCLevel.Close)) {
 			int line = 0;
@@ -75,15 +96,29 @@ public class AuthServiceImpl implements AuthService {
 		final String encrypted = request.getParameter("encrypted");
 		try {
 			final String loginInfoStr = RSADecryptUtil.dncryption(encrypted, ku.getPrivateKey());
+			if (loginInfoStr == null) {
+				// 缺少密文参数或解密失败（如伪造/损坏的密文），直接判定登录失败
+				return OperationResult.failure("error");
+			}
 			final LoginInfoPojo info = gson.fromJson(loginInfoStr.replace("\\", "\\\\"), LoginInfoPojo.class);
 			if (System.currentTimeMillis() - Long.parseLong(info.getTime()) > TIME_OUT) {
 				return OperationResult.failure("error");
 			}
 			final String accountId = info.getAccountId();
+			// 登录失败限速：以 IP+账户 为维度统计连续失败次数，超过阈值后锁定一段时间
+			final String failKey = ipAddrGetter.getIpAddr(request) + "|" + accountId;
+			final long now = System.currentTimeMillis();
+			// 惰性清理已过期的锁定记录，避免缓存无限增长
+			loginFailRecords.values().removeIf(v -> v.lockUntil > 0 && v.lockUntil + LOGIN_LOCK_DURATION_MS < now);
+			LoginFailRecord record = loginFailRecords.computeIfAbsent(failKey, k -> new LoginFailRecord());
+			if (record.lockUntil > now) {
+				return OperationResult.failure("attemptslimit");
+			}
 			final boolean accountExists = ConfigurationManager.instance().foundAccount(accountId);
 			final boolean passwordCorrect = ConfigurationManager.instance().checkAccountPwd(accountId,
 					info.getAccountPwd());
 			if (!accountExists) {
+				recordLoginFail(record);
 				return OperationResult.failure("accountnotfound");
 			}
 			if (!ConfigurationManager.instance().getVCLevel().equals(VCLevel.Close)) {
@@ -100,7 +135,7 @@ public class AuthServiceImpl implements AuthService {
 				}
 			}
 			if (passwordCorrect) {
-				ConfigurationManager.instance().upgradePasswordHashIfNeeded(accountId, info.getAccountPwd());
+				// 密码以明文存储于 account.properties（纯文件控制），登录成功后不再自动升级为哈希
 				session.invalidate();
 				HttpSession newSession = request.getSession(true);
 				newSession.setAttribute("ACCOUNT", (Object) accountId);
@@ -109,6 +144,7 @@ public class AuthServiceImpl implements AuthService {
 						focusAccount.remove(accountId);
 					}
 				}
+				loginFailRecords.remove(failKey);
 				return OperationResult.success("permitlogin");
 			}
 			synchronized (focusAccount) {
@@ -116,10 +152,23 @@ public class AuthServiceImpl implements AuthService {
 					focusAccount.add(accountId);
 				}
 			}
+			recordLoginFail(record);
 			return OperationResult.failure("accountpwderror");
 		} catch (Exception e) {
 			lu.writeException(e);
 			return OperationResult.failure("error");
+		}
+	}
+
+	/**
+	 * 记录一次登录失败；当连续失败次数达到阈值时锁定该 IP+账户 组合一段时长。
+	 */
+	private void recordLoginFail(LoginFailRecord record) {
+		synchronized (record) {
+			if (++record.count >= MAX_LOGIN_FAILURES) {
+				record.lockUntil = System.currentTimeMillis() + LOGIN_LOCK_DURATION_MS;
+				record.count = 0;
+			}
 		}
 	}
 
@@ -263,28 +312,23 @@ public class AuthServiceImpl implements AuthService {
 			}
 			String account = info.getAccount();
 			String password = info.getPwd();
-			if (account != null && account.length() >= 3 && account.length() <= 32
-					&& ISO_8859_1_ENCODER.canEncode(account)) {
-				if (account.indexOf("=") < 0 && account.indexOf(":") < 0 && account.indexOf("#") != 0) {
-					if (password != null && password.length() >= 3 && password.length() <= 32
-							&& ISO_8859_1_ENCODER.canEncode(password)) {
-						if (ConfigurationManager.instance().createNewAccount(account, password)) {
-							lu.writeSignUpEvent(request, account);
-							session.invalidate();
-							HttpSession newSession = request.getSession(true);
-							newSession.setAttribute("ACCOUNT", account);
-							return OperationResult.success("success");
-						} else {
-							return OperationResult.failure("cannotsignup");
-						}
-					} else {
-						return OperationResult.failure("invalidpwd");
-					}
-				} else {
-					return OperationResult.failure("illegalaccount");
-				}
-			} else {
+			// 账户名须符合白名单（字母、数字、下划线、点号、连字符），密码须为非空白可打印字符
+			if (account == null || !ACCOUNT_NAME_PATTERN.matcher(account).matches()
+					|| !ISO_8859_1_ENCODER.canEncode(account)) {
 				return OperationResult.failure("invalidaccount");
+			}
+			if (password == null || !PASSWORD_PATTERN.matcher(password).matches()
+					|| !ISO_8859_1_ENCODER.canEncode(password)) {
+				return OperationResult.failure("invalidpwd");
+			}
+			if (ConfigurationManager.instance().createNewAccount(account, password)) {
+				lu.writeSignUpEvent(request, account);
+				session.invalidate();
+				HttpSession newSession = request.getSession(true);
+				newSession.setAttribute("ACCOUNT", account);
+				return OperationResult.success("success");
+			} else {
+				return OperationResult.failure("cannotsignup");
 			}
 		} catch (Exception e) {
 			lu.writeException(e);

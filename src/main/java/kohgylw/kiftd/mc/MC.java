@@ -25,13 +25,9 @@ public class MC {
 	}
 
 	private static void startUIMode() {
-		System.err.println("[STARTUP] startUIMode() entered");
 		try {
 			UIRunner.build();
-			System.err.println("[STARTUP] UIRunner.build() completed successfully");
 		} catch (Exception e) {
-			System.err.println("[STARTUP] UIRunner.build() FAILED: " + e.getMessage());
-			e.printStackTrace(System.err);
 			String errorMsg = "错误！无法以图形界面模式启动" + APP_NAME + "，您的操作系统可能不支持图形界面。"
 					+ "您可以尝试使用命令模式参数 \"-console\" 来启动并开始使用" + APP_NAME + "。";
 			if (Printer.instance != null) {

@@ -26,7 +26,7 @@ import kohgylw.kiftd.server.model.Node;
 import kohgylw.kiftd.server.model.Propertie;
 import kohgylw.kiftd.server.util.AESCipher;
 import kohgylw.kiftd.server.util.ChainKeyMaster;
-import kohgylw.kiftd.newcore.config.ConfigurationManager;
+import kohgylw.kiftd.server.util.ConfigurationManager;
 import kohgylw.kiftd.server.util.ContentTypeMap;
 import kohgylw.kiftd.server.util.FileBlockUtil;
 import kohgylw.kiftd.server.util.FolderUtil;

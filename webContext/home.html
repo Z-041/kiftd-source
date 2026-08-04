@@ -1430,15 +1430,58 @@
   <!-- jquery基本框架 -->
   <script type="text/javascript" src="js/jquery.min.js"></script>
   <script type="text/javascript">
-    // CSRF Token 支持：读取 XSRF-TOKEN Cookie 并加入 AJAX 请求头
+    // CSRF Token 支持：读取 XSRF-TOKEN Cookie 并自动附加到所有请求
     (function () {
-      function getCookie(name) {
+      // 全局 Cookie 读取函数（供原生 XHR 与表单提交复用）
+      window.getCookie = function (name) {
         var value = "; " + document.cookie;
         var parts = value.split("; " + name + "=");
         if (parts.length === 2) return parts.pop().split(";").shift();
         return null;
-      }
-      var csrfToken = getCookie("XSRF-TOKEN");
+      };
+      // 钩子1：原生 XMLHttpRequest（文件上传/文件夹导入使用）自动附加 CSRF 请求头
+      (function () {
+        var origOpen = XMLHttpRequest.prototype.open;
+        var origSetHeader = XMLHttpRequest.prototype.setRequestHeader;
+        var origSend = XMLHttpRequest.prototype.send;
+        XMLHttpRequest.prototype.open = function (method, url) {
+          this.__kiftdMethod = (method || "").toUpperCase();
+          return origOpen.apply(this, arguments);
+        };
+        XMLHttpRequest.prototype.setRequestHeader = function (name) {
+          if (name === "X-XSRF-TOKEN") { this.__kiftdCsrfSet = true; }
+          return origSetHeader.apply(this, arguments);
+        };
+        XMLHttpRequest.prototype.send = function (body) {
+          var m = this.__kiftdMethod;
+          if (!this.__kiftdCsrfSet && (m === "POST" || m === "PUT" || m === "DELETE" || m === "PATCH")) {
+            var token = window.getCookie("XSRF-TOKEN");
+            if (token) {
+              try { origSetHeader.call(this, "X-XSRF-TOKEN", token); } catch (e) { }
+            }
+          }
+          return origSend.apply(this, arguments);
+        };
+      })();
+      // 钩子2：原生表单提交（打包下载 downloadCheckedFilesZip.do）自动附加同名隐藏字段
+      (function () {
+        var origSubmit = HTMLFormElement.prototype.submit;
+        HTMLFormElement.prototype.submit = function () {
+          if (!this.querySelector('input[name="X-XSRF-TOKEN"]')) {
+            var token = window.getCookie("XSRF-TOKEN");
+            if (token) {
+              var input = document.createElement("input");
+              input.type = "hidden";
+              input.name = "X-XSRF-TOKEN";
+              input.value = token;
+              this.appendChild(input);
+            }
+          }
+          return origSubmit.apply(this, arguments);
+        };
+      })();
+      // 钩子3：jQuery AJAX 统一注入请求头
+      var csrfToken = window.getCookie("XSRF-TOKEN");
       if (csrfToken && typeof jQuery !== "undefined") {
         jQuery.ajaxSetup({
           headers: { "X-XSRF-TOKEN": csrfToken },

@@ -7,7 +7,7 @@ import java.util.UUID;
 import org.apache.commons.codec.digest.DigestUtils;
 
 import kohgylw.kiftd.printer.Printer;
-import kohgylw.kiftd.newcore.config.ConfigurationManager;
+import kohgylw.kiftd.server.util.ConfigurationManager;
 import ws.schild.jave.Encoder;
 import ws.schild.jave.MultimediaObject;
 import ws.schild.jave.encode.EncodingAttributes;
@@ -27,10 +27,17 @@ import ws.schild.jave.progress.EncoderProgressListener;
  */
 public class VideoTranscodeThread {
 
-	private String md5;
-	private String progress;
+	private volatile String md5;
+	private volatile String progress;
 	private Encoder encoder;
-	private String outputFileName;
+	private volatile String outputFileName;
+	// MD5 校验缓存：首次校验通过后记录源文件长度与最后修改时间，
+	// 后续轮询仅比较文件元数据即可判断源文件是否变化，避免反复全文件哈希
+	private volatile boolean md5Verified;
+	private volatile long sourceLength;
+	private volatile long sourceLastModified;
+	// 转码完成时间戳，用于清理长期未被消费的 FIN 记录及其输出文件
+	private volatile long finishTime;
 
 	public VideoTranscodeThread(File f, EncodingAttributes ea,ProcessLocator fl) throws Exception {
 		try (FileInputStream fis = new FileInputStream(f)) {
@@ -55,7 +62,10 @@ public class VideoTranscodeThread {
 							}
 						});
 				progress = "FIN";
+				finishTime = System.currentTimeMillis();
 			} catch (Exception e) {
+				// 转码失败时置为明确的失败态，避免前端永远轮询不到结束
+				progress = "ERROR";
 				Printer.instance.print("警告：在线转码功能出现意外错误。详细信息："+e.getMessage());
 			}
 		});
@@ -72,6 +82,35 @@ public class VideoTranscodeThread {
 
 	public String getOutputFileName() {
 		return outputFileName;
+	}
+
+	/**
+	 * 
+	 * <h2>标记 MD5 校验已通过</h2>
+	 * <p>
+	 * 记录校验时的源文件长度与最后修改时间，供后续轮询做廉价元数据比对。
+	 * </p>
+	 */
+	public void markMd5Verified(long length, long lastModified) {
+		this.sourceLength = length;
+		this.sourceLastModified = lastModified;
+		this.md5Verified = true;
+	}
+
+	public boolean isMd5Verified() {
+		return md5Verified;
+	}
+
+	public long getSourceLength() {
+		return sourceLength;
+	}
+
+	public long getSourceLastModified() {
+		return sourceLastModified;
+	}
+
+	public long getFinishTime() {
+		return finishTime;
 	}
 	
 	/**

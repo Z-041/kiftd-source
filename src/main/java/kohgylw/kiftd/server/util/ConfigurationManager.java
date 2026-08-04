@@ -1,10 +1,14 @@
-package kohgylw.kiftd.newcore.config;
+package kohgylw.kiftd.server.util;
 
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardWatchEventKinds;
 import java.nio.file.WatchEvent;
 import java.nio.file.WatchKey;
@@ -27,13 +31,10 @@ import kohgylw.kiftd.server.mapper.FolderMapper;
 import kohgylw.kiftd.server.model.Folder;
 import kohgylw.kiftd.server.pojo.ExtendStores;
 import kohgylw.kiftd.server.pojo.ServerSetting;
-import kohgylw.kiftd.server.util.FolderUtil;
-import kohgylw.kiftd.server.util.KiftdProperties;
-import kohgylw.kiftd.server.util.PasswordUtil;
 
 public class ConfigurationManager {
 
-	public static final int INVALID_DOWNLOAD_ZIP_SETTING = 15;
+	public static final int INVALID_DOWNLOAD_ZIP_SETTING = 17;
 	public static final int INVALID_PORT = 1;
 	public static final int INVALID_LOG = 2;
 	public static final int INVALID_FILE_SYSTEM_PATH = 3;
@@ -234,36 +235,6 @@ public class ConfigurationManager {
 		return PasswordUtil.verifyPassword(pwd, apwd);
 	}
 
-	public void upgradePasswordHashIfNeeded(String account, String password) {
-		final String apwd = this.accountp.getProperty(account + ".pwd");
-		if (apwd != null && !PasswordUtil.isPasswordHashed(apwd)) {
-			try {
-				synchronized (accountp) {
-					accountp.setProperty(account + ".pwd", PasswordUtil.hashPassword(password));
-					try (FileOutputStream accountSettingOut = new FileOutputStream(
-							this.confDir + "account.properties")) {
-						accountp.store(accountSettingOut, null);
-					}
-				}
-			} catch (Exception e) {
-				Printer.instance.print("警告：密码哈希升级失败，将在下次登录时重试。");
-			}
-		}
-	}
-
-	private void upgradePasswordHash(String account, String password) {
-		try {
-			synchronized (accountp) {
-				accountp.setProperty(account + ".pwd", password);
-				try (FileOutputStream out = new FileOutputStream(this.confDir + "account.properties")) {
-					accountp.store(out, null);
-				}
-			}
-		} catch (Exception e) {
-			Printer.instance.print("警告：密码哈希升级失败，将在下次登录时重试。");
-		}
-	}
-
 	public boolean authorized(final String account, final AccountAuth auth, List<String> folders) {
 		if (hasSuperAuth(account)) {
 			return true;
@@ -379,15 +350,31 @@ public class ConfigurationManager {
 		return false;
 	}
 
+	/**
+	 * 原子写入配置文件：先写临时文件再原子替换目标文件，
+	 * 避免写入中断（进程崩溃、磁盘满等）留下半写文件损坏配置。
+	 */
+	private void storePropertiesAtomically(String fileName, KiftdProperties props, String header) throws IOException {
+		File target = new File(this.confDir + fileName);
+		File tmp = new File(this.confDir + fileName + ".tmp");
+		try (FileOutputStream out = new FileOutputStream(tmp)) {
+			props.store(out, header);
+		}
+		try {
+			Files.move(tmp.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING,
+					StandardCopyOption.ATOMIC_MOVE);
+		} catch (AtomicMoveNotSupportedException e) {
+			Files.move(tmp.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
+		}
+	}
+
 	public boolean changePassword(String account, String newPassword) throws Exception {
 		if (account != null && newPassword != null) {
 			if (accountp.getProperty(account + ".pwd") != null) {
 				synchronized (accountp) {
-					accountp.setProperty(account + ".pwd", PasswordUtil.hashPassword(newPassword));
-					try (FileOutputStream out = new FileOutputStream(this.confDir + "account.properties")) {
-						accountp.store(out, null);
-						return true;
-					}
+					accountp.setProperty(account + ".pwd", newPassword);
+					storePropertiesAtomically("account.properties", accountp, null);
+					return true;
 				}
 			}
 		}
@@ -398,17 +385,15 @@ public class ConfigurationManager {
 		if (newAccount != null && newPassword != null) {
 			if (accountp.getProperty(newAccount + ".pwd") == null) {
 				synchronized (accountp) {
-					accountp.setProperty(newAccount + ".pwd", PasswordUtil.hashPassword(newPassword));
+					accountp.setProperty(newAccount + ".pwd", newPassword);
 					if (signUpAuth != null) {
 						accountp.setProperty(newAccount + ".auth", signUpAuth);
 					}
 					if (signUpGroup != null) {
 						accountp.setProperty(newAccount + ".group", signUpGroup);
 					}
-					try (FileOutputStream out = new FileOutputStream(this.confDir + "account.properties")) {
-						accountp.store(out, null);
-						return true;
-					}
+					storePropertiesAtomically("account.properties", accountp, null);
+					return true;
 				}
 			}
 		}
@@ -466,7 +451,7 @@ public class ConfigurationManager {
 			if (accountp.getProperty(account + ".pwd") == null) {
 				return false;
 			}
-			accountp.setProperty(account + ".pwd", PasswordUtil.hashPassword(newPassword));
+			accountp.setProperty(account + ".pwd", newPassword);
 			try (FileOutputStream out = new FileOutputStream(this.confDir + "account.properties")) {
 				accountp.store(out, null);
 				return true;
@@ -529,8 +514,8 @@ public class ConfigurationManager {
 			for (String config : invalidConfigs) {
 				accountp.removeProperty(config);
 			}
-			try (FileOutputStream out = new FileOutputStream(this.confDir + "account.properties")) {
-				accountp.store(out, null);
+			try {
+				storePropertiesAtomically("account.properties", accountp, null);
 				return true;
 			} catch (Exception e) {
 				Printer.instance.print("错误：更新账户配置文件时出现错误，请立即检查账户配置文件。");
@@ -816,8 +801,8 @@ public class ConfigurationManager {
 				this.serverp.setProperty("FS.extend." + es.getIndex(), es.getPath().getAbsolutePath());
 			}
 			if (this.validate() == 0) {
-				try (FileOutputStream fos = new FileOutputStream(this.confDir + "server.properties")) {
-					this.serverp.store(fos, null);
+				try {
+					storePropertiesAtomically("server.properties", this.serverp, null);
 					Printer.instance.print("配置更新完毕，准备就绪。");
 					return true;
 				} catch (Exception e) {
@@ -1081,7 +1066,8 @@ public class ConfigurationManager {
 			dbDriver = "org.h2.Driver";
 			dbURL = "jdbc:h2:file:" + fileNodePath + "kift";
 			dbUser = "root";
-			dbPwd = "301537gY";
+			// 默认口令用于兼容历史数据；如需修改，可在 server.properties 中配置 db.pwd 覆盖
+			dbPwd = serverp.getProperty("db.pwd", "301537gY");
 		}
 		String enableHttps = serverp.getProperty("https.enable");
 		if (enableHttps != null) {
@@ -1137,7 +1123,9 @@ public class ConfigurationManager {
 				return INVALID_IP_XFF_SETTING;
 			}
 		} else {
-			ipXFFAnalysis = true;
+			// 默认关闭 XFF 解析，防止客户端伪造 X-Forwarded-For 头绕过 IP 访问规则；
+			// 仅在明确部署于可信反向代理之后时，才应配置 IP.xff=enable
+			ipXFFAnalysis = false;
 		}
 		String ffmpegConf = serverp.getProperty("video.ffmpeg");
 		if (ffmpegConf != null) {
@@ -1297,12 +1285,13 @@ public class ConfigurationManager {
 	private void createDefaultAccountPropertiesFile() {
 		Printer.instance.print("正在生成初始账户配置文件（" + this.confDir + "account.properties）...");
 		final java.util.Properties dap = new java.util.Properties();
-		dap.setProperty("admin.pwd", PasswordUtil.hashPassword("000000"));
+		dap.setProperty("admin.pwd", "000000");
 		dap.setProperty("admin.auth", "cudrm");
 		dap.setProperty("authOverall", "l");
 		try (FileOutputStream accountSettingOut = new FileOutputStream(this.confDir + "account.properties")) {
 			dap.store(accountSettingOut, "<This is the default kiftd account setting file. >");
 			Printer.instance.print("初始账户配置文件生成完毕。");
+			Printer.instance.print("警告：已创建默认管理员账户 admin，初始密码为 000000，请登录后立即修改！");
 		} catch (Exception e) {
 			Printer.instance.print("错误：无法生成初始账户配置文件，存储路径不存在或写入失败。");
 		}

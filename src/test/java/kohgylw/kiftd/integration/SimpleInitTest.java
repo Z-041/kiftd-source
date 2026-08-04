@@ -1,7 +1,7 @@
 package kohgylw.kiftd.integration;
 
 import kohgylw.kiftd.printer.Printer;
-import kohgylw.kiftd.newcore.config.ConfigurationManager;
+import kohgylw.kiftd.server.util.ConfigurationManager;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 

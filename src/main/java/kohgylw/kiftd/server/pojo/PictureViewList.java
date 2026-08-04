@@ -1,6 +1,6 @@
 package kohgylw.kiftd.server.pojo;
 
-import java.util.*;
+import java.util.List;
 
 /**
  *

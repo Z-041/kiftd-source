@@ -24,6 +24,7 @@ public class ApiPerformanceFilter implements Filter {
 
 	private static final String START_TIME_ATTR = "api_start_time";
 	private static final long SLOW_REQUEST_THRESHOLD_MS = 1000;
+	private static final int MAX_ENDPOINT_ENTRIES = 100;
 
 	private static final AtomicLong totalRequestCount = new AtomicLong(0);
 	private static final AtomicLong slowRequestCount = new AtomicLong(0);
@@ -55,7 +56,13 @@ public class ApiPerformanceFilter implements Filter {
 			updateMinResponseTime(duration);
 			updateMaxResponseTime(duration);
 
-			endpointRequestCount.computeIfAbsent(endpoint, k -> new AtomicLong(0)).incrementAndGet();
+			endpointRequestCount.computeIfAbsent(endpoint, k -> {
+				// 端点数量达到上限后不再新增统计条目，仅更新已有条目计数
+				if (endpointRequestCount.size() >= MAX_ENDPOINT_ENTRIES) {
+					return null;
+				}
+				return new AtomicLong(0);
+			}).incrementAndGet();
 
 			if (duration > SLOW_REQUEST_THRESHOLD_MS) {
 				slowRequestCount.incrementAndGet();

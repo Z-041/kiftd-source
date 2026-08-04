@@ -16,7 +16,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import kohgylw.kiftd.newcore.KiftdApplication;
 import kohgylw.kiftd.newcore.service.FolderService;
 import kohgylw.kiftd.newcore.service.FolderViewService;
-import kohgylw.kiftd.newcore.config.ConfigurationManager;
+import kohgylw.kiftd.server.util.ConfigurationManager;
 import kohgylw.kiftd.server.mapper.FolderMapper;
 import kohgylw.kiftd.server.model.Folder;
 import kohgylw.kiftd.server.enumeration.AccountAuth;

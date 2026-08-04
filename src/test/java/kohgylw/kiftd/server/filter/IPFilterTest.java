@@ -11,7 +11,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import kohgylw.kiftd.newcore.config.ConfigurationManager;
+import kohgylw.kiftd.server.util.ConfigurationManager;
 import kohgylw.kiftd.server.util.IpAddrGetter;
 
 @ExtendWith(MockitoExtension.class)

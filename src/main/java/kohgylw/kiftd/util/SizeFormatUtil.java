@@ -77,29 +77,44 @@ public final class SizeFormatUtil {
 	}
 
 	private static long parseSizeWithUnit(String in, boolean defaultIsKb) {
-		if (in.length() <= 1) {
-			long base = Long.parseLong(in.trim());
+		String trimmed = in.trim();
+		if (trimmed.isEmpty()) {
+			throw new IllegalArgumentException("empty size string");
+		}
+		if (trimmed.length() <= 1) {
+			long base = Long.parseLong(trimmed);
 			return defaultIsKb ? base * KB : base;
 		}
 		String value;
 		String unit;
-		int len = in.length();
-		if (len > 2 && in.toLowerCase().charAt(len - 1) == 'b') {
-			unit = in.substring(len - 2, len - 1).toLowerCase();
-			value = in.substring(0, len - 2).trim();
+		char last = Character.toLowerCase(trimmed.charAt(trimmed.length() - 1));
+		if (last == 'b') {
+			// 形如 "2B"、"2KB"、"2MB"、"2GB"、"2TB"
+			if (trimmed.length() == 2) {
+				unit = "b";
+				value = trimmed.substring(0, 1);
+			} else {
+				unit = String.valueOf(Character.toLowerCase(trimmed.charAt(trimmed.length() - 2)));
+				value = trimmed.substring(0, trimmed.length() - 2);
+			}
 		} else {
-			unit = in.substring(len - 1).toLowerCase();
-			value = in.substring(0, len - 1).trim();
+			// 形如 "2"、"2K"、"2M"、"2G"、"2T"
+			unit = String.valueOf(last);
+			value = trimmed.substring(0, trimmed.length() - 1);
 		}
+		long base = Long.parseLong(value.trim());
 		switch (unit) {
 		case "k":
-			return Long.parseLong(value) * KB;
+			return base * KB;
 		case "m":
-			return Long.parseLong(value) * MB;
+			return base * MB;
 		case "g":
-			return Long.parseLong(value) * GB;
+			return base * GB;
+		case "t":
+			return base * TB;
+		case "b":
+			return base;
 		default:
-			long base = Long.parseLong(in.trim());
 			return defaultIsKb ? base * KB : base;
 		}
 	}

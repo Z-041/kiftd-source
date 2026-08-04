@@ -15,7 +15,7 @@ import org.springframework.test.web.servlet.MvcResult;
 
 import kohgylw.kiftd.newcore.KiftdApplication;
 import kohgylw.kiftd.newcore.service.AuthService;
-import kohgylw.kiftd.newcore.config.ConfigurationManager;
+import kohgylw.kiftd.server.util.ConfigurationManager;
 import kohgylw.kiftd.server.util.PasswordUtil;
 import kohgylw.kiftd.printer.Printer;
 

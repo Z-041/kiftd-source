@@ -8,12 +8,12 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * 
@@ -23,14 +23,18 @@ import java.util.Set;
  * 相较于原始的Properties类，该特用版在查询性能上相近（或稍快），但在读取性能上更慢。
  * 同时能够确保在写入文件时保留原始的文本结构（包括顺序及注释内容）。
  * </p>
+ * <p>
+ * 底层采用 {@link ConcurrentHashMap} 与 {@link CopyOnWriteArrayList}，
+ * 支持配置热加载（WatchService）与业务写入并发时的高频无锁读，避免数据竞争。
+ * </p>
  * 
  * @author 青阳龙野(kohgylw)
  * @version 1.0
  */
 public class KiftdProperties {
 
-	private List<LineContext> contexts = new ArrayList<>();// 保存载入的整个文本信息
-	private Map<String, String> properties = new HashMap<>();// 仅保存配置信息，用于提高查询效率
+	private List<LineContext> contexts = new CopyOnWriteArrayList<>();// 保存载入的整个文本信息
+	private Map<String, String> properties = new ConcurrentHashMap<>();// 仅保存配置信息，用于提高查询效率
 
 	// 用于存储每一行文本信息的包装类
 	private class LineContext {

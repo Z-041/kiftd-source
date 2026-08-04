@@ -1,6 +1,6 @@
 package kohgylw.kiftd.newcore.service.impl;
 
-import kohgylw.kiftd.newcore.config.ConfigurationManager;
+import kohgylw.kiftd.server.util.ConfigurationManager;
 import kohgylw.kiftd.newcore.service.FolderService;
 import kohgylw.kiftd.newcore.repository.FolderRepository;
 import kohgylw.kiftd.newcore.repository.FileNodeRepository;
@@ -204,6 +204,10 @@ public class FolderServiceImpl implements FolderService {
 			return "noAuthorized";
 		}
 		final Folder parentFolder = this.folderRepository.selectById(folder.getFolderParent());
+		if (parentFolder == null) {
+			// 目标文件夹的父级为空（例如父级为根目录"null"或已被删除），视为参数错误
+			return "errorParameter";
+		}
 		int pc = parentFolder.getFolderConstraint();
 		if (folderConstraint != null) {
 			try {

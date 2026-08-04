@@ -1,7 +1,7 @@
 package kohgylw.kiftd.newcore.service.impl;
 
 import jakarta.servlet.http.HttpServletRequest;
-import kohgylw.kiftd.newcore.config.ConfigurationManager;
+import kohgylw.kiftd.server.util.ConfigurationManager;
 import kohgylw.kiftd.newcore.infrastructure.crypto.CryptoService;
 import kohgylw.kiftd.newcore.repository.FileNodeRepository;
 import kohgylw.kiftd.newcore.repository.FolderRepository;

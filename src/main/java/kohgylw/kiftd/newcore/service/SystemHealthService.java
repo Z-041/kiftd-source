@@ -11,7 +11,7 @@ import javax.sql.DataSource;
 
 import org.springframework.stereotype.Service;
 
-import kohgylw.kiftd.newcore.config.ConfigurationManager;
+import kohgylw.kiftd.server.util.ConfigurationManager;
 import kohgylw.kiftd.newcore.controller.GlobalExceptionHandler;
 import kohgylw.kiftd.newcore.infrastructure.logging.ApiPerformanceFilter;
 import kohgylw.kiftd.printer.Printer;

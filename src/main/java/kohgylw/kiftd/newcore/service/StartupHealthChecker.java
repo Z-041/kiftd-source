@@ -3,7 +3,7 @@ package kohgylw.kiftd.newcore.service;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
 
-import kohgylw.kiftd.newcore.config.ConfigurationManager;
+import kohgylw.kiftd.server.util.ConfigurationManager;
 import kohgylw.kiftd.printer.Printer;
 
 import javax.sql.DataSource;

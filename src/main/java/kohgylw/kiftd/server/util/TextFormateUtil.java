@@ -1,6 +1,6 @@
 package kohgylw.kiftd.server.util;
 
-import java.util.regex.*;
+import java.util.regex.Pattern;
 
 /**
  *

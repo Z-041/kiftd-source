@@ -222,9 +222,6 @@ public class ContentTypeMap {
 		case ".bh2":
 			return "application/vnd.fujitsu.oasysprs";
 
-		case ".bin":
-			return "application/octet-stream";
-
 		case ".blb":
 			return "application/x-blorb";
 
@@ -248,9 +245,6 @@ public class ContentTypeMap {
 
 		case ".boz":
 			return "application/x-bzip2";
-
-		case ".bpk":
-			return "application/octet-stream";
 
 		case ".btif":
 			return "image/prs.btif";
@@ -522,9 +516,6 @@ public class ContentTypeMap {
 		case ".def":
 			return "text/plain";
 
-		case ".deploy":
-			return "application/octet-stream";
-
 		case ".der":
 			return "application/x-x509-ca-cert";
 
@@ -546,12 +537,6 @@ public class ContentTypeMap {
 		case ".dis":
 			return "application/vnd.mobius.dis";
 
-		case ".dist":
-			return "application/octet-stream";
-
-		case ".distz":
-			return "application/octet-stream";
-
 		case ".djv":
 			return "image/vnd.djvu";
 
@@ -566,9 +551,6 @@ public class ContentTypeMap {
 
 		case ".dmp":
 			return "application/vnd.tcpdump.pcap";
-
-		case ".dms":
-			return "application/octet-stream";
 
 		case ".dna":
 			return "application/vnd.dna";
@@ -618,9 +600,6 @@ public class ContentTypeMap {
 		case ".dtshd":
 			return "audio/vnd.dts.hd";
 
-		case ".dump":
-			return "application/octet-stream";
-
 		case ".dv":
 			return "video/x-dv";
 
@@ -669,9 +648,6 @@ public class ContentTypeMap {
 		case ".ei6":
 			return "application/vnd.pg.osasli";
 
-		case ".elc":
-			return "application/octet-stream";
-
 		case ".emf":
 			return "application/x-msmetafile";
 
@@ -716,9 +692,6 @@ public class ContentTypeMap {
 
 		case ".evy":
 			return "application/x-envoy";
-
-		case ".exe":
-			return "application/octet-stream";
 
 		case ".exi":
 			return "application/exi";
@@ -1251,9 +1224,6 @@ public class ContentTypeMap {
 		case ".lostxml":
 			return "application/lost+xml";
 
-		case ".lrf":
-			return "application/octet-stream";
-
 		case ".lrm":
 			return "application/vnd.ms-lrm";
 
@@ -1328,9 +1298,6 @@ public class ContentTypeMap {
 
 		case ".man":
 			return "text/troff";
-
-		case ".mar":
-			return "application/octet-stream";
 
 		case ".mathml":
 			return "application/mathml+xml";
@@ -1863,9 +1830,6 @@ public class ContentTypeMap {
 		case ".pict":
 			return "image/pict";
 
-		case ".pkg":
-			return "application/octet-stream";
-
 		case ".pki":
 			return "application/pkixcmp";
 
@@ -2291,9 +2255,6 @@ public class ContentTypeMap {
 
 		case ".snf":
 			return "application/x-font-snf";
-
-		case ".so":
-			return "application/octet-stream";
 
 		case ".spc":
 			return "application/x-pkcs7-certificates";

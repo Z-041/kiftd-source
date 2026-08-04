@@ -1,7 +1,7 @@
 package kohgylw.kiftd.newcore;
 
 import kohgylw.kiftd.printer.Printer;
-import kohgylw.kiftd.newcore.config.ConfigurationManager;
+import kohgylw.kiftd.server.util.ConfigurationManager;
 import kohgylw.kiftd.newcore.config.DataSourceConfig;
 import kohgylw.kiftd.newcore.config.UndertowServerConfig;
 import kohgylw.kiftd.newcore.config.WebMvcConfig;

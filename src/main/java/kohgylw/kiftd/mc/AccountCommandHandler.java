@@ -3,7 +3,7 @@ package kohgylw.kiftd.mc;
 import java.util.List;
 import java.util.Scanner;
 
-import kohgylw.kiftd.newcore.config.ConfigurationManager;
+import kohgylw.kiftd.server.util.ConfigurationManager;
 import kohgylw.kiftd.printer.Printer;
 import kohgylw.kiftd.util.SizeFormatUtil;
 

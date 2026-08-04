@@ -1,24 +1,31 @@
 package kohgylw.kiftd.server.util;
 
-import kohgylw.kiftd.newcore.config.ConfigurationManager;
-
-import org.springframework.stereotype.*;
-import jakarta.annotation.PreDestroy;
-import jakarta.annotation.Resource;
-import kohgylw.kiftd.server.mapper.*;
-import kohgylw.kiftd.printer.Printer;
-import kohgylw.kiftd.server.enumeration.*;
-import jakarta.servlet.http.*;
-import java.util.*;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
 import java.lang.ref.Cleaner;
 import java.lang.ref.WeakReference;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
-import kohgylw.kiftd.server.model.*;
+import org.springframework.stereotype.Component;
 
-import java.io.*;
+import jakarta.annotation.PreDestroy;
+import jakarta.annotation.Resource;
+import jakarta.servlet.http.HttpServletRequest;
+
+import kohgylw.kiftd.printer.Printer;
+import kohgylw.kiftd.server.enumeration.LogLevel;
+import kohgylw.kiftd.server.mapper.FolderMapper;
+import kohgylw.kiftd.server.mapper.NodeMapper;
+import kohgylw.kiftd.server.model.Folder;
+import kohgylw.kiftd.server.model.Node;
 
 /**
  * 
@@ -82,7 +89,10 @@ public class LogUtil {
 	public LogUtil() {
 		sep = File.separator;
 		logs = ConfigurationManager.instance().getPath() + sep + "logs";
-		writerThread = Executors.newSingleThreadExecutor();
+		// 使用有界队列承载日志写入任务：日志属于非关键路径，极端负载下优先丢弃多余任务，
+		// 避免无界队列导致内存无限增长，同时保证日志线程不被阻塞
+		writerThread = new ThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS,
+				new ArrayBlockingQueue<>(MAX_PENDING_LOG_TASKS), new ThreadPoolExecutor.DiscardPolicy());
 		this.cleanable = CLEANER.register(this, new LogUtilCleanup(this, writerThread));
 		File l = new File(logs);
 		if (!l.exists()) {
@@ -94,6 +104,9 @@ public class LogUtil {
 			}
 		}
 	}
+
+	// 日志写入队列最大积压任务数，超出后丢弃多余任务
+	private static final int MAX_PENDING_LOG_TASKS = 1024;
 
 	@PreDestroy
 	public void cleanup() {
@@ -447,7 +460,8 @@ public class LogUtil {
 	}
 
 	// 将文本信息以格式化标准写入日志文件中
-	private void writeToLog(String type, String content) {
+	// 注意：该方法可能被事件日志线程池与异常日志调用线程并发调用，必须同步以保证写入原子性
+	private synchronized void writeToLog(String type, String content) {
 		String t = ServerTimeUtil.accurateToLogName();
 		String finalContent = "\r\n\r\nTIME:\r\n" + ServerTimeUtil.accurateToSecond() + "\r\nTYPE:\r\n" + type
 				+ "\r\nCONTENT:\r\n" + content;

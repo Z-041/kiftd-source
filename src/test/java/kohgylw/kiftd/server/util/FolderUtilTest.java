@@ -3,7 +3,6 @@ package kohgylw.kiftd.server.util;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -16,7 +15,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import kohgylw.kiftd.server.mapper.FolderMapper;
 import kohgylw.kiftd.server.mapper.NodeMapper;
 import kohgylw.kiftd.server.model.Folder;
-import kohgylw.kiftd.server.model.Node;
 
 @ExtendWith(MockitoExtension.class)
 class FolderUtilTest {

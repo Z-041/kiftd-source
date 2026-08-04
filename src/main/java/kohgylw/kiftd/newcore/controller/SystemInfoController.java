@@ -4,11 +4,16 @@ import java.lang.management.ManagementFactory;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
-import kohgylw.kiftd.newcore.config.ConfigurationManager;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
+
+import kohgylw.kiftd.server.util.ConfigurationManager;
 import kohgylw.kiftd.newcore.service.SystemHealthService;
 
 @RestController
@@ -24,11 +29,12 @@ public class SystemInfoController {
     }
 
     @GetMapping("/info")
-    public Map<String, Object> getSystemInfo() {
+    public Map<String, Object> getSystemInfo(HttpServletRequest request) {
+        requireAdmin(request);
         Map<String, Object> info = new HashMap<>();
 
         info.put("appName", "kiftd");
-        info.put("version", "1.2.3-SNAPSHOT");
+        info.put("version", "1.3.0");
 
         long uptimeMs = ManagementFactory.getRuntimeMXBean().getUptime();
         info.put("uptime", formatUptime(uptimeMs));
@@ -46,7 +52,8 @@ public class SystemInfoController {
     }
 
     @GetMapping("/stats")
-    public Map<String, Object> getSystemStats() {
+    public Map<String, Object> getSystemStats(HttpServletRequest request) {
+        requireAdmin(request);
         Map<String, Object> metrics = systemHealthService.getMetrics();
         Map<String, Object> stats = new HashMap<>();
 
@@ -64,13 +71,30 @@ public class SystemInfoController {
     }
 
     @GetMapping("/health")
-    public Map<String, Object> health() {
+    public Map<String, Object> health(HttpServletRequest request) {
+        requireAdmin(request);
         return systemHealthService.getHealthStatus();
     }
 
     @GetMapping("/metrics")
-    public Map<String, Object> metrics() {
+    public Map<String, Object> metrics(HttpServletRequest request) {
+        requireAdmin(request);
         return systemHealthService.getMetrics();
+    }
+
+    /**
+     * 系统监控/管理接口仅对管理员开放，防止匿名用户获取文件系统路径、内存与
+     * 磁盘等敏感信息。
+     */
+    private void requireAdmin(HttpServletRequest request) {
+        HttpSession session = request.getSession(false);
+        if (session == null) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "需要管理员权限");
+        }
+        String account = (String) session.getAttribute("ACCOUNT");
+        if (account == null || !configurationManager.isSuperAdmin(account)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "需要管理员权限");
+        }
     }
 
     private String formatUptime(long uptimeMs) {

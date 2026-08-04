@@ -3,7 +3,6 @@ package kohgylw.kiftd.server.util;
 import org.springframework.stereotype.Component;
 import jakarta.annotation.Resource;
 
-import kohgylw.kiftd.newcore.config.ConfigurationManager;
 import kohgylw.kiftd.server.enumeration.AccountAuth;
 import kohgylw.kiftd.server.exception.FoldersTotalOutOfLimitException;
 import kohgylw.kiftd.server.mapper.FolderMapper;

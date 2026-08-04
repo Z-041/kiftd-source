@@ -1023,8 +1023,8 @@ function createFileRow(fi, aL, aD, aR, aO) {
 		+ "</td><td class='hidden-xs'>" + fi.fileCreationDate + "</td>";
 	// 文件大小
 	fileRow = fileRow + "<td>" + formatFileSize(fi.fileSize) + "</td>";
-	// 文件创建者
-	fileRow = fileRow + "<td class='hidden-xs'>" + fi.fileCreator + "</td><td>";
+	// 文件创建者（该值来自文件元数据，需转义防止存储型XSS）
+	fileRow = fileRow + "<td class='hidden-xs'>" + html2Escape(fi.fileCreator) + "</td><td>";
 	// 文件操作按钮
 	if (aL) {
 		fileRow = fileRow
@@ -1182,7 +1182,7 @@ function createNewFolderRow(f, aD, aR, aO) {
 		+ '"' + f.folderId + '"' + ")' class='btn btn-link btn-xs'>/"
 		+ f.folderName + "</button></td><td class='hidden-xs'>"
 		+ f.folderCreationDate + "</td><td>--</td><td class='hidden-xs'>"
-		+ f.folderCreator + "</td><td>";
+		+ html2Escape(f.folderCreator) + "</td><td>";
 	if (aD) {
 		folderRow = folderRow
 			+ "<button onclick='showDeleteFolderModel("

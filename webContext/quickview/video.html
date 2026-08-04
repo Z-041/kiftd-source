@@ -87,7 +87,25 @@
       </div>
     </div>
   </body>
-  <script type="text/javascript" src="js/jquery-3.3.1.min.js"></script>
+  <script type="text/javascript" src="js/jquery.min.js"></script>
+  <script type="text/javascript">
+    // CSRF Token 支持：读取 XSRF-TOKEN Cookie 并加入 AJAX 请求头
+    (function () {
+      function getCookie(name) {
+        var value = "; " + document.cookie;
+        var parts = value.split("; " + name + "=");
+        if (parts.length === 2) return parts.pop().split(";").shift();
+        return null;
+      }
+      var csrfToken = getCookie("XSRF-TOKEN");
+      if (csrfToken && typeof jQuery !== "undefined") {
+        jQuery.ajaxSetup({
+          headers: { "X-XSRF-TOKEN": csrfToken },
+          xhrFields: { withCredentials: true }
+        });
+      }
+    })();
+  </script>
   <script type="text/javascript" src="js/bootstrap.min.js"></script>
   <script type="text/javascript" src="js/video.min.js"></script>
   <script type="text/javascript" src="js/kplayer.min.js"></script>

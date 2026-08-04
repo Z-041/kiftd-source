@@ -1,12 +1,5 @@
 package kohgylw.kiftd.server.listener;
 
-import kohgylw.kiftd.newcore.config.ConfigurationManager;
-
-import jakarta.servlet.annotation.*;
-
-import org.springframework.context.ApplicationContext;
-import org.springframework.web.context.support.WebApplicationContextUtils;
-
 import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -17,11 +10,20 @@ import java.nio.file.WatchService;
 import java.util.ArrayList;
 import java.util.List;
 
-import jakarta.servlet.*;
+import org.springframework.context.ApplicationContext;
+import org.springframework.web.context.support.WebApplicationContextUtils;
+
+import jakarta.servlet.ServletContextEvent;
+import jakarta.servlet.ServletContextListener;
+import jakarta.servlet.annotation.WebListener;
 
 import kohgylw.kiftd.printer.Printer;
 import kohgylw.kiftd.server.mapper.FolderMapper;
-import kohgylw.kiftd.server.util.*;
+import kohgylw.kiftd.server.util.ConfigurationManager;
+import kohgylw.kiftd.server.util.FileBlockUtil;
+import kohgylw.kiftd.server.util.FileNodeUtil;
+import kohgylw.kiftd.server.util.LogUtil;
+import kohgylw.kiftd.server.util.NoticeUtil;
 
 /**
  * 
@@ -39,12 +41,13 @@ public class ServerInitListener implements ServletContextListener {
 	private static final int CYVLE_TIME = 30000;// 定时检查失效额外权限的周期，以毫秒为单位
 	private Thread pathWatchServiceThread;// 用于在服务器启动后动态监听服务器主目录的线程，以便实现某些文件的动态更新
 	private Thread cleanInnvalidAddedAuthThread;// 用于在服务器启动后实时清理失效额外权限配置的线程，以便及时清理被删除的文件夹对应的额外权限配置
-	private boolean run; // 是否继续监听服务器主目录下的文件改动（用以控制监听的停止）
+	// 以下字段由后台监听/清理线程跨线程读取或写入，须使用volatile保证可见性
+	private volatile boolean run; // 是否继续监听服务器主目录下的文件改动（用以控制监听的停止）
 	/**
 	 * 是否需要重新检查失效额外权限，当出现文件夹删除操作后，应将该属性置为true。
 	 */
-	public static boolean needCheck;
-	private static boolean continueCheck;// 是否需要继续检查失效额外权限（用以控制检查的停止）
+	public static volatile boolean needCheck;
+	private static volatile boolean continueCheck;// 是否需要继续检查失效额外权限（用以控制检查的停止）
 	// 一些必须用到的工具类（应确保在contextInitialized方法中初始化它们）
 	private FileBlockUtil fbu;// 文件块操作工具
 	private NoticeUtil nu;// 公告信息解析工具

@@ -25,7 +25,7 @@ import kohgylw.kiftd.server.mapper.FolderMapper;
 import kohgylw.kiftd.server.mapper.NodeMapper;
 import kohgylw.kiftd.server.model.Node;
 import kohgylw.kiftd.server.pojo.VideoTranscodeThread;
-import kohgylw.kiftd.newcore.config.ConfigurationManager;
+import kohgylw.kiftd.server.util.ConfigurationManager;
 import kohgylw.kiftd.newcore.service.ResourceService;
 import kohgylw.kiftd.server.util.ContentTypeMap;
 import kohgylw.kiftd.server.util.FileBlockUtil;
@@ -284,13 +284,20 @@ public class ResourceServiceImpl implements ResourceService {
 	@Override
 	public String getVideoTranscodeStatus(HttpServletRequest request) {
 		if (kiftdFFMPEGLocator.isEnableFFmpeg()) {
+			// 转码会占用服务器CPU与磁盘资源，须校验登录态及下载权限，防止未授权用户反复触发转码
+			final String account = (String) request.getSession().getAttribute("ACCOUNT");
 			String fId = request.getParameter("fileId");
-			if (fId != null) {
-				try {
-					return videoTranscodeUtil.getTranscodeProcess(fId);
-				} catch (Exception e) {
-					Printer.instance.print("错误：视频转码功能出现意外错误。详细信息：" + e.getMessage());
-					logUtil.writeException(e);
+			if (account != null && fId != null) {
+				Node n = nodeMapper.selectById(fId);
+				if (n != null && ConfigurationManager.instance().authorized(account, AccountAuth.DOWNLOAD_FILES,
+						folderUtil.getAllFoldersId(n.getFileParentFolder()))
+						&& ConfigurationManager.instance().accessFolder(folderMapper.selectById(n.getFileParentFolder()), account)) {
+					try {
+						return videoTranscodeUtil.getTranscodeProcess(fId);
+					} catch (Exception e) {
+						Printer.instance.print("错误：视频转码功能出现意外错误。详细信息：" + e.getMessage());
+						logUtil.writeException(e);
+					}
 				}
 			}
 		}

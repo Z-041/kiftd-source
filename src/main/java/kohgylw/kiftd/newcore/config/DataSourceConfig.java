@@ -13,6 +13,8 @@ import com.baomidou.mybatisplus.extension.spring.MybatisSqlSessionFactoryBean;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 
+import kohgylw.kiftd.server.util.ConfigurationManager;
+
 @Configuration
 @EnableTransactionManagement
 public class DataSourceConfig {

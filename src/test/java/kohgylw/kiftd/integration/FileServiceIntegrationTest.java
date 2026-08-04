@@ -18,7 +18,7 @@ import kohgylw.kiftd.newcore.KiftdApplication;
 import kohgylw.kiftd.newcore.service.FileService;
 import kohgylw.kiftd.newcore.service.FolderService;
 import kohgylw.kiftd.newcore.service.FolderViewService;
-import kohgylw.kiftd.newcore.config.ConfigurationManager;
+import kohgylw.kiftd.server.util.ConfigurationManager;
 import kohgylw.kiftd.server.mapper.NodeMapper;
 import kohgylw.kiftd.server.model.Node;
 
