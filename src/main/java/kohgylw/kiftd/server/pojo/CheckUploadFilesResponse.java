@@ -14,7 +14,7 @@ import java.util.List;
  * @author 青阳龙野(kohgylw)
  * @version 1.0
  */
-public class CheckUploadFilesRespons {
+public class CheckUploadFilesResponse {
 	
 	private String checkResult;//检查结果
 	private List<String> pereFileNameList;//重复列表

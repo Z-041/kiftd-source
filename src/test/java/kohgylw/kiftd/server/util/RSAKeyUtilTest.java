@@ -33,12 +33,6 @@ class RSAKeyUtilTest {
     }
 
     @Test
-    void testGetKeySizeIs2048() {
-        RSAKeyUtil util = new RSAKeyUtil();
-        assertEquals(2048, util.getKeySize());
-    }
-
-    @Test
     void testPublicKeyIsValidBase64() {
         RSAKeyUtil util = new RSAKeyUtil();
         String publicKey = util.getPublicKey();

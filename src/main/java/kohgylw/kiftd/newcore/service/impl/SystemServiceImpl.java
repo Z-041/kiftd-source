@@ -1,7 +1,8 @@
 package kohgylw.kiftd.newcore.service.impl;
 
 import jakarta.servlet.http.HttpServletRequest;
-import kohgylw.kiftd.server.util.ConfigurationManager;
+import org.springframework.context.annotation.Primary;
+import org.springframework.stereotype.Service;
 import kohgylw.kiftd.newcore.infrastructure.crypto.CryptoService;
 import kohgylw.kiftd.newcore.repository.FileNodeRepository;
 import kohgylw.kiftd.newcore.repository.FolderRepository;
@@ -10,13 +11,12 @@ import kohgylw.kiftd.newcore.service.SystemService;
 import kohgylw.kiftd.server.enumeration.AccountAuth;
 import kohgylw.kiftd.server.model.Folder;
 import kohgylw.kiftd.server.model.Node;
-import kohgylw.kiftd.server.model.Propertie;
+import kohgylw.kiftd.server.model.Property;
 import kohgylw.kiftd.server.util.ChainKeyMaster;
+import kohgylw.kiftd.server.util.ConfigurationManager;
 import kohgylw.kiftd.server.util.FolderUtil;
 import kohgylw.kiftd.server.util.LogUtil;
 
-import org.springframework.context.annotation.Primary;
-import org.springframework.stereotype.Service;
 
 /**
  *
@@ -72,19 +72,19 @@ public class SystemServiceImpl implements SystemService {
 						Folder folder = folderRepository.selectById(f.getFileParentFolder());
 						if (folder != null && ConfigurationManager.instance().accessFolder(folder, account)) {
 							try {
-								Propertie keyProp = propertiesRepository.selectByKey("chain_aes_key");
+								Property keyProp = propertiesRepository.selectByKey("chain_aes_key");
 								if (keyProp == null) {
 									String aesKey = cryptoService.generateRandomAesKey();
-									Propertie chainAESKey = new Propertie();
-									chainAESKey.setPropertieKey("chain_aes_key");
-									chainAESKey.setPropertieValue(chainKeyMaster.wrap(aesKey));
+									Property chainAESKey = new Property();
+									chainAESKey.setPropertyKey("chain_aes_key");
+									chainAESKey.setPropertyValue(chainKeyMaster.wrap(aesKey));
 									if (propertiesRepository.insert(chainAESKey) > 0) {
 										return cryptoService.encrypt(aesKey, fid);
 									}
 								} else {
-									String aesKey = chainKeyMaster.unwrap(keyProp.getPropertieValue());
-									if (!chainKeyMaster.isWrapped(keyProp.getPropertieValue())) {
-										keyProp.setPropertieValue(chainKeyMaster.wrap(aesKey));
+									String aesKey = chainKeyMaster.unwrap(keyProp.getPropertyValue());
+									if (!chainKeyMaster.isWrapped(keyProp.getPropertyValue())) {
+										keyProp.setPropertyValue(chainKeyMaster.wrap(aesKey));
 										propertiesRepository.update(keyProp);
 									}
 									return cryptoService.encrypt(aesKey, fid);

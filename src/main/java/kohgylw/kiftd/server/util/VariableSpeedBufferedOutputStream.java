@@ -63,46 +63,42 @@ public class VariableSpeedBufferedOutputStream extends BufferedOutputStream {
 	 */
 	public void write(byte[] b, int off, int len) throws IOException {
 		if (maxRate > 0) {
-			// 如果限速值为正数，那么进行限速输出，输出时要求独占Session对象以确保和其它下载任务共享最大限速。
+			// 限速输出：同一会话下的所有下载任务共享一个速率预算（以 session 为监视器）。
+			// 预算用尽时通过 session.wait(...) 等待窗口重置——wait 会释放监视器，
+			// 避免慢速下载任务长时间独占锁导致同账户其它并发任务被阻塞（PERF-003）。
 			int startIndex = off;// 记录当前应读数组的起始位置
 			int surplusLength = len;// 记录数组中应写的剩余数据量
 			while (surplusLength > 0) {
 				synchronized (session) {
-					// 如果数组内仍有数据存留，则执行写出操作
-					// 如果尚未开始计量一秒内的写出量，则记录写出前的毫秒值
-					if (writtenLength == 0) {
-						startTime = System.currentTimeMillis();
-					}
-					// 计算此秒之内最多还能写出多少数据
-					long shouldWriteLength = maxRate - writtenLength;
-					if (surplusLength > shouldWriteLength) {
-						// 如果数组内数据的剩余量大于此秒允许写出量，则写出允许写出量的数据
-						super.write(b, startIndex, (int) shouldWriteLength);
-						startIndex += shouldWriteLength;
-						writtenLength += shouldWriteLength;
-						surplusLength -= shouldWriteLength;
-					} else {
-						// 如果数组内数据的剩余量小于等于此秒的应写量，则将剩余量的数据全部写出
-						super.write(b, startIndex, surplusLength);
-						startIndex += surplusLength;
-						writtenLength += surplusLength;
-						surplusLength -= surplusLength;
-					}
 					if (writtenLength >= maxRate) {
-						// 如果已写出量达到了每秒允许的最大写出量，则计算实际耗时
+						// 本秒预算已用尽：等待窗口重置（wait 期间释放监视器，其它任务可继续竞争）
 						long consumeTime = System.currentTimeMillis() - startTime;
-						if (consumeTime < 1000) {
-							// 如果实际耗时小于1秒，那么睡够一秒
+						long remain = 1000 - consumeTime;
+						if (remain > 0) {
 							try {
-								Thread.sleep(1000 - consumeTime);
+								session.wait(remain);
 							} catch (InterruptedException e) {
 								// 如果收到中断指令，那么就响应中断
 								Thread.currentThread().interrupt();
 							}
 						}
-						// 写出量计数归0，以便下次写出时重新计量
+						// 唤醒同会话等待窗口重置的其它下载任务，避免它们被迫等待满一个完整窗口
+						session.notifyAll();
 						writtenLength = 0;
+						startTime = System.currentTimeMillis();
+						continue;
 					}
+					// 如果尚未开始计量一秒内的写出量，则记录写出前的毫秒值
+					if (writtenLength == 0) {
+						startTime = System.currentTimeMillis();
+					}
+					// 计算此秒之内最多还能写出多少数据，并取出本批可写出量
+					long shouldWriteLength = maxRate - writtenLength;
+					int n = (int) Math.min(shouldWriteLength, (long) surplusLength);
+					super.write(b, startIndex, n);
+					startIndex += n;
+					writtenLength += n;
+					surplusLength -= n;
 				}
 			}
 		} else if (maxRate < 0) {// 如果限速值为负数，则不限速输出

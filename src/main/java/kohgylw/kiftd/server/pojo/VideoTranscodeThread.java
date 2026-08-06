@@ -112,21 +112,5 @@ public class VideoTranscodeThread {
 	public long getFinishTime() {
 		return finishTime;
 	}
-	
-	/**
-	 * 
-	 * <h2>终止当前转码过程</h2>
-	 * <p>执行该方法将中断正在进行的转码，并删除原有的输出文件。</p>
-	 * @author 青阳龙野(kohgylw)
-	 */
-	public void abort() {
-		if(encoder!=null) {
-			encoder.abortEncoding();
-		}
-		File f=new File(ConfigurationManager.instance().getTemporaryfilePath(),outputFileName);
-		if(f.exists()) {
-			f.delete();
-		}
-	}
 
 }

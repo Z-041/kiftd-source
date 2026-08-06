@@ -3,11 +3,11 @@ package kohgylw.kiftd.mc;
 import java.util.Scanner;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-
 import kohgylw.kiftd.newcore.KiftdApplication;
-import kohgylw.kiftd.server.util.ConfigurationManager;
 import kohgylw.kiftd.printer.Printer;
+import kohgylw.kiftd.server.util.ConfigurationManager;
 import kohgylw.kiftd.util.file_system_manager.FileSystemManager;
+
 
 public class ConsoleRunner {
 

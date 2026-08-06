@@ -11,7 +11,7 @@ package kohgylw.kiftd.server.pojo;
  * @author 青阳龙野(kohgylw)
  * @version 1.0
  */
-public class SreachView extends FolderView {
+public class SearchView extends FolderView {
 	
 	private String keyWorld;
 

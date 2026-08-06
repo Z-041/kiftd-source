@@ -20,16 +20,13 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
-
+import jakarta.annotation.Resource;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 import org.zeroturnaround.zip.FileSource;
 import org.zeroturnaround.zip.ZipEntrySource;
 import org.zeroturnaround.zip.ZipUtil;
-
-import jakarta.annotation.Resource;
-
 import kohgylw.kiftd.printer.Printer;
 import kohgylw.kiftd.server.enumeration.AccountAuth;
 import kohgylw.kiftd.server.mapper.FolderMapper;
@@ -37,6 +34,7 @@ import kohgylw.kiftd.server.mapper.NodeMapper;
 import kohgylw.kiftd.server.model.Folder;
 import kohgylw.kiftd.server.model.Node;
 import kohgylw.kiftd.server.pojo.ExtendStores;
+
 
 /**
  * 
@@ -151,8 +149,6 @@ public class FileBlockUtil {
 						if (file != null) {
 							writeOperation.accept(file);
 							return file;
-						} else {
-							continue;
 						}
 					} catch (IOException e) {
 						if (file != null) {
@@ -227,22 +223,12 @@ public class FileBlockUtil {
 
 	public static File createNewBlock(String prefix, File parent) throws IOException {
 		int appendIndex = 0;
-		int retryNum = 0;
 		String newName = prefix + UUID.randomUUID().toString().replace("-", "");
 		File newBlock = new File(parent, newName + ".block");
 		while (!newBlock.createNewFile()) {
-			if (appendIndex >= 0 && appendIndex < Integer.MAX_VALUE) {
-				newBlock = new File(parent, newName + "_" + appendIndex + ".block");
-				appendIndex++;
-			} else {
-				if (retryNum >= 5) {
-					return null;
-				} else {
-					newName = prefix + UUID.randomUUID().toString().replace("-", "");
-					newBlock = new File(parent, newName + ".block");
-					retryNum++;
-				}
-			}
+			// 同名冲突时追加递增序号，避免覆盖已有数据块
+			newBlock = new File(parent, newName + "_" + appendIndex + ".block");
+			appendIndex++;
 		}
 		return newBlock;
 	}
@@ -378,7 +364,7 @@ public class FileBlockUtil {
 					}
 					// 如果不抛出任何异常，则操作成功
 					return true;
-				} catch (Exception e) {
+				} catch (IOException e) {
 					lu.writeException(e);
 				}
 			}
@@ -589,20 +575,7 @@ public class FileBlockUtil {
 			for (Node node : fm.queryByParentFolderIds(new ArrayList<>(accessibleFolderIds))) {
 				folderNodes.computeIfAbsent(node.getFileParentFolder(), k -> new ArrayList<>()).add(node);
 			}
-			for (Folder fo : folders) {
-				int i = 1;
-				String flname = fo.getFolderName();
-				while (true) {
-					if (folders.stream().filter((e) -> e.getFolderName().equals(fo.getFolderName()))
-							.count() > 1) {
-						fo.setFolderName(flname + " " + i);
-						i++;
-					} else {
-						break;
-					}
-				}
-				addFoldersToZipEntrySourceArray(fo, zs, account, "", folderChildren, folderNodes);
-			}
+			deduplicateFoldersAndAddToZip(folders, zs, "", folderChildren, folderNodes);
 			for (Node node : nodes) {
 				if (ConfigurationManager.instance().accessFolder(flm.selectById(node.getFileParentFolder()), account)) {
 					int i = 1;
@@ -635,7 +608,7 @@ public class FileBlockUtil {
 	}
 
 	// 迭代生成ZIP文件夹单元，将一个文件夹内的文件和文件夹也进行打包
-	private void addFoldersToZipEntrySourceArray(Folder f, List<ZipEntrySource> zs, String account, String parentPath,
+	private void addFoldersToZipEntrySourceArray(Folder f, List<ZipEntrySource> zs, String parentPath,
 			Map<String, List<Folder>> folderChildren, Map<String, List<Node>> folderNodes) {
 		if (f != null) {
 			String folderName = f.getFolderName();
@@ -658,20 +631,7 @@ public class FileBlockUtil {
 				}
 			});
 			List<Folder> folders = folderChildren.getOrDefault(f.getFolderId(), Collections.emptyList());
-			for (Folder fo : folders) {
-				int i = 1;
-				String flname = fo.getFolderName();
-				while (true) {
-					if (folders.stream().filter((e) -> e.getFolderName().equals(fo.getFolderName()))
-							.count() > 1) {
-						fo.setFolderName(flname + " " + i);
-						i++;
-					} else {
-						break;
-					}
-				}
-				addFoldersToZipEntrySourceArray(fo, zs, account, thisPath, folderChildren, folderNodes);
-			}
+			deduplicateFoldersAndAddToZip(folders, zs, thisPath, folderChildren, folderNodes);
 			List<Node> nodes = folderNodes.getOrDefault(f.getFolderId(), Collections.emptyList());
 			for (Node node : nodes) {
 				int i = 1;
@@ -693,6 +653,25 @@ public class FileBlockUtil {
 				}
 				zs.add(new FileSource(thisPath + node.getFileName(), getFileFromBlocks(node)));
 			}
+		}
+	}
+
+	// 同一层级内同名文件夹去重（追加序号），并递归加入 ZIP 条目（顶层与递归共用，消除重复实现）
+	private void deduplicateFoldersAndAddToZip(List<Folder> folders, List<ZipEntrySource> zs, String parentPath,
+			Map<String, List<Folder>> folderChildren, Map<String, List<Node>> folderNodes) {
+		for (Folder fo : folders) {
+			int i = 1;
+			String flname = fo.getFolderName();
+			while (true) {
+				if (folders.stream().filter((e) -> e.getFolderName().equals(fo.getFolderName()))
+						.count() > 1) {
+					fo.setFolderName(flname + " " + i);
+					i++;
+				} else {
+					break;
+				}
+			}
+			addFoldersToZipEntrySourceArray(fo, zs, parentPath, folderChildren, folderNodes);
 		}
 	}
 

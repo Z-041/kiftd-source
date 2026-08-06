@@ -1,16 +1,5 @@
 package kohgylw.kiftd.server.util;
 
-import org.springframework.stereotype.Component;
-import jakarta.annotation.Resource;
-
-import kohgylw.kiftd.server.enumeration.AccountAuth;
-import kohgylw.kiftd.server.exception.FoldersTotalOutOfLimitException;
-import kohgylw.kiftd.server.mapper.FolderMapper;
-import kohgylw.kiftd.server.mapper.NodeMapper;
-import kohgylw.kiftd.server.model.Folder;
-import kohgylw.kiftd.server.model.Node;
-
-import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -18,6 +7,16 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import jakarta.annotation.Resource;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import org.springframework.stereotype.Component;
+import kohgylw.kiftd.server.enumeration.AccountAuth;
+import kohgylw.kiftd.server.exception.FoldersTotalOutOfLimitException;
+import kohgylw.kiftd.server.mapper.FolderMapper;
+import kohgylw.kiftd.server.mapper.NodeMapper;
+import kohgylw.kiftd.server.model.Folder;
+import kohgylw.kiftd.server.model.Node;
+
 
 @Component
 public class FolderUtil {
@@ -33,7 +32,7 @@ public class FolderUtil {
 	 * 
 	 * <h2>获得指定文件夹的所有上级文件夹</h2>
 	 * <p>
-	 * 该方法将返回目标文件夹的所有父级文件夹，并以列表的形式返回。如果上级层数超过了Integer.MAX_VALUE，那么只获取最后Integer.MAX_VALUE级。
+	 * 该方法将返回目标文件夹的所有父级文件夹，并以列表的形式返回。沿 parent 链向上迭代，遇到不存在或成环的节点时停止。
 	 * </p>
 	 * 
 	 * @author 青阳龙野(kohgylw)
@@ -47,7 +46,7 @@ public class FolderUtil {
 		final Set<String> visited = new HashSet<>();
 		if (f != null) {
 			visited.add(f.getFolderId());
-			while (!f.getFolderParent().equals("null") && folderList.size() < Integer.MAX_VALUE) {
+			while (!f.getFolderParent().equals("null")) {
 				f = this.fm.selectById(f.getFolderParent());
 				if (f == null || !visited.add(f.getFolderId())) {
 					break;
@@ -159,16 +158,17 @@ public class FolderUtil {
 			throw new FoldersTotalOutOfLimitException();
 		}
 		int pc = parentFolder.getFolderConstraint();
+		int constraintValue;
 		if (folderConstraint != null) {
 			try {
-				int ifc = Integer.parseInt(folderConstraint);
-				if (ifc > 0 && account == null) {
+				constraintValue = Integer.parseInt(folderConstraint);
+				if (constraintValue > 0 && account == null) {
 					return null;
 				}
-				if (ifc < pc) {
+				if (constraintValue < pc) {
 					return null;
 				}
-			} catch (Exception e) {
+			} catch (NumberFormatException e) {
 				return null;
 			}
 		} else {
@@ -180,12 +180,7 @@ public class FolderUtil {
 				return null;
 			}
 			Folder f = new Folder();
-			try {
-				int ifc = Integer.parseInt(folderConstraint);
-				f.setFolderConstraint(ifc);
-			} catch (Exception e) {
-				return null;
-			}
+			f.setFolderConstraint(constraintValue);
 			f.setFolderId(UUID.randomUUID().toString());
 			f.setFolderName(folderName);
 			f.setFolderCreationDate(ServerTimeUtil.accurateToDay());

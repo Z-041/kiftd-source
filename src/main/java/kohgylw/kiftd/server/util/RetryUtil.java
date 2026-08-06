@@ -12,11 +12,6 @@ public class RetryUtil {
 		T execute() throws Exception;
 	}
 
-	public static <T> T executeWithRetry(RetryableOperation<T> operation, String operationName) {
-		return executeWithRetry(operation, operationName, DEFAULT_MAX_RETRIES, DEFAULT_INITIAL_DELAY_MS,
-				DEFAULT_BACKOFF_MULTIPLIER);
-	}
-
 	public static <T> T executeWithRetry(RetryableOperation<T> operation, String operationName, int maxRetries,
 			long initialDelayMs, double backoffMultiplier) {
 		if (maxRetries <= 0) {
@@ -55,12 +50,5 @@ public class RetryUtil {
 		Printer.instance.print("[重试] " + operationName + " 经过 " + maxRetries + " 次重试后仍然失败。最终错误: "
 				+ (lastException != null ? lastException.getMessage() : "未知错误"));
 		return null;
-	}
-
-	public static boolean executeWithRetry(Runnable operation, String operationName) {
-		return executeWithRetry(() -> {
-			operation.run();
-			return true;
-		}, operationName) != null;
 	}
 }

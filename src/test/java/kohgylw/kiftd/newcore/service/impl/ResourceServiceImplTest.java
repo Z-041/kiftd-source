@@ -184,7 +184,7 @@ class ResourceServiceImplTest {
              MockedStatic<ServerTimeUtil> stuMock = mockStatic(ServerTimeUtil.class)) {
             ConfigurationManager reader = mock(ConfigurationManager.class);
             crMock.when(ConfigurationManager::instance).thenReturn(reader);
-            stuMock.when(() -> ServerTimeUtil.getLastModifiedFormBlock(any(File.class))).thenReturn("last-modified-date");
+            stuMock.when(() -> ServerTimeUtil.getLastModifiedFromBlock(any(File.class))).thenReturn("last-modified-date");
 
             Node node = new Node();
             node.setFileId("file1");
@@ -221,7 +221,7 @@ class ResourceServiceImplTest {
              MockedStatic<ServerTimeUtil> stuMock = mockStatic(ServerTimeUtil.class)) {
             ConfigurationManager reader = mock(ConfigurationManager.class);
             crMock.when(ConfigurationManager::instance).thenReturn(reader);
-            stuMock.when(() -> ServerTimeUtil.getLastModifiedFormBlock(any(File.class))).thenReturn("last-modified-date");
+            stuMock.when(() -> ServerTimeUtil.getLastModifiedFromBlock(any(File.class))).thenReturn("last-modified-date");
 
             Node node = new Node();
             node.setFileId("file1");
@@ -405,7 +405,7 @@ class ResourceServiceImplTest {
              MockedStatic<ServerTimeUtil> stuMock = mockStatic(ServerTimeUtil.class)) {
             ConfigurationManager reader = mock(ConfigurationManager.class);
             crMock.when(ConfigurationManager::instance).thenReturn(reader);
-            stuMock.when(() -> ServerTimeUtil.getLastModifiedFormBlock(any(File.class))).thenReturn("cached-date");
+            stuMock.when(() -> ServerTimeUtil.getLastModifiedFromBlock(any(File.class))).thenReturn("cached-date");
 
             Node node = new Node();
             node.setFileId("file1");
@@ -438,7 +438,7 @@ class ResourceServiceImplTest {
              MockedStatic<ServerTimeUtil> stuMock = mockStatic(ServerTimeUtil.class)) {
             ConfigurationManager reader = mock(ConfigurationManager.class);
             crMock.when(ConfigurationManager::instance).thenReturn(reader);
-            stuMock.when(() -> ServerTimeUtil.getLastModifiedFormBlock(any(File.class))).thenReturn("last-modified");
+            stuMock.when(() -> ServerTimeUtil.getLastModifiedFromBlock(any(File.class))).thenReturn("last-modified");
 
             Node node = new Node();
             node.setFileId("file1");

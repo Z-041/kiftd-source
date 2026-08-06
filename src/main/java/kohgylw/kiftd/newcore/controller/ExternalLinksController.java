@@ -2,12 +2,12 @@ package kohgylw.kiftd.newcore.controller;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import kohgylw.kiftd.newcore.service.ExternalDownloadService;
-import kohgylw.kiftd.newcore.service.FileChainService;
-
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
+import kohgylw.kiftd.newcore.service.ExternalDownloadService;
+import kohgylw.kiftd.newcore.service.FileChainService;
+
 
 @Controller
 @RequestMapping({ "/externalLinksController" })

@@ -31,6 +31,8 @@ public class UIRunner {
 			}
 		});
 		final ServerUIModule ui = ServerUIModule.getInsatnce();
+		// PKG-004：Printer 不再反向依赖 UI 模块，由启动器将主界面注入为消息输出接收器
+		Printer.setMessageOutput(ui);
 		KiftdApplication app = new KiftdApplication();
 		ServerUIModule.setStartServer(() -> app.start());
 		ServerUIModule.setOnCloseServer(() -> app.stop());

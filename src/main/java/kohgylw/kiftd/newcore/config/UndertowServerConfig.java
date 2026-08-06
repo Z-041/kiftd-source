@@ -6,13 +6,12 @@ import org.springframework.boot.web.server.Ssl;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
-
+import kohgylw.kiftd.server.util.ConfigurationManager;
 import io.undertow.UndertowOptions;
 import io.undertow.server.HttpHandler;
 import io.undertow.util.Headers;
 import io.undertow.util.StatusCodes;
 
-import kohgylw.kiftd.server.util.ConfigurationManager;
 
 @Configuration
 public class UndertowServerConfig {

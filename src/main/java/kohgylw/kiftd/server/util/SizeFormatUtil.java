@@ -1,4 +1,4 @@
-package kohgylw.kiftd.util;
+package kohgylw.kiftd.server.util;
 
 import java.text.DecimalFormat;
 
@@ -16,6 +16,14 @@ public final class SizeFormatUtil {
 
 	public static String formatFileSize(long size) {
 		return formatFileSize(size, null);
+	}
+
+	public static String formatFileSize(String size) {
+		try {
+			return formatFileSize(Long.parseLong(size));
+		} catch (NumberFormatException e) {
+			return size;
+		}
 	}
 
 	public static String formatFileSize(long size, String invalidMessage) {
@@ -43,24 +51,13 @@ public final class SizeFormatUtil {
 		return FORMAT.format(convertSize) + " " + unit;
 	}
 
-	public static String formatFileSize(String sizeStr) {
-		if (sizeStr == null || sizeStr.isEmpty()) {
-			return "0 B";
-		}
-		try {
-			return formatFileSize(Long.parseLong(sizeStr));
-		} catch (NumberFormatException e) {
-			return sizeStr;
-		}
-	}
-
 	public static long parseSizeString(String in) {
 		if (in == null || in.length() <= 0) {
 			return -1L;
 		}
 		try {
 			return parseSizeWithUnit(in, false);
-		} catch (Exception ignored) {
+		} catch (IllegalArgumentException ignored) {
 			return 0L;
 		}
 	}
@@ -71,7 +68,7 @@ public final class SizeFormatUtil {
 		}
 		try {
 			return parseSizeWithUnit(in, true);
-		} catch (Exception ignored) {
+		} catch (IllegalArgumentException ignored) {
 			return 0L;
 		}
 	}

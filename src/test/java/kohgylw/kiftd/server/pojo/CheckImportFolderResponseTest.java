@@ -4,55 +4,55 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import org.junit.jupiter.api.Test;
 
-class CreateNewFolderByNameResponsTest {
+class CheckImportFolderResponseTest {
 
     @Test
     void testDefaultValuesAreNull() {
-        CreateNewFolderByNameRespons respons = new CreateNewFolderByNameRespons();
+        CheckImportFolderResponse respons = new CheckImportFolderResponse();
         assertNull(respons.getResult());
-        assertNull(respons.getNewName());
+        assertNull(respons.getMaxSize());
     }
 
     @Test
     void testSetAndGetAllFields() {
-        CreateNewFolderByNameRespons respons = new CreateNewFolderByNameRespons();
+        CheckImportFolderResponse respons = new CheckImportFolderResponse();
         String result = "success";
-        String newName = "newFolderName";
+        String maxSize = "104857600";
 
         respons.setResult(result);
-        respons.setNewName(newName);
+        respons.setMaxSize(maxSize);
 
         assertEquals(result, respons.getResult());
-        assertEquals(newName, respons.getNewName());
+        assertEquals(maxSize, respons.getMaxSize());
     }
 
     @Test
     void testSetNullValues() {
-        CreateNewFolderByNameRespons respons = new CreateNewFolderByNameRespons();
+        CheckImportFolderResponse respons = new CheckImportFolderResponse();
         respons.setResult("test");
-        respons.setNewName("test");
+        respons.setMaxSize("test");
 
         respons.setResult(null);
-        respons.setNewName(null);
+        respons.setMaxSize(null);
 
         assertNull(respons.getResult());
-        assertNull(respons.getNewName());
+        assertNull(respons.getMaxSize());
     }
 
     @Test
     void testEmptyStringValues() {
-        CreateNewFolderByNameRespons respons = new CreateNewFolderByNameRespons();
+        CheckImportFolderResponse respons = new CheckImportFolderResponse();
         respons.setResult("");
-        respons.setNewName("");
+        respons.setMaxSize("");
 
         assertEquals("", respons.getResult());
-        assertEquals("", respons.getNewName());
+        assertEquals("", respons.getMaxSize());
     }
 
     @Test
     void testFieldCount() {
         int fieldCount = 0;
-        for (java.lang.reflect.Field field : CreateNewFolderByNameRespons.class.getDeclaredFields()) {
+        for (java.lang.reflect.Field field : CheckImportFolderResponse.class.getDeclaredFields()) {
             if (!field.isSynthetic()) {
                 fieldCount++;
             }
@@ -62,7 +62,7 @@ class CreateNewFolderByNameResponsTest {
 
     @Test
     void testAllFieldsArePrivate() {
-        for (java.lang.reflect.Field field : CreateNewFolderByNameRespons.class.getDeclaredFields()) {
+        for (java.lang.reflect.Field field : CheckImportFolderResponse.class.getDeclaredFields()) {
             if (!field.isSynthetic()) {
                 assertTrue(java.lang.reflect.Modifier.isPrivate(field.getModifiers()),
                         "Field " + field.getName() + " must be private");
@@ -72,81 +72,81 @@ class CreateNewFolderByNameResponsTest {
 
     @Test
     void testLongStringValues() {
-        CreateNewFolderByNameRespons respons = new CreateNewFolderByNameRespons();
+        CheckImportFolderResponse respons = new CheckImportFolderResponse();
         String longResult = "r".repeat(5000);
-        String longName = "n".repeat(5000);
+        String longMaxSize = "s".repeat(5000);
 
         respons.setResult(longResult);
-        respons.setNewName(longName);
+        respons.setMaxSize(longMaxSize);
 
         assertEquals(longResult, respons.getResult());
-        assertEquals(longName, respons.getNewName());
+        assertEquals(longMaxSize, respons.getMaxSize());
     }
 
     @Test
     void testSpecialCharacterValues() {
-        CreateNewFolderByNameRespons respons = new CreateNewFolderByNameRespons();
+        CheckImportFolderResponse respons = new CheckImportFolderResponse();
         String specialChars = "!@#$%^&*()_+-=[]{}|;':\",./<>?";
 
         respons.setResult(specialChars);
-        respons.setNewName(specialChars);
+        respons.setMaxSize(specialChars);
 
         assertEquals(specialChars, respons.getResult());
-        assertEquals(specialChars, respons.getNewName());
+        assertEquals(specialChars, respons.getMaxSize());
     }
 
     @Test
     void testUnicodeValues() {
-        CreateNewFolderByNameRespons respons = new CreateNewFolderByNameRespons();
+        CheckImportFolderResponse respons = new CheckImportFolderResponse();
         String unicode = "中文测试_日本語テスト_한국어테스트_😀🎉";
 
         respons.setResult(unicode);
-        respons.setNewName(unicode);
+        respons.setMaxSize(unicode);
 
         assertEquals(unicode, respons.getResult());
-        assertEquals(unicode, respons.getNewName());
+        assertEquals(unicode, respons.getMaxSize());
     }
 
     @Test
     void testMultipleSetAndGet() {
-        CreateNewFolderByNameRespons respons = new CreateNewFolderByNameRespons();
+        CheckImportFolderResponse respons = new CheckImportFolderResponse();
 
         for (int i = 0; i < 10; i++) {
             respons.setResult("result-" + i);
-            respons.setNewName("name-" + i);
+            respons.setMaxSize("size-" + i);
             assertEquals("result-" + i, respons.getResult());
-            assertEquals("name-" + i, respons.getNewName());
+            assertEquals("size-" + i, respons.getMaxSize());
         }
     }
 
     @Test
     void testFieldsAreIndependent() {
-        CreateNewFolderByNameRespons respons = new CreateNewFolderByNameRespons();
+        CheckImportFolderResponse respons = new CheckImportFolderResponse();
         respons.setResult("result1");
-        respons.setNewName("name1");
+        respons.setMaxSize("size1");
 
         respons.setResult("result2");
         assertEquals("result2", respons.getResult());
-        assertEquals("name1", respons.getNewName());
+        assertEquals("size1", respons.getMaxSize());
     }
 
     @Test
     void testSuccessResult() {
-        CreateNewFolderByNameRespons respons = new CreateNewFolderByNameRespons();
+        CheckImportFolderResponse respons = new CheckImportFolderResponse();
         respons.setResult("success");
-        respons.setNewName("myFolder");
+        respons.setMaxSize("1073741824");
 
         assertEquals("success", respons.getResult());
-        assertEquals("myFolder", respons.getNewName());
+        assertEquals("1073741824", respons.getMaxSize());
     }
 
     @Test
     void testErrorResult() {
-        CreateNewFolderByNameRespons respons = new CreateNewFolderByNameRespons();
+        CheckImportFolderResponse respons = new CheckImportFolderResponse();
         respons.setResult("error");
-        respons.setNewName(null);
+        respons.setMaxSize(null);
 
         assertEquals("error", respons.getResult());
-        assertNull(respons.getNewName());
+        assertNull(respons.getMaxSize());
     }
 }

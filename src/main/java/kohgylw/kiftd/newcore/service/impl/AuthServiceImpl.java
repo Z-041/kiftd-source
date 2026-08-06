@@ -1,29 +1,5 @@
 package kohgylw.kiftd.newcore.service.impl;
 
-import kohgylw.kiftd.server.util.ConfigurationManager;
-import kohgylw.kiftd.newcore.domain.OperationResult;
-import kohgylw.kiftd.newcore.service.AuthService;
-import kohgylw.kiftd.server.util.RSAKeyUtil;
-import kohgylw.kiftd.server.util.IpAddrGetter;
-import kohgylw.kiftd.server.util.LogUtil;
-import kohgylw.kiftd.server.util.VerificationCodeFactory;
-import kohgylw.kiftd.server.util.VerificationCode;
-import kohgylw.kiftd.server.util.RSADecryptUtil;
-import kohgylw.kiftd.server.enumeration.VCLevel;
-import kohgylw.kiftd.server.pojo.LoginInfoPojo;
-import kohgylw.kiftd.server.pojo.ChangePasswordInfoPojo;
-import kohgylw.kiftd.server.pojo.SignUpInfoPojo;
-import kohgylw.kiftd.server.pojo.PublicKeyInfo;
-
-import com.google.gson.Gson;
-
-import org.springframework.context.annotation.Primary;
-import org.springframework.stereotype.Service;
-
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.HttpSession;
-
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
@@ -32,6 +8,27 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
+import com.google.gson.Gson;
+import org.springframework.context.annotation.Primary;
+import org.springframework.stereotype.Service;
+import kohgylw.kiftd.newcore.domain.OperationResult;
+import kohgylw.kiftd.newcore.service.AuthService;
+import kohgylw.kiftd.server.enumeration.VCLevel;
+import kohgylw.kiftd.server.pojo.ChangePasswordInfoPojo;
+import kohgylw.kiftd.server.pojo.LoginInfoPojo;
+import kohgylw.kiftd.server.pojo.PublicKeyInfo;
+import kohgylw.kiftd.server.pojo.SignUpInfoPojo;
+import kohgylw.kiftd.server.util.ConfigurationManager;
+import kohgylw.kiftd.server.util.IpAddrGetter;
+import kohgylw.kiftd.server.util.LogUtil;
+import kohgylw.kiftd.server.util.RSADecryptUtil;
+import kohgylw.kiftd.server.util.RSAKeyUtil;
+import kohgylw.kiftd.server.util.VerificationCode;
+import kohgylw.kiftd.server.util.VerificationCodeFactory;
+
 
 @Service
 @Primary
@@ -272,9 +269,8 @@ public class AuthServiceImpl implements AuthService {
 	public String doPong(HttpServletRequest request) {
 		if (request.getSession().getAttribute("ACCOUNT") != null) {
 			return "pong";
-		} else {
-			return "";
 		}
+		return "";
 	}
 
 	@Override

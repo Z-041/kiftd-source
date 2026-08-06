@@ -19,7 +19,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import kohgylw.kiftd.server.enumeration.AccountAuth;
 import kohgylw.kiftd.server.model.Folder;
-import kohgylw.kiftd.server.pojo.CreateNewFolderByNameRespons;
+import kohgylw.kiftd.server.pojo.CreateNewFolderByNameResponse;
 import kohgylw.kiftd.server.util.ConfigurationManager;
 import kohgylw.kiftd.newcore.repository.FileNodeRepository;
 import kohgylw.kiftd.newcore.repository.FolderRepository;
@@ -515,7 +515,7 @@ class FolderServiceImplTest {
     @Test
     void testCreateNewFolderByName_NullParentId() {
         String result = folderService.createNewFolderByName(request);
-        CreateNewFolderByNameRespons resp = gson.fromJson(result, CreateNewFolderByNameRespons.class);
+        CreateNewFolderByNameResponse resp = gson.fromJson(result, CreateNewFolderByNameResponse.class);
         assertEquals("error", resp.getResult());
     }
 
@@ -548,7 +548,7 @@ class FolderServiceImplTest {
             String result = folderService.createNewFolderByName(request);
 
             assertNotNull(result);
-            CreateNewFolderByNameRespons resp = gson.fromJson(result, CreateNewFolderByNameRespons.class);
+            CreateNewFolderByNameResponse resp = gson.fromJson(result, CreateNewFolderByNameResponse.class);
             assertEquals("success", resp.getResult());
             assertEquals("newfolder", resp.getNewName());
         }

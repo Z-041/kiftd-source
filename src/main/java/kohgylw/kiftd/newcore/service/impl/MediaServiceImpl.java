@@ -1,35 +1,34 @@
 package kohgylw.kiftd.newcore.service.impl;
 
-import kohgylw.kiftd.server.util.ConfigurationManager;
-import kohgylw.kiftd.newcore.service.MediaService;
-import kohgylw.kiftd.newcore.repository.FileNodeRepository;
-import kohgylw.kiftd.newcore.repository.FolderRepository;
-import org.springframework.context.annotation.Primary;
-import org.springframework.stereotype.Service;
-
-import com.google.gson.Gson;
-
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import kohgylw.kiftd.server.enumeration.AccountAuth;
-import kohgylw.kiftd.server.model.Node;
-import kohgylw.kiftd.server.pojo.PictureViewList;
-import kohgylw.kiftd.server.pojo.PictureInfo;
-import kohgylw.kiftd.server.pojo.VideoInfo;
-import kohgylw.kiftd.server.util.FileBlockUtil;
-import kohgylw.kiftd.server.util.FolderUtil;
-import kohgylw.kiftd.server.util.LogUtil;
-import kohgylw.kiftd.server.util.KiftdFFMPEGLocator;
-import kohgylw.kiftd.printer.Printer;
-import net.coobird.thumbnailator.Thumbnails;
-import ws.schild.jave.MultimediaObject;
-
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import com.google.gson.Gson;
+import org.springframework.context.annotation.Primary;
+import org.springframework.stereotype.Service;
+import kohgylw.kiftd.newcore.domain.AjaxProtocol;
+import kohgylw.kiftd.newcore.repository.FileNodeRepository;
+import kohgylw.kiftd.newcore.repository.FolderRepository;
+import kohgylw.kiftd.newcore.service.MediaService;
+import kohgylw.kiftd.printer.Printer;
+import kohgylw.kiftd.server.enumeration.AccountAuth;
+import kohgylw.kiftd.server.model.Node;
+import kohgylw.kiftd.server.pojo.PictureInfo;
+import kohgylw.kiftd.server.pojo.PictureViewList;
+import kohgylw.kiftd.server.pojo.VideoInfo;
+import kohgylw.kiftd.server.util.ConfigurationManager;
+import kohgylw.kiftd.server.util.FileBlockUtil;
+import kohgylw.kiftd.server.util.FolderUtil;
+import kohgylw.kiftd.server.util.KiftdFFMPEGLocator;
+import kohgylw.kiftd.server.util.LogUtil;
+import net.coobird.thumbnailator.Thumbnails;
+import ws.schild.jave.MultimediaObject;
+
 
 /**
  *
@@ -138,7 +137,7 @@ public class MediaServiceImpl implements MediaService {
 		if (pvl != null) {
 			return gson.toJson((Object) pvl);
 		}
-		return "ERROR";
+		return AjaxProtocol.ERROR;
 	}
 
 	@Override
@@ -244,6 +243,6 @@ public class MediaServiceImpl implements MediaService {
 		if (v != null) {
 			return gson.toJson((Object) v);
 		}
-		return "ERROR";
+		return AjaxProtocol.ERROR;
 	}
 }

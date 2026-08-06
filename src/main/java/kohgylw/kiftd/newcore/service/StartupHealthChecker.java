@@ -1,14 +1,14 @@
 package kohgylw.kiftd.newcore.service;
 
+import java.io.File;
+import java.io.IOException;
+import java.sql.Connection;
+import javax.sql.DataSource;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
-
-import kohgylw.kiftd.server.util.ConfigurationManager;
 import kohgylw.kiftd.printer.Printer;
+import kohgylw.kiftd.server.util.ConfigurationManager;
 
-import javax.sql.DataSource;
-import java.io.File;
-import java.sql.Connection;
 
 @Component
 public class StartupHealthChecker {
@@ -83,10 +83,10 @@ public class StartupHealthChecker {
 					testFile.delete();
 				}
 				return true;
-			} catch (Exception e) {
-				Printer.instance.print("文件系统读写测试失败: " + e.getMessage());
-				return false;
-			}
+			} catch (IOException e) {
+			Printer.instance.print("文件系统读写测试失败: " + e.getMessage());
+			return false;
+		}
 		} catch (Exception e) {
 			Printer.instance.print("文件系统检查失败: " + e.getMessage());
 			return false;

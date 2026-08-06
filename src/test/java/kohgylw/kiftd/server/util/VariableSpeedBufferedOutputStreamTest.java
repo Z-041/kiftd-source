@@ -57,4 +57,56 @@ class VariableSpeedBufferedOutputStreamTest {
         });
     }
 
+    @Test
+    void testWriteMoreThanMaxRateWritesAllData() throws IOException {
+        // 一次写入超过每秒预算，触发窗口重置等待路径（PERF-003 重构），全部数据必须完整写出
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        VariableSpeedBufferedOutputStream vsbos = new VariableSpeedBufferedOutputStream(baos, 1024, session);
+        byte[] data = new byte[3000];
+        for (int i = 0; i < data.length; i++) {
+            data[i] = (byte) (i % 251);
+        }
+        vsbos.write(data, 0, data.length);
+        vsbos.flush();
+        assertArrayEquals(data, baos.toByteArray());
+    }
+
+    @Test
+    void testConcurrentWritesSharedSessionCompleteAllData() throws Exception {
+        // 同一会话下并发下载共享限速预算：wait 释放监视器，两任务必须都能完成且无死锁
+        int maxRate = 1024;
+        byte[] dataA = new byte[1024];
+        byte[] dataB = new byte[1024];
+        for (int i = 0; i < dataA.length; i++) {
+            dataA[i] = (byte) (i % 251);
+            dataB[i] = (byte) ((i + 100) % 251);
+        }
+        java.util.concurrent.ExecutorService pool = java.util.concurrent.Executors.newFixedThreadPool(2);
+        java.util.concurrent.CountDownLatch ready = new java.util.concurrent.CountDownLatch(2);
+        java.util.concurrent.CountDownLatch start = new java.util.concurrent.CountDownLatch(1);
+        java.util.concurrent.Future<byte[]> futureA = pool.submit(() -> {
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            VariableSpeedBufferedOutputStream vsbos = new VariableSpeedBufferedOutputStream(baos, maxRate, session);
+            ready.countDown();
+            start.await();
+            vsbos.write(dataA, 0, dataA.length);
+            vsbos.flush();
+            return baos.toByteArray();
+        });
+        java.util.concurrent.Future<byte[]> futureB = pool.submit(() -> {
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            VariableSpeedBufferedOutputStream vsbos = new VariableSpeedBufferedOutputStream(baos, maxRate, session);
+            ready.countDown();
+            start.await();
+            vsbos.write(dataB, 0, dataB.length);
+            vsbos.flush();
+            return baos.toByteArray();
+        });
+        ready.await(5, java.util.concurrent.TimeUnit.SECONDS);
+        start.countDown();
+        assertArrayEquals(dataA, futureA.get(10, java.util.concurrent.TimeUnit.SECONDS));
+        assertArrayEquals(dataB, futureB.get(10, java.util.concurrent.TimeUnit.SECONDS));
+        pool.shutdownNow();
+    }
+
 }

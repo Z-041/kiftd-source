@@ -2,7 +2,6 @@ package kohgylw.kiftd.server.util;
 
 import java.io.BufferedInputStream;
 import java.io.InputStream;
-import java.util.Arrays;
 
 import org.mozilla.intl.chardet.nsDetector;
 import org.mozilla.intl.chardet.nsPSMDetector;
@@ -52,23 +51,6 @@ public class TxtCharsetGetter {
 					}
 				}
 			}
-		}
-		det.DataEnd();
-		return determineCharset(det, cdoi, isAscii);
-	}
-
-	public String getTxtCharset(byte[] buf, int offset, int length) throws Exception {
-		int lang = nsPSMDetector.CHINESE;
-		nsDetector det = new nsDetector(lang);
-		CharsetDetectionObserverImpl cdoi = new CharsetDetectionObserverImpl();
-		det.Init(cdoi);
-		boolean isAscii = true;
-		byte[] array = Arrays.copyOfRange(buf, offset, (offset + length));
-		if (isAscii) {
-			isAscii = det.isAscii(array, length);
-		}
-		if (!isAscii) {
-			det.DoIt(array, length, false);
 		}
 		det.DataEnd();
 		return determineCharset(det, cdoi, isAscii);

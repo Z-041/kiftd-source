@@ -18,7 +18,7 @@ import jakarta.servlet.http.HttpSession;
 import kohgylw.kiftd.server.enumeration.AccountAuth;
 import kohgylw.kiftd.server.model.Folder;
 import kohgylw.kiftd.server.model.Node;
-import kohgylw.kiftd.server.model.Propertie;
+import kohgylw.kiftd.server.model.Property;
 import kohgylw.kiftd.server.util.ConfigurationManager;
 import kohgylw.kiftd.newcore.infrastructure.crypto.CryptoService;
 import kohgylw.kiftd.newcore.repository.FileNodeRepository;
@@ -196,9 +196,9 @@ class SystemServiceImplTest {
             node.setFileParentFolder("folder1");
             Folder folder = new Folder();
             folder.setFolderId("folder1");
-            Propertie keyProp = new Propertie();
-            keyProp.setPropertieKey("chain_aes_key");
-            keyProp.setPropertieValue("wrappedKey");
+            Property keyProp = new Property();
+            keyProp.setPropertyKey("chain_aes_key");
+            keyProp.setPropertyValue("wrappedKey");
 
             when(reader.isOpenFileChain()).thenReturn(true);
             when(request.getParameter("fid")).thenReturn("file1");
@@ -242,14 +242,14 @@ class SystemServiceImplTest {
             when(propertiesRepository.selectByKey("chain_aes_key")).thenReturn(null);
             when(cryptoService.generateRandomAesKey()).thenReturn("newAesKey");
             when(chainKeyMaster.wrap("newAesKey")).thenReturn("wrappedNewKey");
-            when(propertiesRepository.insert(any(Propertie.class))).thenReturn(1);
+            when(propertiesRepository.insert(any(Property.class))).thenReturn(1);
             when(cryptoService.encrypt("newAesKey", "file1")).thenReturn("encryptedNewKey123");
 
             String result = systemService.getFileChainKey(request);
 
             assertNotNull(result);
             assertTrue(result.length() > 0);
-            verify(propertiesRepository, times(1)).insert(any(Propertie.class));
+            verify(propertiesRepository, times(1)).insert(any(Property.class));
         }
     }
 }

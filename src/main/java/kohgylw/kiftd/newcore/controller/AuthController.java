@@ -3,11 +3,12 @@ package kohgylw.kiftd.newcore.controller;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
-import kohgylw.kiftd.newcore.service.AuthService;
-
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
+import kohgylw.kiftd.newcore.domain.AjaxProtocol;
+import kohgylw.kiftd.newcore.service.AuthService;
+
 
 @Controller
 @RequestMapping({ "/homeController" })
@@ -43,7 +44,7 @@ public class AuthController {
 	@ResponseBody
 	public String doLogout(final HttpSession session) {
 		this.authService.logout(session);
-		return "SUCCESS";
+		return AjaxProtocol.SUCCESS;
 	}
 
 	@RequestMapping(value = { "/doChangePassword.ajax" }, produces = { CHARSET_BY_AJAX })

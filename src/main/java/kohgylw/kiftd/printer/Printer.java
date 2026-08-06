@@ -1,15 +1,15 @@
 package kohgylw.kiftd.printer;
 
-import kohgylw.kiftd.ui.module.ServerUIModule;
-import kohgylw.kiftd.server.util.ServerTimeUtil;
 import kohgylw.kiftd.server.enumeration.LogLevel;
+import kohgylw.kiftd.server.util.ServerTimeUtil;
+
 
 public class Printer {
 
 	public static volatile Printer instance;
 
 	private static volatile boolean isUIModel;
-	private static volatile ServerUIModule sum;
+	private static volatile MessageOutput messageOutput;
 	private static volatile LogLevel logLevel = LogLevel.Event;
 
 	private Printer() {
@@ -20,14 +20,15 @@ public class Printer {
 			instance = new Printer();
 		}
 		isUIModel = uiModel;
-		if (uiModel) {
-			try {
-				sum = ServerUIModule.getInsatnce();
-			} catch (Exception e) {
-				isUIModel = false;
-				instance.print("错误：无法以UI模式输出信息，自动切换至命令模式输出。详细信息：" + e);
-			}
-		}
+	}
+
+	/**
+	 * 注册消息输出目标（PKG-004：Printer 不再反向依赖具体 UI 模块，由启动器注入输出接收器）。
+	 *
+	 * @param out MessageOutput 消息输出接收器（如 Swing 主界面）；传 null 时回退到控制台输出
+	 */
+	public static void setMessageOutput(final MessageOutput out) {
+		messageOutput = out;
 	}
 
 	public static void setLogLevel(LogLevel level) {
@@ -44,8 +45,8 @@ public class Printer {
 		if (context == null) {
 			return;
 		}
-		if (isUIModel && sum != null) {
-			sum.printMessage(context);
+		if (isUIModel && messageOutput != null) {
+			messageOutput.printMessage(context);
 		} else {
 			System.out.println("[" + ServerTimeUtil.accurateToSecond() + "]" + context);
 		}

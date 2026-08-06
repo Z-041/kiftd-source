@@ -14,7 +14,7 @@ import javax.swing.table.TableModel;
 
 import kohgylw.kiftd.printer.Printer;
 import kohgylw.kiftd.server.model.Node;
-import kohgylw.kiftd.util.file_system_manager.pojo.Folder;
+import kohgylw.kiftd.util.file_system_manager.pojo.FolderTreeNode;
 
 /**
  * 
@@ -30,7 +30,7 @@ import kohgylw.kiftd.util.file_system_manager.pojo.Folder;
 public class FilesTable extends JTable {
 
 	private static final String[] columns = new String[] { "名称", "创建日期", "大小", "创建者" };
-	private List<Folder> folders;
+	private List<FolderTreeNode> folders;
 	private List<Node> files;
 	public static final int MAX_LIST_LIMIT = Integer.MAX_VALUE;
 
@@ -126,7 +126,7 @@ public class FilesTable extends JTable {
 		return false;
 	}
 
-	public void updateValues(List<Folder> folders, List<Node> files) {
+	public void updateValues(List<FolderTreeNode> folders, List<Node> files) {
 		try {
 			setModel(new TableModel() {
 				@Override
@@ -163,7 +163,7 @@ public class FilesTable extends JTable {
 
 				@Override
 				public int getRowCount() {
-					long totalSize = folders.size() + files.size();
+					long totalSize = (long) folders.size() + files.size();
 					return totalSize > MAX_LIST_LIMIT ? MAX_LIST_LIMIT : (int) totalSize;
 				}
 

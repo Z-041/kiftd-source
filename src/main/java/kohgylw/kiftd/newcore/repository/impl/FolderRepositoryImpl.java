@@ -2,12 +2,12 @@ package kohgylw.kiftd.newcore.repository.impl;
 
 import java.util.List;
 import java.util.Map;
-
+import org.springframework.context.annotation.Primary;
+import org.springframework.stereotype.Repository;
 import kohgylw.kiftd.newcore.repository.FolderRepository;
 import kohgylw.kiftd.server.mapper.FolderMapper;
 import kohgylw.kiftd.server.model.Folder;
-import org.springframework.context.annotation.Primary;
-import org.springframework.stereotype.Repository;
+
 
 @Repository
 @Primary

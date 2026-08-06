@@ -13,6 +13,8 @@ public interface FileNodeRepository {
 
 	List<Node> selectByParentFolderIds(List<String> parentFolderIds);
 
+	List<Node> selectByParentFolderIdsLimit(List<String> parentFolderIds, int limit);
+
 	List<Node> selectByParentFolderIdSection(Map<String, Object> paramMap);
 
 	List<Node> selectByPath(String path);

@@ -45,7 +45,6 @@ public class VerificationCodeFactory {
 	 * @param alternative char... 设定待选字符，这些字符将随机出现在验证码中
 	 */
 	public VerificationCodeFactory(int charSize,int maxLine,int maxOval,char... alternative) {
-		// TODO 自动生成的构造函数存根
 		if (alternative == null || alternative.length == 0 || charSize <=0 || maxLine <0 || maxOval <0) {
 			throw new IllegalArgumentException("验证码工厂：参数有误，字体大小必须大于0，最大行数和最大椭圆数必须大于等于0，至少提供一个候选字符。");
 		} else {

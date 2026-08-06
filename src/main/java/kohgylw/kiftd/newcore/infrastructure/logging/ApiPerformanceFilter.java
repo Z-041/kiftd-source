@@ -56,13 +56,17 @@ public class ApiPerformanceFilter implements Filter {
 			updateMinResponseTime(duration);
 			updateMaxResponseTime(duration);
 
-			endpointRequestCount.computeIfAbsent(endpoint, k -> {
+			AtomicLong counter = endpointRequestCount.computeIfAbsent(endpoint, k -> {
 				// 端点数量达到上限后不再新增统计条目，仅更新已有条目计数
 				if (endpointRequestCount.size() >= MAX_ENDPOINT_ENTRIES) {
 					return null;
 				}
 				return new AtomicLong(0);
-			}).incrementAndGet();
+			});
+			// 条目数已达上限时不新增（counter 为 null），避免对 null 自增触发 NPE
+			if (counter != null) {
+				counter.incrementAndGet();
+			}
 
 			if (duration > SLOW_REQUEST_THRESHOLD_MS) {
 				slowRequestCount.incrementAndGet();
@@ -118,14 +122,5 @@ public class ApiPerformanceFilter implements Filter {
 
 	public static Map<String, AtomicLong> getEndpointRequestCount() {
 		return endpointRequestCount;
-	}
-
-	public static void resetStats() {
-		totalRequestCount.set(0);
-		slowRequestCount.set(0);
-		totalResponseTime.set(0);
-		minResponseTime.set(Long.MAX_VALUE);
-		maxResponseTime.set(0);
-		endpointRequestCount.clear();
 	}
 }

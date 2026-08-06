@@ -10,7 +10,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import kohgylw.kiftd.server.model.Propertie;
+import kohgylw.kiftd.server.model.Property;
 
 @ExtendWith(MockitoExtension.class)
 class PropertiesMapperTest {
@@ -19,11 +19,11 @@ class PropertiesMapperTest {
     private PropertiesMapper propertiesMapper;
 
     @Test
-    void testInsertPropertie() {
-        Propertie prop = new Propertie();
-        prop.setPropertieKey("max_size");
-        prop.setPropertieValue("1024000");
-        when(propertiesMapper.insert(any(Propertie.class))).thenReturn(1);
+    void testInsertProperty() {
+        Property prop = new Property();
+        prop.setPropertyKey("max_size");
+        prop.setPropertyValue("1024000");
+        when(propertiesMapper.insert(any(Property.class))).thenReturn(1);
 
         int result = propertiesMapper.insert(prop);
 
@@ -33,46 +33,46 @@ class PropertiesMapperTest {
 
     @Test
     void testSelectById() {
-        Propertie prop = new Propertie();
-        prop.setPropertieKey("max_size");
-        prop.setPropertieValue("1024000");
+        Property prop = new Property();
+        prop.setPropertyKey("max_size");
+        prop.setPropertyValue("1024000");
         when(propertiesMapper.selectById("max_size")).thenReturn(prop);
 
-        Propertie result = propertiesMapper.selectById("max_size");
+        Property result = propertiesMapper.selectById("max_size");
 
         assertNotNull(result);
-        assertEquals("max_size", result.getPropertieKey());
-        assertEquals("1024000", result.getPropertieValue());
+        assertEquals("max_size", result.getPropertyKey());
+        assertEquals("1024000", result.getPropertyValue());
     }
 
     @Test
     void testSelectByIdNotFound() {
         when(propertiesMapper.selectById("nonexistent")).thenReturn(null);
 
-        Propertie result = propertiesMapper.selectById("nonexistent");
+        Property result = propertiesMapper.selectById("nonexistent");
 
         assertNull(result);
     }
 
     @Test
     void testSelectByKey() {
-        Propertie prop = new Propertie();
-        prop.setPropertieKey("test_key");
-        prop.setPropertieValue("test_value");
+        Property prop = new Property();
+        prop.setPropertyKey("test_key");
+        prop.setPropertyValue("test_value");
         when(propertiesMapper.selectByKey("test_key")).thenReturn(prop);
 
-        Propertie result = propertiesMapper.selectByKey("test_key");
+        Property result = propertiesMapper.selectByKey("test_key");
 
         assertNotNull(result);
-        assertEquals("test_key", result.getPropertieKey());
-        assertEquals("test_value", result.getPropertieValue());
+        assertEquals("test_key", result.getPropertyKey());
+        assertEquals("test_value", result.getPropertyValue());
     }
 
     @Test
     void testSelectByKeyNotFound() {
         when(propertiesMapper.selectByKey("nonexistent")).thenReturn(null);
 
-        Propertie result = propertiesMapper.selectByKey("nonexistent");
+        Property result = propertiesMapper.selectByKey("nonexistent");
 
         assertNull(result);
     }
@@ -117,9 +117,9 @@ class PropertiesMapperTest {
 
     @Test
     void testUpdateById() {
-        Propertie prop = new Propertie();
-        prop.setPropertieKey("max_size");
-        prop.setPropertieValue("2048000");
+        Property prop = new Property();
+        prop.setPropertyKey("max_size");
+        prop.setPropertyValue("2048000");
         when(propertiesMapper.updateById(prop)).thenReturn(1);
 
         int result = propertiesMapper.updateById(prop);
@@ -130,9 +130,9 @@ class PropertiesMapperTest {
 
     @Test
     void testUpdate() {
-        Propertie prop = new Propertie();
-        prop.setPropertieKey("test_key");
-        prop.setPropertieValue("updated_value");
+        Property prop = new Property();
+        prop.setPropertyKey("test_key");
+        prop.setPropertyValue("updated_value");
         when(propertiesMapper.update(prop)).thenReturn(1);
 
         int result = propertiesMapper.update(prop);
@@ -143,8 +143,8 @@ class PropertiesMapperTest {
 
     @Test
     void testUpdateReturnsZero() {
-        Propertie prop = new Propertie();
-        prop.setPropertieKey("nonexistent");
+        Property prop = new Property();
+        prop.setPropertyKey("nonexistent");
         when(propertiesMapper.update(prop)).thenReturn(0);
 
         int result = propertiesMapper.update(prop);
@@ -154,30 +154,30 @@ class PropertiesMapperTest {
 
     @Test
     void testSelectList() {
-        List<Propertie> props = new ArrayList<>();
-        Propertie p1 = new Propertie();
-        p1.setPropertieKey("key1");
-        p1.setPropertieValue("value1");
-        Propertie p2 = new Propertie();
-        p2.setPropertieKey("key2");
-        p2.setPropertieValue("value2");
+        List<Property> props = new ArrayList<>();
+        Property p1 = new Property();
+        p1.setPropertyKey("key1");
+        p1.setPropertyValue("value1");
+        Property p2 = new Property();
+        p2.setPropertyKey("key2");
+        p2.setPropertyValue("value2");
         props.add(p1);
         props.add(p2);
         when(propertiesMapper.selectList(any())).thenReturn(props);
 
-        List<Propertie> result = propertiesMapper.selectList(null);
+        List<Property> result = propertiesMapper.selectList(null);
 
         assertNotNull(result);
         assertEquals(2, result.size());
-        assertEquals("key1", result.get(0).getPropertieKey());
-        assertEquals("key2", result.get(1).getPropertieKey());
+        assertEquals("key1", result.get(0).getPropertyKey());
+        assertEquals("key2", result.get(1).getPropertyKey());
     }
 
     @Test
     void testSelectListEmpty() {
         when(propertiesMapper.selectList(any())).thenReturn(new ArrayList<>());
 
-        List<Propertie> result = propertiesMapper.selectList(null);
+        List<Property> result = propertiesMapper.selectList(null);
 
         assertNotNull(result);
         assertTrue(result.isEmpty());
@@ -185,8 +185,8 @@ class PropertiesMapperTest {
 
     @Test
     void testInsertReturnsZero() {
-        Propertie prop = new Propertie();
-        when(propertiesMapper.insert(any(Propertie.class))).thenReturn(0);
+        Property prop = new Property();
+        when(propertiesMapper.insert(any(Property.class))).thenReturn(0);
 
         int result = propertiesMapper.insert(prop);
 

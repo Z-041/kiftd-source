@@ -11,14 +11,13 @@ import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.io.RandomAccessFile;
 import java.nio.charset.StandardCharsets;
-
 import jakarta.servlet.ServletOutputStream;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
-
+import kohgylw.kiftd.newcore.domain.AjaxProtocol;
+import kohgylw.kiftd.newcore.service.ResourceService;
 import kohgylw.kiftd.printer.Printer;
 import kohgylw.kiftd.server.enumeration.AccountAuth;
 import kohgylw.kiftd.server.mapper.FolderMapper;
@@ -26,7 +25,6 @@ import kohgylw.kiftd.server.mapper.NodeMapper;
 import kohgylw.kiftd.server.model.Node;
 import kohgylw.kiftd.server.pojo.VideoTranscodeThread;
 import kohgylw.kiftd.server.util.ConfigurationManager;
-import kohgylw.kiftd.newcore.service.ResourceService;
 import kohgylw.kiftd.server.util.ContentTypeMap;
 import kohgylw.kiftd.server.util.FileBlockUtil;
 import kohgylw.kiftd.server.util.FolderUtil;
@@ -38,6 +36,7 @@ import kohgylw.kiftd.server.util.ServerTimeUtil;
 import kohgylw.kiftd.server.util.TxtCharsetGetter;
 import kohgylw.kiftd.server.util.VariableSpeedBufferedOutputStream;
 import kohgylw.kiftd.server.util.VideoTranscodeUtil;
+
 
 @Service
 @Primary
@@ -113,6 +112,7 @@ public class ResourceServiceImpl implements ResourceService {
 											try {
 												response.sendError(500);
 											} catch (IOException e) {
+												this.logUtil.writeException(e);
 											}
 											return;
 										}
@@ -125,7 +125,7 @@ public class ResourceServiceImpl implements ResourceService {
 						}
 						String ip = ipAddrGetter.getIpAddr(request);
 						String range = request.getHeader("Range");
-						int status = sendResource(file, n.getFileName(), contentType, request, response);
+						int status = sendResource(file, contentType, request, response);
 						if (status == HttpServletResponse.SC_OK || (range != null && range.startsWith("bytes=0-"))) {
 							this.logUtil.writeDownloadFileEvent(account, ip, n);
 						}
@@ -144,15 +144,16 @@ public class ResourceServiceImpl implements ResourceService {
 		try {
 			response.sendError(404);
 		} catch (IOException e) {
+			this.logUtil.writeException(e);
 		}
 	}
 
-	private int sendResource(File resource, String fname, String contentType, HttpServletRequest request,
+	private int sendResource(File resource, String contentType, HttpServletRequest request,
 			HttpServletResponse response) {
 		int status = HttpServletResponse.SC_OK;
 		try (RandomAccessFile randomFile = new RandomAccessFile(resource, "r")) {
 			long contentLength = randomFile.length();
-			final String lastModified = ServerTimeUtil.getLastModifiedFormBlock(resource);
+			final String lastModified = ServerTimeUtil.getLastModifiedFromBlock(resource);
 			final String eTag = this.fileBlockUtil.getETag(resource);
 			final String ifModifiedSince = request.getHeader("If-Modified-Since");
 			final String ifNoneMatch = request.getHeader("If-None-Match");
@@ -210,7 +211,7 @@ public class ResourceServiceImpl implements ResourceService {
 			response.setContentType(contentType);
 			response.setHeader("Accept-Ranges", "bytes");
 			response.setHeader("ETag", this.fileBlockUtil.getETag(resource));
-			response.setHeader("Last-Modified", ServerTimeUtil.getLastModifiedFormBlock(resource));
+			response.setHeader("Last-Modified", ServerTimeUtil.getLastModifiedFromBlock(resource));
 			response.setHeader("Cache-Control", "max-age=" + RESOURCE_CACHE_MAX_AGE);
 			final String ifRange = request.getHeader("If-Range");
 			if (range != null && range.startsWith("bytes=")
@@ -301,7 +302,7 @@ public class ResourceServiceImpl implements ResourceService {
 				}
 			}
 		}
-		return "ERROR";
+		return AjaxProtocol.ERROR;
 	}
 
 	@Override
@@ -318,7 +319,7 @@ public class ResourceServiceImpl implements ResourceService {
 					if (file != null && file.isFile()) {
 						String ifModifiedSince = request.getHeader("If-Modified-Since");
 						if (ifModifiedSince != null
-								&& ifModifiedSince.trim().equals(ServerTimeUtil.getLastModifiedFormBlock(file))) {
+								&& ifModifiedSince.trim().equals(ServerTimeUtil.getLastModifiedFromBlock(file))) {
 							response.setStatus(304);
 							return;
 						}
@@ -338,7 +339,7 @@ public class ResourceServiceImpl implements ResourceService {
 							response.setContentType(contentType);
 							response.setCharacterEncoding("UTF-8");
 							response.setHeader("ETag", this.fileBlockUtil.getETag(file));
-							response.setHeader("Last-Modified", ServerTimeUtil.getLastModifiedFormBlock(file));
+							response.setHeader("Last-Modified", ServerTimeUtil.getLastModifiedFromBlock(file));
 							response.setHeader("Cache-Control", "max-age=" + RESOURCE_CACHE_MAX_AGE);
 							try {
 								String inputFileEncode;
@@ -369,7 +370,7 @@ public class ResourceServiceImpl implements ResourceService {
 		}
 		try {
 			response.sendError(500);
-		} catch (Exception e1) {
+		} catch (IOException e1) {
 			this.logUtil.writeException(e1);
 		}
 	}
@@ -379,7 +380,7 @@ public class ResourceServiceImpl implements ResourceService {
 		File noticeHTML = new File(ConfigurationManager.instance().getTemporaryfilePath(), NoticeUtil.NOTICE_OUTPUT_NAME);
 		String contentType = "text/html";
 		if (noticeHTML.isFile() && noticeHTML.canRead()) {
-			sendResource(noticeHTML, NoticeUtil.NOTICE_FILE_NAME, contentType, request, response);
+			sendResource(noticeHTML, contentType, request, response);
 		} else {
 			try {
 				response.setContentType(contentType);
@@ -389,6 +390,7 @@ public class ResourceServiceImpl implements ResourceService {
 				writer.flush();
 				writer.close();
 			} catch (IOException e) {
+				this.logUtil.writeException(e);
 			}
 		}
 	}

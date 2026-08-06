@@ -138,7 +138,7 @@ public class KiftdProperties {
 			String lineStr = null;
 			// 按行读取文本
 			clear();
-			while ((lineStr = reader.readLine()) != null && contexts.size() < Integer.MAX_VALUE) {
+			while ((lineStr = reader.readLine()) != null) {
 				if (lineStr.startsWith("#")) {
 					contexts.add(new LineContext(null, null, lineStr));// 保存为注释
 				} else {

@@ -4,20 +4,18 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
-
-import com.google.gson.Gson;
-
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import com.google.gson.Gson;
+import org.springframework.web.bind.annotation.ControllerAdvice;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 import kohgylw.kiftd.newcore.domain.ApiResponse;
 import kohgylw.kiftd.newcore.domain.ResultCode;
 import kohgylw.kiftd.printer.Printer;
 import kohgylw.kiftd.server.util.LogUtil;
 
-import org.springframework.web.bind.annotation.ControllerAdvice;
-import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.server.ResponseStatusException;
-import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @ControllerAdvice
 public class GlobalExceptionHandler {
@@ -90,6 +88,7 @@ public class GlobalExceptionHandler {
 				}
 			}
 		} catch (Exception ignored) {
+			// 响应已提交或连接中断时无法再发送错误信息，忽略以避免二次异常
 		}
 	}
 
@@ -107,6 +106,7 @@ public class GlobalExceptionHandler {
 				response.getWriter().flush();
 			}
 		} catch (IOException ignored) {
+			// 响应已提交或连接中断时无法再写出 JSON，忽略以避免二次异常
 		}
 	}
 

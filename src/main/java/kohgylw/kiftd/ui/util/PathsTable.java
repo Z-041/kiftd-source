@@ -109,6 +109,7 @@ public class PathsTable extends JTable {
 					resizeColumns();
 					validate();
 				} catch (Exception e) {
+				// 刷新失败时保留旧布局，避免界面异常
 				}
 			}
 		};

@@ -6,11 +6,11 @@ import java.util.*;
 
 import org.junit.jupiter.api.Test;
 
-class CheckUploadFilesResponsTest {
+class CheckUploadFilesResponseTest {
 
     @Test
     void testDefaultValuesAreNull() {
-        CheckUploadFilesRespons respons = new CheckUploadFilesRespons();
+        CheckUploadFilesResponse respons = new CheckUploadFilesResponse();
         assertNull(respons.getCheckResult());
         assertNull(respons.getPereFileNameList());
         assertNull(respons.getOverSizeFile());
@@ -19,7 +19,7 @@ class CheckUploadFilesResponsTest {
 
     @Test
     void testSetAndGetAllFields() {
-        CheckUploadFilesRespons respons = new CheckUploadFilesRespons();
+        CheckUploadFilesResponse respons = new CheckUploadFilesResponse();
         String checkResult = "hasExistsNames";
         List<String> pereFileNameList = Arrays.asList("file1.txt", "file2.txt");
         String overSizeFile = "bigfile.iso";
@@ -40,7 +40,7 @@ class CheckUploadFilesResponsTest {
 
     @Test
     void testSetNullValues() {
-        CheckUploadFilesRespons respons = new CheckUploadFilesRespons();
+        CheckUploadFilesResponse respons = new CheckUploadFilesResponse();
         respons.setCheckResult("test");
         respons.setPereFileNameList(new ArrayList<>());
         respons.setOverSizeFile("test");
@@ -59,7 +59,7 @@ class CheckUploadFilesResponsTest {
 
     @Test
     void testEmptyStringValues() {
-        CheckUploadFilesRespons respons = new CheckUploadFilesRespons();
+        CheckUploadFilesResponse respons = new CheckUploadFilesResponse();
         respons.setCheckResult("");
         respons.setOverSizeFile("");
         respons.setMaxUploadFileSize("");
@@ -71,7 +71,7 @@ class CheckUploadFilesResponsTest {
 
     @Test
     void testEmptyPereFileNameList() {
-        CheckUploadFilesRespons respons = new CheckUploadFilesRespons();
+        CheckUploadFilesResponse respons = new CheckUploadFilesResponse();
         respons.setPereFileNameList(new ArrayList<>());
 
         assertNotNull(respons.getPereFileNameList());
@@ -81,7 +81,7 @@ class CheckUploadFilesResponsTest {
     @Test
     void testFieldCount() {
         int fieldCount = 0;
-        for (java.lang.reflect.Field field : CheckUploadFilesRespons.class.getDeclaredFields()) {
+        for (java.lang.reflect.Field field : CheckUploadFilesResponse.class.getDeclaredFields()) {
             if (!field.isSynthetic()) {
                 fieldCount++;
             }
@@ -91,7 +91,7 @@ class CheckUploadFilesResponsTest {
 
     @Test
     void testAllFieldsArePrivate() {
-        for (java.lang.reflect.Field field : CheckUploadFilesRespons.class.getDeclaredFields()) {
+        for (java.lang.reflect.Field field : CheckUploadFilesResponse.class.getDeclaredFields()) {
             if (!field.isSynthetic()) {
                 assertTrue(java.lang.reflect.Modifier.isPrivate(field.getModifiers()),
                         "Field " + field.getName() + " must be private");
@@ -101,7 +101,7 @@ class CheckUploadFilesResponsTest {
 
     @Test
     void testLongStringValues() {
-        CheckUploadFilesRespons respons = new CheckUploadFilesRespons();
+        CheckUploadFilesResponse respons = new CheckUploadFilesResponse();
         String longString = "a".repeat(5000);
 
         respons.setCheckResult(longString);
@@ -115,7 +115,7 @@ class CheckUploadFilesResponsTest {
 
     @Test
     void testMultipleSetAndGet() {
-        CheckUploadFilesRespons respons = new CheckUploadFilesRespons();
+        CheckUploadFilesResponse respons = new CheckUploadFilesResponse();
 
         for (int i = 0; i < 5; i++) {
             respons.setCheckResult("result-" + i);
@@ -129,7 +129,7 @@ class CheckUploadFilesResponsTest {
 
     @Test
     void testFieldsAreIndependent() {
-        CheckUploadFilesRespons respons = new CheckUploadFilesRespons();
+        CheckUploadFilesResponse respons = new CheckUploadFilesResponse();
         respons.setCheckResult("result1");
         respons.setOverSizeFile("oversize1");
         respons.setMaxUploadFileSize("1024");
@@ -142,7 +142,7 @@ class CheckUploadFilesResponsTest {
 
     @Test
     void testPermitUploadResult() {
-        CheckUploadFilesRespons respons = new CheckUploadFilesRespons();
+        CheckUploadFilesResponse respons = new CheckUploadFilesResponse();
         respons.setCheckResult("permitUpload");
         respons.setMaxUploadFileSize("104857600");
 
@@ -152,7 +152,7 @@ class CheckUploadFilesResponsTest {
 
     @Test
     void testHasExistsNamesResult() {
-        CheckUploadFilesRespons respons = new CheckUploadFilesRespons();
+        CheckUploadFilesResponse respons = new CheckUploadFilesResponse();
         respons.setCheckResult("hasExistsNames");
         List<String> dupList = Arrays.asList("dup1.txt", "dup2.txt");
         respons.setPereFileNameList(dupList);
@@ -163,7 +163,7 @@ class CheckUploadFilesResponsTest {
 
     @Test
     void testListModificationAfterSet() {
-        CheckUploadFilesRespons respons = new CheckUploadFilesRespons();
+        CheckUploadFilesResponse respons = new CheckUploadFilesResponse();
         List<String> list = new ArrayList<>();
         list.add("file1.txt");
 

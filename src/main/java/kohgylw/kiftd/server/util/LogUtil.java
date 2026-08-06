@@ -13,19 +13,17 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-
-import org.springframework.stereotype.Component;
-
 import jakarta.annotation.PreDestroy;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
-
+import org.springframework.stereotype.Component;
 import kohgylw.kiftd.printer.Printer;
 import kohgylw.kiftd.server.enumeration.LogLevel;
 import kohgylw.kiftd.server.mapper.FolderMapper;
 import kohgylw.kiftd.server.mapper.NodeMapper;
 import kohgylw.kiftd.server.model.Folder;
 import kohgylw.kiftd.server.model.Node;
+
 
 /**
  * 
@@ -76,6 +74,7 @@ public class LogUtil {
 				try {
 					logUtil.writer.close();
 				} catch (IOException e) {
+					// 关闭日志写入器失败无需处理：日志系统正在关闭，已无法再记录日志
 				}
 			}
 			if (threadPoolRef != null && !threadPoolRef.isShutdown()) {
@@ -127,6 +126,7 @@ public class LogUtil {
 				try {
 					writer.close();
 				} catch (IOException e) {
+					// 关闭日志写入器失败无需处理：日志服务正在关闭，忽略即可
 				}
 				writer = null;
 			}

@@ -103,23 +103,4 @@ class TextFormateUtilTest {
         assertFalse(tfu.matcherFileName(sb.toString()));
     }
 
-    @Test
-    void testHasEscapesWithBackslash() {
-        assertTrue(tfu.hasEscapes("test\\path"));
-        assertTrue(tfu.hasEscapes("\\"));
-        assertTrue(tfu.hasEscapes("start\\end"));
-    }
-
-    @Test
-    void testHasEscapesWithoutBackslash() {
-        assertFalse(tfu.hasEscapes("normal/path"));
-        assertFalse(tfu.hasEscapes("normal path"));
-        assertFalse(tfu.hasEscapes(""));
-    }
-
-    @Test
-    void testHasEscapesOnlyBackslash() {
-        assertTrue(tfu.hasEscapes("\\"));
-    }
-
 }

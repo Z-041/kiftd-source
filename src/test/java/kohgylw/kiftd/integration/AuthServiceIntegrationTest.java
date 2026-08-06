@@ -19,7 +19,7 @@ import kohgylw.kiftd.server.util.ConfigurationManager;
 import kohgylw.kiftd.server.util.PasswordUtil;
 import kohgylw.kiftd.printer.Printer;
 
-@SpringBootTest(classes = KiftdApplication.class)
+@SpringBootTest(classes = { KiftdApplication.class, TestConfig.class })
 @AutoConfigureMockMvc
 @TestPropertySource(locations = "classpath:application-test.properties")
 class AuthServiceIntegrationTest {

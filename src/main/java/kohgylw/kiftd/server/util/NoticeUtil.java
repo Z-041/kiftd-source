@@ -9,19 +9,16 @@ import java.io.FileOutputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
-
 import jakarta.annotation.Resource;
-
-import org.apache.commons.codec.digest.DigestUtils;
-import org.springframework.stereotype.Component;
-
 import com.vladsch.flexmark.html.HtmlRenderer;
 import com.vladsch.flexmark.parser.Parser;
 import com.vladsch.flexmark.parser.ParserEmulationProfile;
 import com.vladsch.flexmark.util.data.MutableDataHolder;
 import com.vladsch.flexmark.util.data.MutableDataSet;
-
+import org.apache.commons.codec.digest.DigestUtils;
+import org.springframework.stereotype.Component;
 import kohgylw.kiftd.printer.Printer;
+
 
 /**
  * 

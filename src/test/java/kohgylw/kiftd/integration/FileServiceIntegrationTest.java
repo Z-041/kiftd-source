@@ -27,7 +27,7 @@ import java.util.UUID;
 
 import kohgylw.kiftd.printer.Printer;
 
-@SpringBootTest(classes = KiftdApplication.class)
+@SpringBootTest(classes = { KiftdApplication.class, TestConfig.class })
 @AutoConfigureMockMvc
 @TestPropertySource(locations = "classpath:application-test.properties")
 class FileServiceIntegrationTest {

@@ -1,11 +1,12 @@
 package kohgylw.kiftd.server.mapper;
 
-import kohgylw.kiftd.server.model.Propertie;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import kohgylw.kiftd.server.model.Property;
 
-public interface PropertiesMapper extends BaseMapper<Propertie> {
 
-	default Propertie selectByKey(String key) {
+public interface PropertiesMapper extends BaseMapper<Property> {
+
+	default Property selectByKey(String key) {
 		return selectById(key);
 	}
 
@@ -13,7 +14,7 @@ public interface PropertiesMapper extends BaseMapper<Propertie> {
 		return deleteById(key);
 	}
 
-	default int update(Propertie p) {
+	default int update(Property p) {
 		return updateById(p);
 	}
 }

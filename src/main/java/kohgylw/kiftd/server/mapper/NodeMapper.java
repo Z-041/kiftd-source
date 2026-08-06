@@ -2,13 +2,11 @@ package kohgylw.kiftd.server.mapper;
 
 import java.util.List;
 import java.util.Map;
-
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
-
-import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-
 import kohgylw.kiftd.server.model.Node;
+
 
 public interface NodeMapper extends BaseMapper<Node> {
 
@@ -17,6 +15,9 @@ public interface NodeMapper extends BaseMapper<Node> {
 
 	@Select("<script>SELECT * FROM FILE WHERE file_parent_folder IN <foreach item='pfid' index='index' collection='pfids' open='(' separator=',' close=')'>#{pfid}</foreach> LIMIT 0,2147483647</script>")
 	List<Node> queryByParentFolderIds(@Param("pfids") List<String> pfids);
+
+	@Select("<script>SELECT * FROM FILE WHERE file_parent_folder IN <foreach item='pfid' index='index' collection='pfids' open='(' separator=',' close=')'>#{pfid}</foreach> LIMIT #{limit}</script>")
+	List<Node> queryByParentFolderIdsLimit(@Param("pfids") List<String> pfids, @Param("limit") int limit);
 
 	@Select("SELECT * FROM FILE WHERE file_parent_folder = #{pfid} LIMIT #{offset},#{rows}")
 	List<Node> queryByParentFolderIdSection(Map<String, Object> keyMap);

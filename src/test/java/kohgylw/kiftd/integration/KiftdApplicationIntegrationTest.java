@@ -24,7 +24,7 @@ import javax.sql.DataSource;
 
 import kohgylw.kiftd.printer.Printer;
 
-@SpringBootTest(classes = KiftdApplication.class)
+@SpringBootTest(classes = { KiftdApplication.class, TestConfig.class })
 @TestPropertySource(locations = "classpath:application-test.properties")
 class KiftdApplicationIntegrationTest {
 

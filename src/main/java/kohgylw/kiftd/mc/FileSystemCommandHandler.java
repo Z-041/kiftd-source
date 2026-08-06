@@ -3,19 +3,19 @@ package kohgylw.kiftd.mc;
 import java.io.File;
 import java.util.Arrays;
 import java.util.List;
-
 import kohgylw.kiftd.printer.Printer;
-import kohgylw.kiftd.util.SizeFormatUtil;
 import kohgylw.kiftd.server.exception.FilesTotalOutOfLimitException;
 import kohgylw.kiftd.server.exception.FoldersTotalOutOfLimitException;
 import kohgylw.kiftd.server.model.Node;
+import kohgylw.kiftd.server.util.SizeFormatUtil;
 import kohgylw.kiftd.util.file_system_manager.FileSystemManager;
-import kohgylw.kiftd.util.file_system_manager.pojo.Folder;
-import kohgylw.kiftd.util.file_system_manager.pojo.FolderView;
+import kohgylw.kiftd.util.file_system_manager.pojo.FileSystemFolderView;
+import kohgylw.kiftd.util.file_system_manager.pojo.FolderTreeNode;
+
 
 public class FileSystemCommandHandler {
 
-	private FolderView currentFolder;
+	private FileSystemFolderView currentFolder;
 	private final ScannerProvider scannerProvider;
 	private final ProgressListenerFactory progressListenerFactory;
 
@@ -24,7 +24,7 @@ public class FileSystemCommandHandler {
 		this.progressListenerFactory = progressListenerFactory;
 	}
 
-	public FolderView getCurrentFolder() {
+	public FileSystemFolderView getCurrentFolder() {
 		return currentFolder;
 	}
 
@@ -122,18 +122,14 @@ public class FileSystemCommandHandler {
 	private void showCurrentFolder(boolean showDetailedInformation) {
 		try {
 			String folderId = currentFolder.getCurrent().getFolderId();
-			if (Math.max(FileSystemManager.getInstance().getFilesTotalNumByFoldersId(folderId),
-					FileSystemManager.getInstance().getFoldersTotalNumByFoldersId(folderId)) > Integer.MAX_VALUE) {
-				Printer.instance.print("警告：文件夹列表长度超过最大限值，只能显示前" + Integer.MAX_VALUE + "行。");
-			}
 			currentFolder = FileSystemManager.getInstance().getFolderView(folderId);
 		} catch (java.sql.SQLException e) {
 			openFolderError();
 			return;
 		}
-		List<Folder> fls = currentFolder.getFolders();
+		List<FolderTreeNode> fls = currentFolder.getFolders();
 		int index = 1;
-		for (Folder f : fls) {
+		for (FolderTreeNode f : fls) {
 			StringBuilder row = new StringBuilder();
 			row.append("--").append(index);
 			row.append("\t");
@@ -188,7 +184,7 @@ public class FileSystemCommandHandler {
 				String parent = "null";
 				for (int i = 1; i < paths.length - 1; i++) {
 					String folderName = paths[i];
-					Folder folder = FileSystemManager.getInstance().getFoldersByParentId(parent).stream()
+					FolderTreeNode folder = FileSystemManager.getInstance().getFoldersByParentId(parent).stream()
 							.filter(e -> e.getFolderName().equals(folderName)).findFirst().orElse(null);
 					if (folder == null) {
 						return null;
@@ -196,7 +192,7 @@ public class FileSystemCommandHandler {
 					parent = folder.getFolderId();
 				}
 				String fname = paths[paths.length - 1];
-				List<Folder> folders = FileSystemManager.getInstance().getFoldersByParentId(parent);
+				List<FolderTreeNode> folders = FileSystemManager.getInstance().getFoldersByParentId(parent);
 				if (path.endsWith("/") || folders.stream().anyMatch(e -> e.getFolderName().equals(fname))) {
 					return folders.stream().filter(e -> e.getFolderName().equals(fname)).findFirst().orElse(null);
 				} else {
@@ -204,6 +200,7 @@ public class FileSystemCommandHandler {
 							.filter(e -> e.getFileName().equals(fname)).findFirst().orElse(null);
 				}
 			} catch (Exception ignored) {
+				// 路径解析或查询异常时视为未找到，返回 null 由调用方提示错误
 			}
 		}
 		return null;
@@ -227,10 +224,11 @@ public class FileSystemCommandHandler {
 					return currentFolder.getFolders().get(index - 1).getFolderId();
 				}
 			} catch (Exception ignored) {
+				// 序号参数解析失败或越界时视为非法序号，返回 null
 			}
 			return null;
 		}
-		Folder folder = currentFolder.getFolders().stream()
+		FolderTreeNode folder = currentFolder.getFolders().stream()
 				.filter(e -> e.getFolderName().equals(fname)).findFirst().orElse(null);
 		return folder != null ? folder.getFolderId() : null;
 	}
@@ -255,10 +253,11 @@ public class FileSystemCommandHandler {
 					return currentFolder.getFiles().get(index - currentFolder.getFolders().size() - 1).getFileId();
 				}
 			} catch (Exception ignored) {
+				// 序号参数解析失败或越界时视为非法序号，返回 null
 			}
 			return null;
 		}
-		Folder folder = currentFolder.getFolders().stream()
+		FolderTreeNode folder = currentFolder.getFolders().stream()
 				.filter(e -> e.getFolderName().equals(fname)).findFirst().orElse(null);
 		if (folder != null) {
 			return folder.getFolderId();
@@ -288,11 +287,11 @@ public class FileSystemCommandHandler {
 				Printer.instance.print("错误：导入失败，必须指定导入目标（示例：\"-import /ROOT/ /home/your/import/file.txt\"）。");
 				return;
 			}
-			if (!(path instanceof Folder)) {
+			if (!(path instanceof FolderTreeNode)) {
 				Printer.instance.print("错误：导入位置（" + importPath + "）必须是一个文件夹（示例：\"/ROOT\"）。");
 				return;
 			}
-			String folderId = ((Folder) path).getFolderId();
+			String folderId = ((FolderTreeNode) path).getFolderId();
 			if (!target.exists()) {
 				Printer.instance.print("错误：导入失败，要导入的文件或文件夹不存在（" + importTarget + "）。");
 				return;
@@ -420,8 +419,8 @@ public class FileSystemCommandHandler {
 			if (target instanceof Node) {
 				foldersId = new String[] {};
 				filesId = new String[] { ((Node) target).getFileId() };
-			} else if (target instanceof Folder) {
-				foldersId = new String[] { ((Folder) target).getFolderId() };
+			} else if (target instanceof FolderTreeNode) {
+				foldersId = new String[] { ((FolderTreeNode) target).getFolderId() };
 				filesId = new String[] {};
 			} else {
 				Printer.instance.print("错误：导出失败，出现意外错误。");

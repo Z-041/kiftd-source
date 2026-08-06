@@ -57,8 +57,4 @@ public class RSAKeyUtil {
 	public String getPrivateKey() {
 		return this.privateKeyStr;
 	}
-
-	public int getKeySize() {
-		return KEY_SIZE;
-	}
 }

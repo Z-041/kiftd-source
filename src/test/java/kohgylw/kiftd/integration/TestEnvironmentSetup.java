@@ -2,7 +2,6 @@ package kohgylw.kiftd.integration;
 
 import kohgylw.kiftd.printer.Printer;
 import kohgylw.kiftd.server.util.PasswordUtil;
-import org.junit.jupiter.api.BeforeAll;
 
 import java.io.File;
 import java.io.FileOutputStream;

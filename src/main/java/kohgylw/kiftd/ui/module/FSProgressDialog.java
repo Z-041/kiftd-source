@@ -47,7 +47,7 @@ public class FSProgressDialog extends KiftdDynamicWindow {
 
 			@Override
 			public void windowClosing(WindowEvent e) {
-				canncel();
+				cancel();
 			}
 
 			@Override
@@ -69,7 +69,7 @@ public class FSProgressDialog extends KiftdDynamicWindow {
 		cancel = new JButton("终止");
 		cancel.setPreferredSize(new Dimension((int) (90 * proportion), (int) (27 * proportion)));
 		cancel.addActionListener((e) -> {
-			canncel();
+			cancel();
 		});
 		btnBox.add(cancel);
 		// 配置组件
@@ -124,9 +124,9 @@ public class FSProgressDialog extends KiftdDynamicWindow {
 	}
 
 	// 终止当前操作
-	private void canncel() {
+	private void cancel() {
 		if (JOptionPane.showConfirmDialog(window, "操作仍在进行中，确认要立即终止？", "警告", JOptionPane.YES_NO_OPTION) == 0) {
-			FileSystemManager.getInstance().cannel();
+			FileSystemManager.getInstance().cancel();
 			window.dispose();
 		}
 	}

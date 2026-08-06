@@ -2,12 +2,12 @@ package kohgylw.kiftd.newcore.repository.impl;
 
 import java.util.List;
 import java.util.Map;
-
+import org.springframework.context.annotation.Primary;
+import org.springframework.stereotype.Repository;
 import kohgylw.kiftd.newcore.repository.FileNodeRepository;
 import kohgylw.kiftd.server.mapper.NodeMapper;
 import kohgylw.kiftd.server.model.Node;
-import org.springframework.context.annotation.Primary;
-import org.springframework.stereotype.Repository;
+
 
 @Repository
 @Primary
@@ -32,6 +32,11 @@ public class FileNodeRepositoryImpl implements FileNodeRepository {
 	@Override
 	public List<Node> selectByParentFolderIds(List<String> parentFolderIds) {
 		return nodeMapper.queryByParentFolderIds(parentFolderIds);
+	}
+
+	@Override
+	public List<Node> selectByParentFolderIdsLimit(List<String> parentFolderIds, int limit) {
+		return nodeMapper.queryByParentFolderIdsLimit(parentFolderIds, limit);
 	}
 
 	@Override

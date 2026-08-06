@@ -1,14 +1,14 @@
 package kohgylw.kiftd.newcore.repository;
 
-import kohgylw.kiftd.server.model.Propertie;
+import kohgylw.kiftd.server.model.Property;
 
 public interface PropertiesRepository {
 
-	Propertie selectByKey(String key);
+	Property selectByKey(String key);
 
-	int insert(Propertie propertie);
+	int insert(Property property);
 
-	int update(Propertie propertie);
+	int update(Property property);
 
 	int deleteByKey(String key);
 }

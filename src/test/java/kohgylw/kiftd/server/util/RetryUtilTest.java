@@ -25,7 +25,7 @@ class RetryUtilTest {
 
     @Test
     void testSuccessOnFirstAttempt() {
-        String result = RetryUtil.executeWithRetry(() -> "ok", "test-op");
+        String result = RetryUtil.executeWithRetry(() -> "ok", "test-op", 3, 100, 2.0);
         assertEquals("ok", result);
     }
 
@@ -54,14 +54,6 @@ class RetryUtilTest {
     void testInvalidParamsFallbackToDefaults() {
         String result = RetryUtil.executeWithRetry(() -> "ok", "test-op", 0, 0, 1.0);
         assertEquals("ok", result);
-    }
-
-    @Test
-    void testRunnableOverload() {
-        AtomicInteger runs = new AtomicInteger(0);
-        boolean success = RetryUtil.executeWithRetry((Runnable) () -> runs.incrementAndGet(), "test-op");
-        assertTrue(success);
-        assertEquals(1, runs.get());
     }
 
 }

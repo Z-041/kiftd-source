@@ -31,7 +31,6 @@ import kohgylw.kiftd.server.util.IpAddrGetter;
 import kohgylw.kiftd.server.util.LogUtil;
 import kohgylw.kiftd.server.util.TextFormateUtil;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 

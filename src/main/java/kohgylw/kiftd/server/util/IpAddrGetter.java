@@ -2,6 +2,7 @@ package kohgylw.kiftd.server.util;
 
 
 import java.net.InetAddress;
+import java.net.UnknownHostException;
 
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -73,7 +74,7 @@ public class IpAddrGetter {
 		try {
 			InetAddress.getByName(ip);
 			return true;
-		} catch (Exception e) {
+		} catch (UnknownHostException e) {
 			return false;
 		}
 	}

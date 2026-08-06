@@ -3,7 +3,6 @@ package kohgylw.kiftd.ui.module;
 import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.Font;
-import java.awt.Point;
 import java.awt.Toolkit;
 import java.awt.Window;
 import java.io.File;
@@ -69,10 +68,10 @@ public class KiftdDynamicWindow {
 		String confdir = path + File.separator + "conf" + File.separator;
 		// 检查conf文件夹中是否包含名为“init.txt”的设置文件，若有，则使用其中定义的缩放比；否则使用程序计算的缩放比。
 		File settingFile = new File(confdir, "init.txt");
-		Properties settingp = new Properties();
+		Properties settingProps = new Properties();
 		try {
-			settingp.load(new FileInputStream(settingFile));
-			String udp = settingp.getProperty("scale");// 缩放比的设置项必须是scale=?形式
+			settingProps.load(new FileInputStream(settingFile));
+			String udp = settingProps.getProperty("scale");// 缩放比的设置项必须是scale=?形式
 			if (udp != null) {
 				double udpi = Double.parseDouble(udp);
 				// 设置其最大界限，避免用户错误设置导致界面显示溢出
@@ -82,7 +81,7 @@ public class KiftdDynamicWindow {
 				proportion = udpi;// 如果上述条件均满足，则使用用户定义的比例替换程序计算的比例
 			}
 		} catch (Exception e1) {
-
+			// 缩放设置文件损坏或不可读时回退程序计算的比例（下方 proportion 有兜底）
 		}
 		if (proportion < 1.0) {
 			proportion = 1.0; // 设置其最小限界，防止界面显示不全

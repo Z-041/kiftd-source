@@ -21,14 +21,12 @@ import kohgylw.kiftd.server.mapper.FolderMapper;
 import kohgylw.kiftd.server.model.Folder;
 import kohgylw.kiftd.server.enumeration.AccountAuth;
 
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-
 import java.util.List;
 import java.util.UUID;
 
 import kohgylw.kiftd.printer.Printer;
 
-@SpringBootTest(classes = KiftdApplication.class)
+@SpringBootTest(classes = { KiftdApplication.class, TestConfig.class })
 @AutoConfigureMockMvc
 @TestPropertySource(locations = "classpath:application-test.properties")
 class FolderServiceIntegrationTest {

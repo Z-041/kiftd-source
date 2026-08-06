@@ -36,9 +36,6 @@ public class AESCipher {
 	private static final Base64.Decoder DECODER = Base64.getDecoder();
 	private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
-	public AESCipher() {
-	}
-
 	public String generateRandomKey() throws NoSuchAlgorithmException {
 		KeyGenerator kg = KeyGenerator.getInstance("AES");
 		kg.init(256);

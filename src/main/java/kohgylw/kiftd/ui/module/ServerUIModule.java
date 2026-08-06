@@ -34,6 +34,7 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 
+import kohgylw.kiftd.printer.MessageOutput;
 import kohgylw.kiftd.printer.Printer;
 import kohgylw.kiftd.server.util.ConfigurationManager;
 import kohgylw.kiftd.ui.callback.GetServerStatus;
@@ -42,7 +43,7 @@ import kohgylw.kiftd.ui.callback.OnCloseServer;
 import kohgylw.kiftd.ui.callback.OnStartServer;
 import kohgylw.kiftd.ui.callback.UpdateSetting;
 
-public class ServerUIModule extends KiftdDynamicWindow {
+public class ServerUIModule extends KiftdDynamicWindow implements MessageOutput {
 
 	protected static JFrame window;
 	private static SystemTray tray;
@@ -93,7 +94,9 @@ public class ServerUIModule extends KiftdDynamicWindow {
 			ServerUIModule.window.setIconImage(
 					ImageIO.read(this.getClass().getResourceAsStream("/kohgylw/kiftd/ui/resource/icon.png")));
 		} catch (NullPointerException ex) {
+			// 图标资源缺失时保留默认窗口图标，无需处理
 		} catch (IOException ex2) {
+			// 图标资源不可读时保留默认窗口图标，无需处理
 		}
 		if (SystemTray.isSupported()) {
 			ServerUIModule.window.setDefaultCloseOperation(1);
@@ -242,6 +245,7 @@ public class ServerUIModule extends KiftdDynamicWindow {
 						try {
 							end = output.getLineEndOffset(100);
 						} catch (Exception exc) {
+							// 文本行数变化导致偏移获取失败时 end 保持 0，本次清理无操作
 						}
 						output.replaceRange("", 0, end);
 					}
@@ -287,8 +291,8 @@ public class ServerUIModule extends KiftdDynamicWindow {
 								printMessage("KIFT服务器未能成功启动，请检查设置或查看异常信息。");
 							}
 						} else {
-							if (ConfigurationManager.instance().getPropertiesStatus() != 0) {
-								switch (ConfigurationManager.instance().getPropertiesStatus()) {
+							if (ConfigurationManager.instance().getStatus() != 0) {
+								switch (ConfigurationManager.instance().getStatus()) {
 								case ConfigurationManager.INVALID_PORT:
 									printMessage("KIFT无法启动：端口设置无效。");
 									break;

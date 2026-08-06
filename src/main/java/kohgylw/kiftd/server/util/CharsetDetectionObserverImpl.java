@@ -15,7 +15,6 @@ public class CharsetDetectionObserverImpl implements nsICharsetDetectionObserver
 
 	@Override
 	public void Notify(String arg0) {
-		// TODO 自动生成的方法存根
 		charset=arg0;
 	}
 

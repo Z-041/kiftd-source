@@ -1,10 +1,11 @@
 package kohgylw.kiftd.newcore.repository.impl;
 
-import kohgylw.kiftd.newcore.repository.PropertiesRepository;
-import kohgylw.kiftd.server.mapper.PropertiesMapper;
-import kohgylw.kiftd.server.model.Propertie;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Repository;
+import kohgylw.kiftd.newcore.repository.PropertiesRepository;
+import kohgylw.kiftd.server.mapper.PropertiesMapper;
+import kohgylw.kiftd.server.model.Property;
+
 
 @Repository
 @Primary
@@ -17,18 +18,18 @@ public class PropertiesRepositoryImpl implements PropertiesRepository {
 	}
 
 	@Override
-	public Propertie selectByKey(String key) {
+	public Property selectByKey(String key) {
 		return propertiesMapper.selectByKey(key);
 	}
 
 	@Override
-	public int insert(Propertie propertie) {
-		return propertiesMapper.insert(propertie);
+	public int insert(Property property) {
+		return propertiesMapper.insert(property);
 	}
 
 	@Override
-	public int update(Propertie propertie) {
-		return propertiesMapper.update(propertie);
+	public int update(Property property) {
+		return propertiesMapper.update(property);
 	}
 
 	@Override

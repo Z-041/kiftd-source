@@ -1,25 +1,5 @@
 package kohgylw.kiftd.newcore.service.impl;
 
-import kohgylw.kiftd.server.util.ConfigurationManager;
-import kohgylw.kiftd.newcore.service.FolderViewService;
-import kohgylw.kiftd.newcore.repository.FolderRepository;
-import kohgylw.kiftd.newcore.repository.FileNodeRepository;
-import org.springframework.context.annotation.Primary;
-import org.springframework.stereotype.Service;
-
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpSession;
-import kohgylw.kiftd.server.model.Folder;
-import kohgylw.kiftd.server.model.Node;
-import kohgylw.kiftd.server.pojo.FolderView;
-import kohgylw.kiftd.server.pojo.SreachView;
-import kohgylw.kiftd.server.pojo.RemainingFolderView;
-import kohgylw.kiftd.server.util.FolderUtil;
-import kohgylw.kiftd.server.util.ServerTimeUtil;
-import kohgylw.kiftd.server.util.KiftdFFMPEGLocator;
-import kohgylw.kiftd.server.enumeration.AccountAuth;
-import com.google.gson.Gson;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -28,12 +8,43 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
+import com.google.gson.Gson;
+import org.springframework.context.annotation.Primary;
+import org.springframework.stereotype.Service;
+import kohgylw.kiftd.newcore.domain.AjaxProtocol;
+import kohgylw.kiftd.newcore.repository.FileNodeRepository;
+import kohgylw.kiftd.newcore.repository.FolderRepository;
+import kohgylw.kiftd.newcore.service.FolderViewService;
+import kohgylw.kiftd.server.enumeration.AccountAuth;
+import kohgylw.kiftd.server.model.Folder;
+import kohgylw.kiftd.server.model.Node;
+import kohgylw.kiftd.server.pojo.FolderView;
+import kohgylw.kiftd.server.pojo.RemainingFolderView;
+import kohgylw.kiftd.server.pojo.SearchView;
+import kohgylw.kiftd.server.util.ConfigurationManager;
+import kohgylw.kiftd.server.util.FolderUtil;
+import kohgylw.kiftd.server.util.KiftdFFMPEGLocator;
+import kohgylw.kiftd.server.util.ServerTimeUtil;
+
 
 @Primary
 @Service
 public class FolderViewServiceImpl implements FolderViewService {
 
 	private static int SELECT_STEP = 256;
+
+	/**
+	 * 搜索结果上限：防止超大目录下搜索一次性返回/加载海量结果导致前端渲染爆炸或 OOM。
+	 * 文件夹与文件结果各自独立限流；文件查询在 SQL 层 LIMIT 下推（见 {@link #SEARCH_FILE_QUERY_LIMIT}）。
+	 */
+	private static final int SEARCH_RESULT_LIMIT = 500;
+
+	/**
+	 * 搜索文件查询的 SQL 层 LIMIT：与结果上限对齐，避免 DB 全量加载所有后代文件后再在内存过滤。
+	 */
+	private static final int SEARCH_FILE_QUERY_LIMIT = 500;
 
 	private final FolderRepository folderRepository;
 	private final FileNodeRepository fileNodeRepository;
@@ -54,15 +65,15 @@ public class FolderViewServiceImpl implements FolderViewService {
 	public String getFolderViewJson(final String fid, final HttpSession session, final HttpServletRequest request) {
 		final ConfigurationManager cr = ConfigurationManager.instance();
 		if (fid == null || fid.length() == 0) {
-			return "ERROR";
+			return AjaxProtocol.ERROR;
 		}
 		Folder vf = this.folderRepository.selectById(fid);
 		if (vf == null) {
-			return "NOT_FOUND";
+			return AjaxProtocol.NOT_FOUND;
 		}
 		final String account = (String) session.getAttribute("ACCOUNT");
 		if (!ConfigurationManager.instance().accessFolder(vf, account)) {
-			return "notAccess";
+			return AjaxProtocol.NOT_ACCESS;
 		}
 		final FolderView fv = new FolderView();
 		fv.setSelectStep(SELECT_STEP);
@@ -126,7 +137,7 @@ public class FolderViewServiceImpl implements FolderViewService {
 		String fid = request.getParameter("fid");
 		String keyWorld = request.getParameter("keyworld");
 		if (fid == null || fid.length() == 0 || keyWorld == null) {
-			return "ERROR";
+			return AjaxProtocol.ERROR;
 		}
 		if (keyWorld.length() == 0) {
 			return getFolderViewJson(fid, request.getSession(), request);
@@ -134,9 +145,9 @@ public class FolderViewServiceImpl implements FolderViewService {
 		Folder vf = this.folderRepository.selectById(fid);
 		final String account = (String) request.getSession().getAttribute("ACCOUNT");
 		if (vf == null || !ConfigurationManager.instance().accessFolder(vf, account)) {
-			return "notAccess";
+			return AjaxProtocol.NOT_ACCESS;
 		}
-		final SreachView sv = new SreachView();
+		final SearchView sv = new SearchView();
 		Folder sf = new Folder();
 		sf.setFolderId(vf.getFolderId());
 		sf.setFolderName("在“" + vf.getFolderName() + "”内搜索“" + keyWorld + "”的结果...");
@@ -182,14 +193,17 @@ public class FolderViewServiceImpl implements FolderViewService {
 		for (final Folder f : allFolders) {
 			if (accessibleIds.contains(f.getFolderParent()) && cr.accessFolder(f, account)) {
 				accessibleIds.add(f.getFolderId());
-				if (f.getFolderName().toUpperCase().indexOf(key) >= 0) {
+				if (fs.size() < SEARCH_RESULT_LIMIT && f.getFolderName().toUpperCase().indexOf(key) >= 0) {
 					fs.add(f);
 				}
 			}
 		}
-		final List<Node> allFiles = this.fileNodeRepository.selectByParentFolderIds(new ArrayList<>(accessibleIds));
+		// SQL 层 LIMIT 下推：仅加载结果上限数量的文件，避免全量加载后代文件造成慢查询与 OOM
+		final List<Node> allFiles = this.fileNodeRepository
+				.selectByParentFolderIdsLimit(new ArrayList<>(accessibleIds), SEARCH_FILE_QUERY_LIMIT);
 		allFiles.stream()
 				.filter(n -> n.getFileName().toUpperCase().indexOf(key) >= 0)
+				.limit(SEARCH_RESULT_LIMIT)
 				.forEach(ns::add);
 	}
 
@@ -199,16 +213,16 @@ public class FolderViewServiceImpl implements FolderViewService {
 		final String foldersOffset = request.getParameter("foldersOffset");
 		final String filesOffset = request.getParameter("filesOffset");
 		if (fid == null || fid.length() == 0) {
-			return "ERROR";
+			return AjaxProtocol.ERROR;
 		}
 		Folder vf = this.folderRepository.selectById(fid);
 		if (vf == null) {
-			return "NOT_FOUND";
+			return AjaxProtocol.NOT_FOUND;
 		}
 		final String account = (String) request.getSession().getAttribute("ACCOUNT");
 		final ConfigurationManager cr = ConfigurationManager.instance();
 		if (!cr.accessFolder(vf, account)) {
-			return "notAccess";
+			return AjaxProtocol.NOT_ACCESS;
 		}
 		final RemainingFolderView fv = new RemainingFolderView();
 		if (foldersOffset != null) {
@@ -227,7 +241,7 @@ public class FolderViewServiceImpl implements FolderViewService {
 					fv.setFolderList(fs);
 				}
 			} catch (NumberFormatException e) {
-				return "ERROR";
+				return AjaxProtocol.ERROR;
 			}
 		}
 		if (filesOffset != null) {
@@ -242,7 +256,7 @@ public class FolderViewServiceImpl implements FolderViewService {
 					fv.setFileList(this.fileNodeRepository.selectByParentFolderIdSection(keyMap2));
 				}
 			} catch (NumberFormatException e) {
-				return "ERROR";
+				return AjaxProtocol.ERROR;
 			}
 		}
 		return gson.toJson(fv);

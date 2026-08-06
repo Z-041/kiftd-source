@@ -1,20 +1,20 @@
 package kohgylw.kiftd.newcore.service;
 
 import java.io.File;
+import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryMXBean;
 import java.sql.Connection;
+import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
-
 import javax.sql.DataSource;
-
 import org.springframework.stereotype.Service;
-
-import kohgylw.kiftd.server.util.ConfigurationManager;
 import kohgylw.kiftd.newcore.controller.GlobalExceptionHandler;
 import kohgylw.kiftd.newcore.infrastructure.logging.ApiPerformanceFilter;
 import kohgylw.kiftd.printer.Printer;
+import kohgylw.kiftd.server.util.ConfigurationManager;
+
 
 @Service
 public class SystemHealthService {
@@ -52,7 +52,7 @@ public class SystemHealthService {
 
 		health.put("status", overallStatus ? "UP" : "DOWN");
 		health.put("appName", "kiftd");
-		health.put("version", "1.2.3-SNAPSHOT");
+		health.put("version", "1.3.0");
 
 		return health;
 	}
@@ -114,7 +114,7 @@ public class SystemHealthService {
 			boolean valid = conn.isValid(3);
 			result.put("status", valid);
 			result.put("message", valid ? "数据库连接正常" : "数据库连接验证失败");
-		} catch (Exception e) {
+		} catch (SQLException e) {
 			result.put("status", false);
 			result.put("message", "数据库连接异常: " + e.getMessage());
 			Printer.instance.print("[健康检查] 数据库连接检查失败: " + e.getMessage());
@@ -154,7 +154,7 @@ public class SystemHealthService {
 			result.put("status", true);
 			result.put("message", "文件系统读写正常");
 			result.put("path", fsPath);
-		} catch (Exception e) {
+		} catch (IOException e) {
 			result.put("status", false);
 			result.put("message", "文件系统读写测试失败: " + e.getMessage());
 			Printer.instance.print("[健康检查] 文件系统检查失败: " + e.getMessage());

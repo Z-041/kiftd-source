@@ -1,22 +1,26 @@
 package kohgylw.kiftd.newcore.service.impl;
 
-import kohgylw.kiftd.server.util.ConfigurationManager;
-import kohgylw.kiftd.newcore.service.FolderService;
-import kohgylw.kiftd.newcore.repository.FolderRepository;
-import kohgylw.kiftd.newcore.repository.FileNodeRepository;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+import jakarta.servlet.http.HttpServletRequest;
+import com.google.gson.Gson;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import com.google.gson.Gson;
-
-import jakarta.servlet.http.HttpServletRequest;
+import kohgylw.kiftd.newcore.domain.AjaxProtocol;
+import kohgylw.kiftd.newcore.repository.FileNodeRepository;
+import kohgylw.kiftd.newcore.repository.FolderRepository;
+import kohgylw.kiftd.newcore.service.FolderService;
 import kohgylw.kiftd.server.enumeration.AccountAuth;
 import kohgylw.kiftd.server.listener.ServerInitListener;
 import kohgylw.kiftd.server.model.Folder;
 import kohgylw.kiftd.server.model.Node;
-import kohgylw.kiftd.server.pojo.CreateNewFolderByNameRespons;
+import kohgylw.kiftd.server.pojo.CreateNewFolderByNameResponse;
 import kohgylw.kiftd.server.pojo.FolderCountResult;
+import kohgylw.kiftd.server.util.ConfigurationManager;
 import kohgylw.kiftd.server.util.FileNodeUtil;
 import kohgylw.kiftd.server.util.FolderUtil;
 import kohgylw.kiftd.server.util.IpAddrGetter;
@@ -24,11 +28,6 @@ import kohgylw.kiftd.server.util.LogUtil;
 import kohgylw.kiftd.server.util.ServerTimeUtil;
 import kohgylw.kiftd.server.util.TextFormateUtil;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
 
 /**
  *
@@ -71,42 +70,43 @@ public class FolderServiceImpl implements FolderService {
 		final String folderConstraint = request.getParameter("folderConstraint");
 		final String account = (String) request.getSession().getAttribute("ACCOUNT");
 		if (parentId == null || folderName == null || parentId.length() <= 0 || folderName.length() <= 0) {
-			return "errorParameter";
+			return AjaxProtocol.ERROR_PARAMETER;
 		}
 		if (!TextFormateUtil.instance().matcherFolderName(folderName)) {
-			return "errorParameter";
+			return AjaxProtocol.ERROR_PARAMETER;
 		}
 		final Folder parentFolder = this.folderRepository.selectById(parentId);
 		if (parentFolder == null || !ConfigurationManager.instance().accessFolder(parentFolder, account)) {
-			return "errorParameter";
+			return AjaxProtocol.ERROR_PARAMETER;
 		}
 		if (!ConfigurationManager.instance().authorized(account, AccountAuth.CREATE_NEW_FOLDER,
 				folderUtil.getAllFoldersId(parentId))) {
-			return "noAuthorized";
+			return AjaxProtocol.NO_AUTHORIZED;
 		}
 		if (folderRepository.countByParentId(parentId) >= FileNodeUtil.MAXIMUM_NUM_OF_SINGLE_FOLDER) {
-			return "foldersTotalOutOfLimit";
+			return AjaxProtocol.FOLDERS_TOTAL_OUT_OF_LIMIT;
 		}
 		int pc = parentFolder.getFolderConstraint();
+		int constraintValue;
 		if (folderConstraint != null) {
 			try {
-				int ifc = Integer.parseInt(folderConstraint);
-				if (ifc != 0 && account == null) {
-					return "errorParameter";
+				constraintValue = Integer.parseInt(folderConstraint);
+				if (constraintValue != 0 && account == null) {
+					return AjaxProtocol.ERROR_PARAMETER;
 				}
-				if (ifc < pc) {
-					return "errorParameter";
+				if (constraintValue < pc) {
+					return AjaxProtocol.ERROR_PARAMETER;
 				}
-			} catch (Exception e) {
-				return "errorParameter";
+			} catch (NumberFormatException e) {
+				return AjaxProtocol.ERROR_PARAMETER;
 			}
 		} else {
-			return "errorParameter";
+			return AjaxProtocol.ERROR_PARAMETER;
 		}
 		int retryCount = 0;
 		while (retryCount < 3) {
 			if (folderRepository.selectByParentId(parentId).stream().anyMatch((e) -> e.getFolderName().equals(folderName))) {
-				return "nameOccupied";
+				return AjaxProtocol.NAME_OCCUPIED;
 			}
 			Folder f = new Folder();
 			f.setFolderId(UUID.randomUUID().toString());
@@ -118,12 +118,7 @@ public class FolderServiceImpl implements FolderService {
 				f.setFolderCreator("匿名用户");
 			}
 			f.setFolderParent(parentId);
-			try {
-				int ifc = Integer.parseInt(folderConstraint);
-				f.setFolderConstraint(ifc);
-			} catch (Exception e) {
-				return "errorParameter";
-			}
+			f.setFolderConstraint(constraintValue);
 			int insertRetry = 0;
 			while (insertRetry < 10) {
 				try {
@@ -131,9 +126,9 @@ public class FolderServiceImpl implements FolderService {
 					if (r > 0) {
 						if (folderUtil.isValidFolder(f)) {
 							this.logUtil.writeCreateFolderEvent(account, ipAddrGetter.getIpAddr(request), f);
-							return "createFolderSuccess";
+							return AjaxProtocol.CREATE_FOLDER_SUCCESS;
 						} else {
-							return "cannotCreateFolder";
+							return AjaxProtocol.CANNOT_CREATE_FOLDER;
 						}
 					}
 					break;
@@ -148,7 +143,7 @@ public class FolderServiceImpl implements FolderService {
 			}
 			retryCount++;
 		}
-		return "cannotCreateFolder";
+		return AjaxProtocol.CANNOT_CREATE_FOLDER;
 	}
 
 	@Transactional
@@ -156,27 +151,27 @@ public class FolderServiceImpl implements FolderService {
 		final String folderId = request.getParameter("folderId");
 		final String account = (String) request.getSession().getAttribute("ACCOUNT");
 		if (folderId == null || folderId.length() == 0 || "root".equals(folderId)) {
-			return "errorParameter";
+			return AjaxProtocol.ERROR_PARAMETER;
 		}
 		final Folder folder = this.folderRepository.selectById(folderId);
 		if (folder == null) {
-			return "deleteFolderSuccess";
+			return AjaxProtocol.DELETE_FOLDER_SUCCESS;
 		}
 		if (!ConfigurationManager.instance().accessFolder(folder, account)) {
-			return "noAuthorized";
+			return AjaxProtocol.NO_AUTHORIZED;
 		}
 		if (!ConfigurationManager.instance().authorized(account, AccountAuth.DELETE_FILE_OR_FOLDER,
 				folderUtil.getAllFoldersId(folder.getFolderParent()))) {
-			return "noAuthorized";
+			return AjaxProtocol.NO_AUTHORIZED;
 		}
 		final List<Folder> l = this.folderUtil.getParentList(folderId);
 		if (this.folderRepository.deleteById(folderId) > 0) {
 			folderUtil.deleteAllChildFolder(folderId);
 			this.logUtil.writeDeleteFolderEvent(request, folder, l);
 			ServerInitListener.needCheck = true;
-			return "deleteFolderSuccess";
+			return AjaxProtocol.DELETE_FOLDER_SUCCESS;
 		}
-		return "cannotDeleteFolder";
+		return AjaxProtocol.CANNOT_DELETE_FOLDER;
 	}
 
 	@Transactional
@@ -187,50 +182,50 @@ public class FolderServiceImpl implements FolderService {
 		final String account = (String) request.getSession().getAttribute("ACCOUNT");
 		if (folderId == null || folderId.length() == 0 || newName == null || newName.length() == 0
 				|| "root".equals(folderId)) {
-			return "errorParameter";
+			return AjaxProtocol.ERROR_PARAMETER;
 		}
 		if (!TextFormateUtil.instance().matcherFolderName(newName)) {
-			return "errorParameter";
+			return AjaxProtocol.ERROR_PARAMETER;
 		}
 		final Folder folder = this.folderRepository.selectById(folderId);
 		if (folder == null) {
-			return "errorParameter";
+			return AjaxProtocol.ERROR_PARAMETER;
 		}
 		if (!ConfigurationManager.instance().accessFolder(folder, account)) {
-			return "noAuthorized";
+			return AjaxProtocol.NO_AUTHORIZED;
 		}
 		if (!ConfigurationManager.instance().authorized(account, AccountAuth.RENAME_FILE_OR_FOLDER,
 				folderUtil.getAllFoldersId(folder.getFolderParent()))) {
-			return "noAuthorized";
+			return AjaxProtocol.NO_AUTHORIZED;
 		}
 		final Folder parentFolder = this.folderRepository.selectById(folder.getFolderParent());
 		if (parentFolder == null) {
 			// 目标文件夹的父级为空（例如父级为根目录"null"或已被删除），视为参数错误
-			return "errorParameter";
+			return AjaxProtocol.ERROR_PARAMETER;
 		}
 		int pc = parentFolder.getFolderConstraint();
 		if (folderConstraint != null) {
 			try {
-				int ifc = Integer.parseInt(folderConstraint);
-				if (ifc > 0 && account == null) {
-					return "errorParameter";
+				int constraintValue = Integer.parseInt(folderConstraint);
+				if (constraintValue > 0 && account == null) {
+					return AjaxProtocol.ERROR_PARAMETER;
 				}
-				if (ifc < pc) {
-					return "errorParameter";
+				if (constraintValue < pc) {
+					return AjaxProtocol.ERROR_PARAMETER;
 				} else {
 					Folder folderToUpdate = folderRepository.selectById(folderId);
 					if (folderToUpdate != null) {
-						folderToUpdate.setFolderConstraint(ifc);
+						folderToUpdate.setFolderConstraint(constraintValue);
 						folderRepository.update(folderToUpdate);
 					}
-					folderUtil.changeChildFolderConstraint(folderId, ifc);
+					folderUtil.changeChildFolderConstraint(folderId, constraintValue);
 					if (!folder.getFolderName().equals(newName)) {
 						int retryCount = 0;
 						boolean success = false;
 						while (retryCount < 3) {
 							if (folderRepository.selectByParentId(parentFolder.getFolderId()).stream()
 								.anyMatch((e) -> e.getFolderName().equals(newName))) {
-								return "nameOccupied";
+								return AjaxProtocol.NAME_OCCUPIED;
 							}
 							Folder renameFolder = folderRepository.selectById(folderId);
 							if (renameFolder != null) {
@@ -246,18 +241,18 @@ public class FolderServiceImpl implements FolderService {
 							retryCount++;
 						}
 						if (!success) {
-							return "errorParameter";
+							return AjaxProtocol.ERROR_PARAMETER;
 						}
 					}
 					this.logUtil.writeRenameFolderEvent(account, ipAddrGetter.getIpAddr(request), folder.getFolderId(),
 							folder.getFolderName(), newName, folder.getFolderConstraint() + "", folderConstraint);
-					return "renameFolderSuccess";
+					return AjaxProtocol.RENAME_FOLDER_SUCCESS;
 				}
-			} catch (Exception e) {
-				return "errorParameter";
+			} catch (NumberFormatException e) {
+				return AjaxProtocol.ERROR_PARAMETER;
 			}
 		} else {
-			return "errorParameter";
+			return AjaxProtocol.ERROR_PARAMETER;
 		}
 	}
 
@@ -268,33 +263,33 @@ public class FolderServiceImpl implements FolderService {
 		final String folderName = request.getParameter("folderName");
 		final String account = (String) request.getSession().getAttribute("ACCOUNT");
 		if (parentId == null || parentId.length() == 0) {
-			return "deleteError";
+			return AjaxProtocol.DELETE_ERROR;
 		}
 		Folder p = folderRepository.selectById(parentId);
 		if (p == null) {
-			return "deleteError";
+			return AjaxProtocol.DELETE_ERROR;
 		}
 		if (!ConfigurationManager.instance().authorized(account, AccountAuth.DELETE_FILE_OR_FOLDER,
 				folderUtil.getAllFoldersId(parentId)) || !ConfigurationManager.instance().accessFolder(p, account)) {
-			return "deleteError";
+			return AjaxProtocol.DELETE_ERROR;
 		}
 		final Folder[] repeatFolders = this.folderRepository.selectByParentId(parentId).stream()
 				.filter((f) -> f.getFolderName().equals(folderName))
 				.toArray(Folder[]::new);
 		for (Folder rf : repeatFolders) {
 			if (!ConfigurationManager.instance().accessFolder(rf, account)) {
-				return "deleteError";
+				return AjaxProtocol.DELETE_ERROR;
 			}
 			final List<Folder> l = this.folderUtil.getParentList(rf.getFolderId());
 			if (this.folderRepository.deleteById(rf.getFolderId()) > 0) {
 				folderUtil.deleteAllChildFolder(rf.getFolderId());
 				this.logUtil.writeDeleteFolderEvent(request, rf, l);
 			} else {
-				return "deleteError";
+				return AjaxProtocol.DELETE_ERROR;
 			}
 		}
 		ServerInitListener.needCheck = true;
-		return "deleteSuccess";
+		return AjaxProtocol.DELETE_SUCCESS;
 	}
 
 	@Override
@@ -304,7 +299,7 @@ public class FolderServiceImpl implements FolderService {
 		final String folderName = request.getParameter("folderName");
 		final String folderConstraint = request.getParameter("folderConstraint");
 		final String account = (String) request.getSession().getAttribute("ACCOUNT");
-		CreateNewFolderByNameRespons cnfbnr = new CreateNewFolderByNameRespons();
+		CreateNewFolderByNameResponse cnfbnr = new CreateNewFolderByNameResponse();
 		if (parentId == null || folderName == null || parentId.length() <= 0 || folderName.length() <= 0) {
 			cnfbnr.setResult("error");
 			return gson.toJson(cnfbnr);
@@ -330,16 +325,16 @@ public class FolderServiceImpl implements FolderService {
 		int pc = parentFolder.getFolderConstraint();
 		if (folderConstraint != null) {
 			try {
-				int ifc = Integer.parseInt(folderConstraint);
-				if (ifc != 0 && account == null) {
+				int constraintValue = Integer.parseInt(folderConstraint);
+				if (constraintValue != 0 && account == null) {
 					cnfbnr.setResult("error");
 					return gson.toJson(cnfbnr);
 				}
-				if (ifc < pc) {
+				if (constraintValue < pc) {
 					cnfbnr.setResult("error");
 					return gson.toJson(cnfbnr);
 				}
-			} catch (Exception e) {
+			} catch (NumberFormatException e) {
 				cnfbnr.setResult("error");
 				return gson.toJson(cnfbnr);
 			}
@@ -357,9 +352,9 @@ public class FolderServiceImpl implements FolderService {
 				f.setFolderName(folderName);
 			}
 			try {
-				int ifc = Integer.parseInt(folderConstraint);
-				f.setFolderConstraint(ifc);
-			} catch (Exception e) {
+				int constraintValue = Integer.parseInt(folderConstraint);
+				f.setFolderConstraint(constraintValue);
+			} catch (NumberFormatException e) {
 				cnfbnr.setResult("error");
 				return gson.toJson(cnfbnr);
 			}
@@ -404,12 +399,12 @@ public class FolderServiceImpl implements FolderService {
 	public String getFolderCountResult(HttpServletRequest request) {
 		final String folderId = request.getParameter("folderId");
 		if (folderId == null || folderId.length() == 0) {
-			return "ERROR";
+			return AjaxProtocol.ERROR;
 		}
 		Folder vf = this.folderRepository.selectById(folderId);
 		final String account = (String) request.getSession().getAttribute("ACCOUNT");
 		if (vf == null || !ConfigurationManager.instance().accessFolder(vf, account)) {
-			return "ERROR";
+			return AjaxProtocol.ERROR;
 		}
 		FolderCountResult fcr = new FolderCountResult();
 		countFoldersIterator(folderId, account, fcr);

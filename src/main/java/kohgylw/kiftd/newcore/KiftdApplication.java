@@ -1,20 +1,18 @@
 package kohgylw.kiftd.newcore;
 
-import kohgylw.kiftd.printer.Printer;
-import kohgylw.kiftd.server.util.ConfigurationManager;
-import kohgylw.kiftd.newcore.config.DataSourceConfig;
-import kohgylw.kiftd.newcore.config.UndertowServerConfig;
-import kohgylw.kiftd.newcore.config.WebMvcConfig;
-import kohgylw.kiftd.newcore.service.StartupHealthChecker;
-
+import javax.sql.DataSource;
+import com.zaxxer.hikari.HikariDataSource;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Import;
+import kohgylw.kiftd.newcore.config.DataSourceConfig;
+import kohgylw.kiftd.newcore.config.UndertowServerConfig;
+import kohgylw.kiftd.newcore.config.WebMvcConfig;
+import kohgylw.kiftd.newcore.service.StartupHealthChecker;
+import kohgylw.kiftd.printer.Printer;
+import kohgylw.kiftd.server.util.ConfigurationManager;
 
-import com.zaxxer.hikari.HikariDataSource;
-
-import javax.sql.DataSource;
 
 @SpringBootApplication
 @Import({ WebMvcConfig.class, DataSourceConfig.class, ConfigurationManager.class, UndertowServerConfig.class })
@@ -120,6 +118,7 @@ public class KiftdApplication {
 			try {
 				Runtime.getRuntime().removeShutdownHook(shutdownHook);
 			} catch (IllegalStateException ignored) {
+				// JVM 关闭过程中 removeShutdownHook 抛 IllegalStateException 属正常，忽略
 			}
 			shutdownHook = null;
 		}

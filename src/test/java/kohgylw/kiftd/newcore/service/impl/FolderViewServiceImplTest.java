@@ -210,7 +210,7 @@ class FolderViewServiceImplTest {
             when(reader.accessFolder(any(Folder.class), anyString())).thenReturn(true);
             when(folderUtil.getParentList("folder1")).thenReturn(new ArrayList<>());
             when(folderUtil.getAllDescendantFolders("folder1")).thenReturn(allFolders);
-            when(fileNodeRepository.selectByParentFolderIds(anyList())).thenReturn(allFiles);
+            when(fileNodeRepository.selectByParentFolderIdsLimit(anyList(), anyInt())).thenReturn(allFiles);
             lenient().when(reader.authorized(anyString(), any(AccountAuth.class), anyList())).thenReturn(false);
 
             String result = folderViewService.getSearchViewJson(request);

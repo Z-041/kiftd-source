@@ -53,11 +53,11 @@ class FileSystemManagerTest {
         node.setFileName("test.txt");
         node.setFilePath(null);
 
-        Method method = FileSystemManager.class.getDeclaredMethod("getFileFormBlocks", Node.class);
+        Method method = FileSystemManager.class.getDeclaredMethod("getFileFromBlocks", Node.class);
         method.setAccessible(true);
 
         Object result = method.invoke(fsm, node);
-        assertNull(result, "When filePath is null, getFileFormBlocks should return null without throwing NPE");
+        assertNull(result, "When filePath is null, getFileFromBlocks should return null without throwing NPE");
     }
 
     @Test
@@ -67,7 +67,7 @@ class FileSystemManagerTest {
 		node.setFileName("test.txt");
 		node.setFilePath("file_test-uuid.block");
 
-		Method method = FileSystemManager.class.getDeclaredMethod("getFileFormBlocks", Node.class);
+		Method method = FileSystemManager.class.getDeclaredMethod("getFileFromBlocks", Node.class);
 		method.setAccessible(true);
 
 		Object result = method.invoke(fsm, node);
@@ -81,7 +81,7 @@ class FileSystemManagerTest {
 		node.setFileName("test.txt");
 		node.setFilePath("file_../../etc/passwd.block");
 
-		Method method = FileSystemManager.class.getDeclaredMethod("getFileFormBlocks", Node.class);
+		Method method = FileSystemManager.class.getDeclaredMethod("getFileFromBlocks", Node.class);
 		method.setAccessible(true);
 
 		Object result = method.invoke(fsm, node);

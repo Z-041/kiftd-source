@@ -15,6 +15,7 @@ import java.nio.file.WatchKey;
 import java.nio.file.WatchService;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -23,7 +24,6 @@ import java.util.TreeSet;
 import java.util.stream.Collectors;
 
 import kohgylw.kiftd.printer.Printer;
-import kohgylw.kiftd.util.SizeFormatUtil;
 import kohgylw.kiftd.server.enumeration.AccountAuth;
 import kohgylw.kiftd.server.enumeration.LogLevel;
 import kohgylw.kiftd.server.enumeration.VCLevel;
@@ -133,6 +133,7 @@ public class ConfigurationManager {
 					}
 				}
 			} catch (Exception ignored) {
+				// 探测 jar/classes 内 conf 目录失败时忽略：后续逻辑会回退到 user.dir
 			}
 		}
 		if (!new File(this.basePath, "webContext").isDirectory()) {
@@ -195,16 +196,8 @@ public class ConfigurationManager {
 		return this.status;
 	}
 
-	public int getPropertiesStatus() {
-		return this.status;
-	}
-
 	public void revalidate() {
 		this.status = validate();
-	}
-
-	public void reTestServerPropertiesAndEffect() {
-		revalidate();
 	}
 
 	// ==================== Account Management ====================
@@ -345,7 +338,9 @@ public class ConfigurationManager {
 
 	private boolean hasSuperAuth(String account) {
 		if (account != null) {
-			return "S".equals(accountp.getProperty(account + ".privilege"));
+			// 内置 admin 账户即为系统管理员；同时支持部署者在 account.properties 中
+			// 显式配置“账户名.privilege=S”将其他账户提升为超级管理员。
+			return "admin".equals(account) || "S".equals(accountp.getProperty(account + ".privilege"));
 		}
 		return false;
 	}
@@ -372,7 +367,8 @@ public class ConfigurationManager {
 		if (account != null && newPassword != null) {
 			if (accountp.getProperty(account + ".pwd") != null) {
 				synchronized (accountp) {
-					accountp.setProperty(account + ".pwd", newPassword);
+					// 以 PBKDF2 哈希形式存储，禁止明文落盘；verifyPassword 兼容历史明文，可平滑迁移
+					accountp.setProperty(account + ".pwd", PasswordUtil.hashPassword(newPassword));
 					storePropertiesAtomically("account.properties", accountp, null);
 					return true;
 				}
@@ -385,7 +381,8 @@ public class ConfigurationManager {
 		if (newAccount != null && newPassword != null) {
 			if (accountp.getProperty(newAccount + ".pwd") == null) {
 				synchronized (accountp) {
-					accountp.setProperty(newAccount + ".pwd", newPassword);
+					// 以 PBKDF2 哈希形式存储，禁止明文落盘
+					accountp.setProperty(newAccount + ".pwd", PasswordUtil.hashPassword(newPassword));
 					if (signUpAuth != null) {
 						accountp.setProperty(newAccount + ".auth", signUpAuth);
 					}
@@ -517,7 +514,7 @@ public class ConfigurationManager {
 			try {
 				storePropertiesAtomically("account.properties", accountp, null);
 				return true;
-			} catch (Exception e) {
+			} catch (IOException e) {
 				Printer.instance.print("错误：更新账户配置文件时出现错误，请立即检查账户配置文件。");
 				return false;
 			}
@@ -805,7 +802,7 @@ public class ConfigurationManager {
 					storePropertiesAtomically("server.properties", this.serverp, null);
 					Printer.instance.print("配置更新完毕，准备就绪。");
 					return true;
-				} catch (Exception e) {
+				} catch (IOException e) {
 					Printer.instance.print("错误：更新设置失败，无法存入设置文件。");
 				}
 			}
@@ -895,7 +892,7 @@ public class ConfigurationManager {
 					Printer.instance.print("错误：端口号配置不正确，必须使用1-65535之间的整数。");
 					return INVALID_PORT;
 				}
-			} catch (Exception e) {
+			} catch (NumberFormatException e) {
 				Printer.instance.print("错误：端口号配置不正确，必须使用1-65535之间的整数。");
 				return INVALID_PORT;
 			}
@@ -972,7 +969,7 @@ public class ConfigurationManager {
 					Printer.instance.print("错误：缓冲区大小设置无效。");
 					return INVALID_BUFFER_SIZE;
 				}
-			} catch (Exception e2) {
+			} catch (NumberFormatException e2) {
 				Printer.instance.print("错误：缓冲区大小设置无效。");
 				return INVALID_BUFFER_SIZE;
 			}
@@ -1057,7 +1054,7 @@ public class ConfigurationManager {
 				Class.forName(dbDriver).getDeclaredConstructor().newInstance();
 				Connection testConn = DriverManager.getConnection(dbURL, dbUser, dbPwd);
 				testConn.close();
-			} catch (Exception e) {
+			} catch (ReflectiveOperationException | SQLException e) {
 				Printer.instance.print("错误：无法连接至自定义数据库：" + dbURL + "（user=" + dbUser
 						+ "），请确重新配置MySQL数据库相关项。");
 				return CANT_CONNECT_DB;
@@ -1098,7 +1095,7 @@ public class ConfigurationManager {
 							Printer.instance.print("错误：无法启用https支持，https访问端口号配置不正确。");
 							return HTTPS_SETTING_ERROR;
 						}
-					} catch (Exception e) {
+					} catch (NumberFormatException e) {
 						Printer.instance.print("错误：无法启用https支持，https访问端口号配置不正确。");
 						return HTTPS_SETTING_ERROR;
 					}
@@ -1251,7 +1248,8 @@ public class ConfigurationManager {
 							if (ws != null) {
 								try {
 									ws.close();
-								} catch (Exception ignored) {
+								} catch (IOException ignored) {
+									// 关闭监听 WatchService 失败无需处理：功能失效已有外层异常提示
 								}
 							}
 						}
@@ -1277,7 +1275,7 @@ public class ConfigurationManager {
 		try (FileOutputStream fos = new FileOutputStream(this.confDir + "server.properties")) {
 			dsp.store(fos, "<This is the default kiftd server setting file. >");
 			Printer.instance.print("初始服务器配置文件生成完毕。");
-		} catch (Exception e) {
+		} catch (IOException e) {
 			Printer.instance.print("错误：无法生成初始服务器配置文件，存储路径不存在或写入失败。");
 		}
 	}
@@ -1285,14 +1283,15 @@ public class ConfigurationManager {
 	private void createDefaultAccountPropertiesFile() {
 		Printer.instance.print("正在生成初始账户配置文件（" + this.confDir + "account.properties）...");
 		final java.util.Properties dap = new java.util.Properties();
-		dap.setProperty("admin.pwd", "000000");
+		// 默认密码同样以 PBKDF2 哈希存储，避免配置文件明文泄露
+		dap.setProperty("admin.pwd", PasswordUtil.hashPassword("000000"));
 		dap.setProperty("admin.auth", "cudrm");
 		dap.setProperty("authOverall", "l");
 		try (FileOutputStream accountSettingOut = new FileOutputStream(this.confDir + "account.properties")) {
 			dap.store(accountSettingOut, "<This is the default kiftd account setting file. >");
 			Printer.instance.print("初始账户配置文件生成完毕。");
 			Printer.instance.print("警告：已创建默认管理员账户 admin，初始密码为 000000，请登录后立即修改！");
-		} catch (Exception e) {
+		} catch (IOException e) {
 			Printer.instance.print("错误：无法生成初始账户配置文件，存储路径不存在或写入失败。");
 		}
 	}

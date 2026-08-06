@@ -1,39 +1,5 @@
 package kohgylw.kiftd.newcore.service.impl;
 
-import kohgylw.kiftd.server.util.ConfigurationManager;
-import kohgylw.kiftd.newcore.service.FileService;
-import kohgylw.kiftd.newcore.repository.FileNodeRepository;
-import kohgylw.kiftd.newcore.repository.FolderRepository;
-import org.springframework.context.annotation.Primary;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
-
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
-
-import jakarta.annotation.PostConstruct;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import kohgylw.kiftd.server.enumeration.AccountAuth;
-import kohgylw.kiftd.server.exception.FoldersTotalOutOfLimitException;
-import kohgylw.kiftd.server.listener.ServerInitListener;
-import kohgylw.kiftd.server.model.Folder;
-import kohgylw.kiftd.server.model.Node;
-import kohgylw.kiftd.server.pojo.CheckImportFolderRespons;
-import kohgylw.kiftd.server.pojo.CheckUploadFilesRespons;
-import kohgylw.kiftd.server.util.CircuitBreaker;
-import kohgylw.kiftd.server.util.FileBlockUtil;
-import kohgylw.kiftd.server.util.FileNodeUtil;
-import kohgylw.kiftd.server.util.FolderUtil;
-import kohgylw.kiftd.server.util.IpAddrGetter;
-import kohgylw.kiftd.server.util.LogUtil;
-import kohgylw.kiftd.server.util.RangeFileStreamWriter;
-import kohgylw.kiftd.server.util.RetryUtil;
-import kohgylw.kiftd.server.util.ServerTimeUtil;
-import kohgylw.kiftd.server.util.TextFormateUtil;
-import kohgylw.kiftd.util.SizeFormatUtil;
-
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -44,6 +10,39 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import jakarta.annotation.PostConstruct;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+import org.springframework.context.annotation.Primary;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+import kohgylw.kiftd.newcore.domain.AjaxProtocol;
+import kohgylw.kiftd.newcore.repository.FileNodeRepository;
+import kohgylw.kiftd.newcore.repository.FolderRepository;
+import kohgylw.kiftd.newcore.service.FileService;
+import kohgylw.kiftd.server.enumeration.AccountAuth;
+import kohgylw.kiftd.server.exception.FoldersTotalOutOfLimitException;
+import kohgylw.kiftd.server.listener.ServerInitListener;
+import kohgylw.kiftd.server.model.Folder;
+import kohgylw.kiftd.server.model.Node;
+import kohgylw.kiftd.server.pojo.CheckImportFolderResponse;
+import kohgylw.kiftd.server.pojo.CheckUploadFilesResponse;
+import kohgylw.kiftd.server.util.CircuitBreaker;
+import kohgylw.kiftd.server.util.ConfigurationManager;
+import kohgylw.kiftd.server.util.FileBlockUtil;
+import kohgylw.kiftd.server.util.FileNodeUtil;
+import kohgylw.kiftd.server.util.FolderUtil;
+import kohgylw.kiftd.server.util.IpAddrGetter;
+import kohgylw.kiftd.server.util.LogUtil;
+import kohgylw.kiftd.server.util.RangeFileStreamWriter;
+import kohgylw.kiftd.server.util.RetryUtil;
+import kohgylw.kiftd.server.util.ServerTimeUtil;
+import kohgylw.kiftd.server.util.SizeFormatUtil;
+import kohgylw.kiftd.server.util.TextFormateUtil;
+
 
 /**
  * 
@@ -114,30 +113,35 @@ public class FileServiceImpl implements FileService {
 				|| !ConfigurationManager.instance().accessFolder(folder, account)) {
 			return NO_AUTHORIZED;
 		}
-		final List<String> namelistObj = gson.fromJson(nameList, new TypeToken<List<String>>() {
+		final List<String> parsedNameList = gson.fromJson(nameList, new TypeToken<List<String>>() {
 		}.getType());
-		CheckUploadFilesRespons cufr = new CheckUploadFilesRespons();
-		try {
-			long mufs = Long.parseLong(maxUploadFileSize);
-			String mfname = namelistObj.get(Integer.parseInt(maxUploadFileIndex));
-			long pMaxUploadSize = ConfigurationManager.instance().getUploadFileSize(account);
-			if (pMaxUploadSize >= 0) {
-				if (mufs > pMaxUploadSize) {
-					cufr.setCheckResult("fileTooLarge");
-					cufr.setMaxUploadFileSize(SizeFormatUtil.formatFileSize(pMaxUploadSize,
-							"\u8bbe\u7f6e\u65e0\u6548\uff0c\u8bf7\u8054\u7cfb\u7ba1\u7406\u5458"));
-					cufr.setOverSizeFile(mfname);
-					return gson.toJson(cufr);
-				}
-			}
-		} catch (Exception e) {
+		if (parsedNameList == null) {
 			return ERROR_PARAMETER;
+		}
+		CheckUploadFilesResponse cufr = new CheckUploadFilesResponse();
+		final long mufs;
+		final String maxFileName;
+		try {
+			mufs = Long.parseLong(maxUploadFileSize);
+			maxFileName = parsedNameList.get(Integer.parseInt(maxUploadFileIndex));
+		} catch (NumberFormatException | IndexOutOfBoundsException e) {
+			return ERROR_PARAMETER;
+		}
+		long pMaxUploadSize = ConfigurationManager.instance().getUploadFileSize(account);
+		if (pMaxUploadSize >= 0) {
+			if (mufs > pMaxUploadSize) {
+				cufr.setCheckResult("fileTooLarge");
+				cufr.setMaxUploadFileSize(SizeFormatUtil.formatFileSize(pMaxUploadSize,
+						"\u8bbe\u7f6e\u65e0\u6548\uff0c\u8bf7\u8054\u7cfb\u7ba1\u7406\u5458"));
+				cufr.setOverSizeFile(maxFileName);
+				return gson.toJson(cufr);
+			}
 		}
 		final List<String> pereFileNameList = new ArrayList<>();
 		final List<Node> files = this.fileNodeRepository.selectByParentFolderId(folderId);
 		final Set<String> existingNames = files == null ? Collections.emptySet()
 				: files.stream().map(Node::getFileName).collect(Collectors.toSet());
-		for (final String fileName : namelistObj) {
+		for (final String fileName : parsedNameList) {
 			if (fileName == null || fileName.length() <= 0
 					|| !TextFormateUtil.instance().matcherFileName(fileName)) {
 				return ERROR_PARAMETER;
@@ -146,9 +150,10 @@ public class FileServiceImpl implements FileService {
 				pereFileNameList.add(fileName);
 			}
 		}
-		long estimatedTotal = fileNodeRepository.countByParentFolderId(folderId) - pereFileNameList.size() + namelistObj.size();
-		if (estimatedTotal > FileNodeUtil.MAXIMUM_NUM_OF_SINGLE_FOLDER || estimatedTotal < 0) {
-			return "filesTotalOutOfLimit";
+		long estimatedTotal = fileNodeRepository.countByParentFolderId(folderId) - pereFileNameList.size() + parsedNameList.size();
+		// estimatedTotal = COUNT(≥0) + (parsedNameList.size() - pereFileNameList.size())(≥0)，恒非负，无需 < 0 死分支
+		if (estimatedTotal > FileNodeUtil.MAXIMUM_NUM_OF_SINGLE_FOLDER) {
+			return AjaxProtocol.FILES_TOTAL_OUT_OF_LIMIT;
 		}
 		if (pereFileNameList.size() > 0) {
 			cufr.setCheckResult("hasExistsNames");
@@ -265,10 +270,9 @@ public class FileServiceImpl implements FileService {
 		if (newNode != null) {
 			this.logUtil.writeUploadFileEvent(request, newNode, account);
 			return UPLOADSUCCESS;
-		} else {
-			block.delete();
-			return UPLOADERROR;
 		}
+		block.delete();
+		return UPLOADERROR;
 	}
 
 	private Node insertNodeWithRetry(String fileName, String account, String blockName, String fsize, String folderId, String originalFileName) {
@@ -302,7 +306,7 @@ public class FileServiceImpl implements FileService {
 		}
 		final Node node = this.fileNodeRepository.selectById(fileId);
 		if (node == null) {
-			return "deleteFileSuccess";
+			return AjaxProtocol.DELETE_FILE_SUCCESS;
 		}
 		final Folder f = this.folderRepository.selectById(node.getFileParentFolder());
 		if (!ConfigurationManager.instance().authorized(account, AccountAuth.DELETE_FILE_OR_FOLDER,
@@ -312,9 +316,9 @@ public class FileServiceImpl implements FileService {
 		}
 		if (this.fileBlockUtil.deleteNode(node)) {
 			this.logUtil.writeDeleteFileEvent(request, node);
-			return "deleteFileSuccess";
+			return AjaxProtocol.DELETE_FILE_SUCCESS;
 		}
-		return "cannotDeleteFile";
+		return AjaxProtocol.CANNOT_DELETE_FILE;
 	}
 
 	@Override
@@ -380,7 +384,7 @@ public class FileServiceImpl implements FileService {
 			boolean success = false;
 			while (retryCount < 3) {
 				if (fileNodeRepository.selectBySomeFolder(fileId).stream().anyMatch((e) -> e.getFileName().equals(newFileName))) {
-					return "nameOccupied";
+					return AjaxProtocol.NAME_OCCUPIED;
 				}
 				Node nodeToUpdate = fileNodeRepository.selectById(fileId);
 				if (nodeToUpdate != null) {
@@ -401,7 +405,7 @@ public class FileServiceImpl implements FileService {
 		}
 		this.logUtil.writeRenameFileEvent(account, ipAddrGetter.getIpAddr(request), file.getFileParentFolder(), file.getFileName(),
 				newFileName);
-		return "renameFileSuccess";
+		return AjaxProtocol.RENAME_FILE_SUCCESS;
 	}
 
 	@Override
@@ -430,7 +434,7 @@ public class FileServiceImpl implements FileService {
 					return NO_AUTHORIZED;
 				}
 				if (!this.fileBlockUtil.deleteNode(file)) {
-					return "cannotDeleteFile";
+					return AjaxProtocol.CANNOT_DELETE_FILE;
 				}
 				this.logUtil.writeDeleteFileEvent(request, file);
 			}
@@ -450,7 +454,7 @@ public class FileServiceImpl implements FileService {
 				}
 				final List<Folder> l = this.folderUtil.getParentList(fid);
 				if (folderRepository.deleteById(fid) <= 0) {
-					return "cannotDeleteFile";
+					return AjaxProtocol.CANNOT_DELETE_FILE;
 				} else {
 					folderUtil.deleteAllChildFolder(fid);
 					this.logUtil.writeDeleteFolderEvent(request, folder, l);
@@ -459,7 +463,7 @@ public class FileServiceImpl implements FileService {
 			if (fidList.size() > 0) {
 				ServerInitListener.needCheck = true;
 			}
-			return "deleteFileSuccess";
+			return AjaxProtocol.DELETE_FILE_SUCCESS;
 		} catch (Exception e) {
 			return ERROR_PARAMETER;
 		}
@@ -485,7 +489,7 @@ public class FileServiceImpl implements FileService {
 				logUtil.writeException(ex);
 			}
 		}
-		return "ERROR";
+		return AjaxProtocol.ERROR;
 	}
 
 	@Override
@@ -493,7 +497,7 @@ public class FileServiceImpl implements FileService {
 			throws Exception {
 		final String zipname = request.getParameter("zipId");
 		final String account = (String) request.getSession().getAttribute("ACCOUNT");
-		if (zipname != null && !zipname.equals("ERROR") && !zipname.contains("..")
+		if (zipname != null && !zipname.equals(AjaxProtocol.ERROR) && !zipname.contains("..")
 				&& !zipname.contains("/") && !zipname.contains("\\")) {
 			final String tfPath = ConfigurationManager.instance().getTemporaryfilePath();
 			final File zip = new File(tfPath, zipname);
@@ -536,19 +540,17 @@ public class FileServiceImpl implements FileService {
 				if (packTime < 4L) {
 					return "\u9a6c\u4e0a\u5b8c\u6210";
 				}
-				if (packTime >= 4L && packTime < 10L) {
+				if (packTime < 10L) {
 					return "\u5927\u7ea610\u79d2";
 				}
-				if (packTime >= 10L && packTime < 35L) {
+				if (packTime < 35L) {
 					return "\u4e0d\u5230\u534a\u5206\u949f";
 				}
-				if (packTime >= 35L && packTime < 65L) {
+				if (packTime < 65L) {
 					return "\u5927\u7ea61\u5206\u949f";
 				}
-				if (packTime >= 65L) {
-					return "\u8d85\u8fc7" + packTime / 60L
-							+ "\u5206\u949f\uff0c\u8017\u65f6\u8f83\u957f\uff0c\u5efa\u8bae\u76f4\u63a5\u4e0b\u8f7d";
-				}
+				return "\u8d85\u8fc7" + packTime / 60L
+						+ "\u5206\u949f\uff0c\u8017\u65f6\u8f83\u957f\uff0c\u5efa\u8bae\u76f4\u63a5\u4e0b\u8f7d";
 			} catch (Exception ex) {
 				logUtil.writeException(ex);
 			}
@@ -656,18 +658,18 @@ public class FileServiceImpl implements FileService {
 								Node copyNode = fileBlockUtil.insertNewNode(node.getFileName(), account, node.getFilePath(),
 										node.getFileSize(), locationpath);
 								if (copyNode == null) {
-									return "cannotMoveFiles";
+									return AjaxProtocol.CANNOT_MOVE_FILES;
 								}
 								this.logUtil.writeMoveFileEvent(account, ip, originPath, fileBlockUtil.getNodePath(copyNode), isCopy);
 							} else {
 								node.setFileParentFolder(locationpath);
 								if (this.fileNodeRepository.update(node) <= 0) {
-									return "cannotMoveFiles";
+									return AjaxProtocol.CANNOT_MOVE_FILES;
 								}
 								this.logUtil.writeMoveFileEvent(account, ip, originPath, fileBlockUtil.getNodePath(node), isCopy);
 							}
 						} else {
-							return "cannotMoveFiles";
+							return AjaxProtocol.CANNOT_MOVE_FILES;
 						}
 						break;
 					case "both":
@@ -680,7 +682,7 @@ public class FileServiceImpl implements FileService {
 											fileNodeRepository.selectByParentFolderId(locationpath)),
 									account, node.getFilePath(), node.getFileSize(), locationpath);
 							if (copyNode == null) {
-								return "cannotMoveFiles";
+								return AjaxProtocol.CANNOT_MOVE_FILES;
 							}
 							this.logUtil.writeMoveFileEvent(account, ip, originPath, fileBlockUtil.getNodePath(copyNode), isCopy);
 						} else {
@@ -688,7 +690,7 @@ public class FileServiceImpl implements FileService {
 									fileNodeRepository.selectByParentFolderId(locationpath)));
 							node.setFileParentFolder(locationpath);
 							if (fileNodeRepository.update(node) <= 0) {
-								return "cannotMoveFiles";
+								return AjaxProtocol.CANNOT_MOVE_FILES;
 							}
 							this.logUtil.writeMoveFileEvent(account, ip, originPath, fileBlockUtil.getNodePath(node), isCopy);
 						}
@@ -706,13 +708,13 @@ public class FileServiceImpl implements FileService {
 						Node newNode = fileBlockUtil.insertNewNode(node.getFileName(), account, node.getFilePath(),
 								node.getFileSize(), locationpath);
 						if (newNode == null) {
-							return "cannotMoveFiles";
+							return AjaxProtocol.CANNOT_MOVE_FILES;
 						}
 						this.logUtil.writeMoveFileEvent(account, ip, originPath, fileBlockUtil.getNodePath(newNode), isCopy);
 					} else {
 						node.setFileParentFolder(locationpath);
 						if (this.fileNodeRepository.update(node) <= 0) {
-							return "cannotMoveFiles";
+							return AjaxProtocol.CANNOT_MOVE_FILES;
 						}
 						this.logUtil.writeMoveFileEvent(account, ip, originPath, fileBlockUtil.getNodePath(node), isCopy);
 					}
@@ -792,7 +794,7 @@ public class FileServiceImpl implements FileService {
 								}
 							}
 						}
-						return "cannotMoveFiles";
+						return AjaxProtocol.CANNOT_MOVE_FILES;
 					case "both":
 						if (folderRepository.countByParentId(locationpath) >= FileNodeUtil.MAXIMUM_NUM_OF_SINGLE_FOLDER) {
 							return FOLDERS_TOTAL_OUT_OF_LIMIT;
@@ -801,7 +803,7 @@ public class FileServiceImpl implements FileService {
 							Folder newFolder = folderUtil.copyFolderByNewNameToPath(folder, account, targetFolder, FileNodeUtil
 									.getNewFolderName(folder.getFolderName(), folderRepository.selectByParentId(locationpath)));
 							if (newFolder == null) {
-								return "cannotMoveFiles";
+								return AjaxProtocol.CANNOT_MOVE_FILES;
 							}
 							this.logUtil.writeMoveFolderEvent(account, ip, originPath, folderUtil.getFolderPath(newFolder), isCopy);
 						} else {
@@ -814,7 +816,7 @@ public class FileServiceImpl implements FileService {
 								needChangeChildsConstranint = true;
 							}
 							if (this.folderRepository.update(folder) <= 0) {
-								return "cannotMoveFiles";
+								return AjaxProtocol.CANNOT_MOVE_FILES;
 							}
 							if (needChangeChildsConstranint) {
 								folderUtil.changeChildFolderConstraint(folder.getFolderId(),
@@ -835,7 +837,7 @@ public class FileServiceImpl implements FileService {
 					if (isCopy) {
 						Folder newFolder = folderUtil.copyFolderByNewNameToPath(folder, account, targetFolder, null);
 						if (newFolder == null) {
-							return "cannotMoveFiles";
+							return AjaxProtocol.CANNOT_MOVE_FILES;
 						}
 						this.logUtil.writeMoveFolderEvent(account, ip, originPath, folderUtil.getFolderPath(newFolder), isCopy);
 					} else {
@@ -846,7 +848,7 @@ public class FileServiceImpl implements FileService {
 							needChangeChildsConstranint = true;
 						}
 						if (this.folderRepository.update(folder) <= 0) {
-							return "cannotMoveFiles";
+							return AjaxProtocol.CANNOT_MOVE_FILES;
 						}
 						if (needChangeChildsConstranint) {
 							folderUtil.changeChildFolderConstraint(folder.getFolderId(), targetFolder.getFolderConstraint());
@@ -886,6 +888,9 @@ public class FileServiceImpl implements FileService {
 						folderUtil.getAllFoldersId(locationpath))) {
 					return NO_AUTHORIZED;
 				}
+				// 目标目录内容在只读校验过程中保持不变，提前一次性加载，消除循环内 N+1 重复查询
+				final List<Node> targetFolderNodes = this.fileNodeRepository.selectByParentFolderId(locationpath);
+				final List<Folder> targetFolders = this.folderRepository.selectByParentId(locationpath);
 				List<Node> repeNodes = new ArrayList<>();
 				List<Folder> repeFolders = new ArrayList<>();
 				for (final String fileId : idList) {
@@ -910,7 +915,7 @@ public class FileServiceImpl implements FileService {
 							folderUtil.getAllFoldersId(node.getFileParentFolder()))) {
 						return NO_AUTHORIZED;
 					}
-					if (fileNodeRepository.selectByParentFolderId(locationpath).stream()
+					if (targetFolderNodes.stream()
 							.anyMatch((e) -> e.getFileName().equals(node.getFileName()))) {
 						repeNodes.add(node);
 					} else {
@@ -945,7 +950,7 @@ public class FileServiceImpl implements FileService {
 							return "CANT_MOVE_TO_INSIDE:" + folder.getFolderName();
 						}
 					}
-					if (folderRepository.selectByParentId(locationpath).stream()
+					if (targetFolders.stream()
 							.anyMatch((e) -> e.getFolderName().equals(folder.getFolderName()))) {
 						repeFolders.add(folder);
 					} else {
@@ -953,11 +958,11 @@ public class FileServiceImpl implements FileService {
 					}
 				}
 				long estimateFilesTotal = fileNodeRepository.countByParentFolderId(locationpath) + needMovefilesCount;
-				if (estimateFilesTotal > FileNodeUtil.MAXIMUM_NUM_OF_SINGLE_FOLDER || estimateFilesTotal < 0) {
+				if (estimateFilesTotal > FileNodeUtil.MAXIMUM_NUM_OF_SINGLE_FOLDER) {
 					return FILES_TOTAL_OUT_OF_LIMIT;
 				}
 				long estimateFoldersTotal = folderRepository.countByParentId(locationpath) + needMoveFoldersCount;
-				if (estimateFoldersTotal > FileNodeUtil.MAXIMUM_NUM_OF_SINGLE_FOLDER || estimateFoldersTotal < 0) {
+				if (estimateFoldersTotal > FileNodeUtil.MAXIMUM_NUM_OF_SINGLE_FOLDER) {
 					return FOLDERS_TOTAL_OUT_OF_LIMIT;
 				}
 				if (repeNodes.size() > 0 || repeFolders.size() > 0) {
@@ -980,7 +985,7 @@ public class FileServiceImpl implements FileService {
 		final String folderId = request.getParameter("folderId");
 		final String folderName = request.getParameter("folderName");
 		final String maxUploadFileSize = request.getParameter("maxSize");
-		CheckImportFolderRespons cifr = new CheckImportFolderRespons();
+		CheckImportFolderResponse cifr = new CheckImportFolderResponse();
 		if (folderName == null || folderName.length() == 0) {
 			cifr.setResult(ERROR_PARAMETER);
 			return gson.toJson(cifr);
@@ -1012,7 +1017,7 @@ public class FileServiceImpl implements FileService {
 					return gson.toJson(cifr);
 				}
 			}
-		} catch (Exception e) {
+		} catch (NumberFormatException e) {
 			cifr.setResult(ERROR_PARAMETER);
 			return gson.toJson(cifr);
 		}
@@ -1062,14 +1067,14 @@ public class FileServiceImpl implements FileService {
 		int pc = folder.getFolderConstraint();
 		if (folderConstraint != null) {
 			try {
-				int ifc = Integer.parseInt(folderConstraint);
-				if (ifc != 0 && account == null) {
+				int constraintValue = Integer.parseInt(folderConstraint);
+				if (constraintValue != 0 && account == null) {
 					return UPLOADERROR;
 				}
-				if (ifc < pc) {
+				if (constraintValue < pc) {
 					return UPLOADERROR;
 				}
-			} catch (Exception e) {
+			} catch (NumberFormatException e) {
 				return UPLOADERROR;
 			}
 		} else {
@@ -1136,10 +1141,9 @@ public class FileServiceImpl implements FileService {
 		if (newNode != null) {
 			this.logUtil.writeUploadFileEvent(request, newNode, account);
 			return UPLOADSUCCESS;
-		} else {
-			block.delete();
-			return UPLOADERROR;
 		}
+		block.delete();
+		return UPLOADERROR;
 	}
 
 	private String[] getParentPath(String path) {
@@ -1161,9 +1165,8 @@ public class FileServiceImpl implements FileService {
 		if (path != null) {
 			String normalizedPath = path.replace('\\', '/');
 			String[] paths = normalizedPath.split("/");
-			if (paths.length > 0) {
-				return paths[paths.length - 1];
-			}
+			// 非空字符串 split 至少返回一个元素，paths.length > 0 恒真，直接取末段
+			return paths[paths.length - 1];
 		}
 		return null;
 	}

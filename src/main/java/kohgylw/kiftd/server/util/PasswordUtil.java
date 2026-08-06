@@ -1,6 +1,7 @@
 package kohgylw.kiftd.server.util;
 
 import java.nio.charset.StandardCharsets;
+import java.security.GeneralSecurityException;
 import java.security.SecureRandom;
 import java.security.spec.KeySpec;
 import java.util.Base64;
@@ -89,7 +90,7 @@ public class PasswordUtil {
 			KeySpec spec = new PBEKeySpec(password.toCharArray(), salt, ITERATIONS, KEY_LENGTH);
 			SecretKeyFactory factory = SecretKeyFactory.getInstance(ALGORITHM);
 			return factory.generateSecret(spec).getEncoded();
-		} catch (Exception e) {
+		} catch (GeneralSecurityException e) {
 			throw new RuntimeException("Password hashing failed", e);
 		}
 	}

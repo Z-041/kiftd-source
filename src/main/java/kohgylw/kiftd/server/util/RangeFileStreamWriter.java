@@ -52,28 +52,6 @@ public class RangeFileStreamWriter {
 
 	/**
 	 * 
-	 * <h2>发送文件信息，但仅返回响应头，而不返回具体内容</h2>
-	 * <p>
-	 * 处理普通的或带有断点续传参数的下载请求，并按照请求方式提供响应头信息，不提供具体的文件内容。
-	 * </p>
-	 * 
-	 * @author 青阳龙野(kohgylw)
-	 * @param request      javax.servlet.http.HttpServletRequest 请求对象
-	 * @param response     javax.servlet.http.HttpServletResponse 响应对象
-	 * @param fo           java.io.File 需要写出的文件
-	 * @param fname        java.lang.String 文件名
-	 * @param contentType  java.lang.String HTTP Content-Type类型（用于控制客户端行为）
-	 * @param eTag         java.lang.String 资源的唯一性标识，例如"aabbcc"
-	 * @param isAttachment boolean 是否作为附件回传，若希望用户下载（而非预览）则应设置为true
-	 * @return int 操作结束时返回的状态码
-	 */
-	public static int writeRangeFileHead(HttpServletRequest request, HttpServletResponse response, File fo,
-			String fname, String contentType, String eTag, boolean isAttachment) {
-		return writeRangeFile(request, response, fo, fname, contentType, -1, eTag, isAttachment, false);
-	}
-
-	/**
-	 * 
 	 * <h2>回传文件数据，可选择是否发送具体的文件内容</h2>
 	 * <p>
 	 * 该方法用于提供对文件下载请求的处理，并按照请求方式提供相应的输出流写出。当选择发送具体的文件内容时将会正常返回文件内容， 否则仅返回响应头而无响应体。
@@ -106,7 +84,7 @@ public class RangeFileStreamWriter {
 		String rangeBytes = "";// 请求中的Range参数
 		int status = HttpServletResponse.SC_OK;// 初始响应码为200
 		// 检查是否有可用的缓存
-		String lastModified = ServerTimeUtil.getLastModifiedFormBlock(fo);
+		String lastModified = ServerTimeUtil.getLastModifiedFromBlock(fo);
 		String ifModifiedSince = request.getHeader("If-Modified-Since");
 		String ifNoneMatch = request.getHeader("If-None-Match");
 		// 是否提供了两个判断参数之一？
@@ -148,7 +126,7 @@ public class RangeFileStreamWriter {
 		response.setHeader("Accept-Ranges", "bytes");
 		// 设置缓存控制信息
 		response.setHeader("ETag", eTag);
-		response.setHeader("Last-Modified", ServerTimeUtil.getLastModifiedFormBlock(fo));
+		response.setHeader("Last-Modified", ServerTimeUtil.getLastModifiedFromBlock(fo));
 		response.setHeader("Cache-Control", "max-age=" + DOWNLOAD_CACHE_MAX_AGE);
 		// 针对具备断点续传性质的请求进行解析
 		final String rangeTag = request.getHeader("Range");
@@ -213,7 +191,7 @@ public class RangeFileStreamWriter {
 			// 读取文件并写处至输出流
 			try (RandomAccessFile raf = new RandomAccessFile(fo, "r")) {
 				HttpSession session = request.getSession(false);
-				try (OutputStream out = maxRate > 0 && maxRate < Long.MAX_VALUE && session != null
+				try (OutputStream out = maxRate > 0 && session != null
 						? new VariableSpeedBufferedOutputStream(response.getOutputStream(), maxRate, session)
 						: new BufferedOutputStream(response.getOutputStream())) {
 					raf.seek(startOffset);

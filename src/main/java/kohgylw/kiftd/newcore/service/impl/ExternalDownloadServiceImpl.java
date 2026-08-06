@@ -7,23 +7,23 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
-
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
-
+import kohgylw.kiftd.newcore.domain.AjaxProtocol;
 import kohgylw.kiftd.newcore.repository.FileNodeRepository;
 import kohgylw.kiftd.newcore.repository.FolderRepository;
 import kohgylw.kiftd.newcore.service.ExternalDownloadService;
-import kohgylw.kiftd.server.util.ConfigurationManager;
 import kohgylw.kiftd.server.enumeration.AccountAuth;
 import kohgylw.kiftd.server.model.Node;
+import kohgylw.kiftd.server.util.ConfigurationManager;
 import kohgylw.kiftd.server.util.FileBlockUtil;
 import kohgylw.kiftd.server.util.FolderUtil;
 import kohgylw.kiftd.server.util.LogUtil;
 import kohgylw.kiftd.server.util.RangeFileStreamWriter;
+
+
 
 @Service
 @Primary
@@ -110,7 +110,7 @@ public class ExternalDownloadServiceImpl implements ExternalDownloadService {
 				}
 			}
 		}
-		return "ERROR";
+		return AjaxProtocol.ERROR;
 	}
 
 	@Override

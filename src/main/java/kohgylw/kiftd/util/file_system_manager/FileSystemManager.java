@@ -9,19 +9,19 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Stream;
-import java.nio.file.Path;
-
 import kohgylw.kiftd.printer.Printer;
 import kohgylw.kiftd.server.exception.FilesTotalOutOfLimitException;
 import kohgylw.kiftd.server.exception.FoldersTotalOutOfLimitException;
@@ -31,8 +31,9 @@ import kohgylw.kiftd.server.util.ConfigurationManager;
 import kohgylw.kiftd.server.util.FileBlockUtil;
 import kohgylw.kiftd.server.util.FileNodeUtil;
 import kohgylw.kiftd.server.util.ServerTimeUtil;
-import kohgylw.kiftd.util.file_system_manager.pojo.Folder;
-import kohgylw.kiftd.util.file_system_manager.pojo.FolderView;
+import kohgylw.kiftd.util.file_system_manager.pojo.FileSystemFolderView;
+import kohgylw.kiftd.util.file_system_manager.pojo.FolderTreeNode;
+
 
 /**
  * 
@@ -53,10 +54,6 @@ public class FileSystemManager {
 	public static final String COVER = "COVER";
 	private static FileSystemManager fsm;// 唯一实例
 	private static final int BUFFER_SIZE = 4096;// 缓存大小，单位为Byte(B)
-	/**
-	 * 单文件夹内最大允许的文件夹或文件数量上限
-	 */
-	public static final int MAX_FOLDERS_OR_FILES_LIMIT = Integer.MAX_VALUE;
 
 	/**
 	 * 正在进行的操作进度，请只读勿改
@@ -93,12 +90,9 @@ public class FileSystemManager {
 		try {
 			selectFolderById = c.prepareStatement("SELECT * FROM FOLDER WHERE folder_id = ?");
 			selectNodeById = c.prepareStatement("SELECT * FROM FILE WHERE file_id = ?");
-			selectNodesByPathExcludeById = c.prepareStatement(
-					"SELECT * FROM FILE WHERE file_path = ? AND file_id <> ? LIMIT 0," + MAX_FOLDERS_OR_FILES_LIMIT);
-			selectNodesByFolderId = c.prepareStatement(
-					"SELECT * FROM FILE WHERE file_parent_folder = ? LIMIT 0," + MAX_FOLDERS_OR_FILES_LIMIT);
-			selectFoldersByParentFolderId = c.prepareStatement(
-					"SELECT * FROM FOLDER WHERE folder_parent = ? LIMIT 0," + MAX_FOLDERS_OR_FILES_LIMIT);
+			selectNodesByPathExcludeById = c.prepareStatement("SELECT * FROM FILE WHERE file_path = ? AND file_id <> ?");
+			selectNodesByFolderId = c.prepareStatement("SELECT * FROM FILE WHERE file_parent_folder = ?");
+			selectFoldersByParentFolderId = c.prepareStatement("SELECT * FROM FOLDER WHERE folder_parent = ?");
 			insertNode = c.prepareStatement("INSERT INTO FILE VALUES(?,?,?,?,?,?,?)");
 			insertFolder = c.prepareStatement("INSERT INTO FOLDER VALUES(?,?,?,?,?,?)");
 			deleteNodeById = c.prepareStatement("DELETE FROM FILE WHERE file_id = ?");
@@ -109,8 +103,7 @@ public class FileSystemManager {
 			countFoldersByParentFolderId = c
 					.prepareStatement("SELECT count(folder_id) FROM FOLDER WHERE folder_parent = ?");
 			countNodesByExtendStoreIndex = c.prepareStatement("SELECT count(file_id) FROM FILE WHERE file_path LIKE ?");
-			selectNodesByExtendStoreIndex = c.prepareStatement("SELECT * FROM FILE WHERE file_path LIKE ? LIMIT 0,"
-					+ MAX_FOLDERS_OR_FILES_LIMIT);
+			selectNodesByExtendStoreIndex = c.prepareStatement("SELECT * FROM FILE WHERE file_path LIKE ?");
 		} catch (SQLException e) {
 			Printer.instance.print("错误：出现未知错误，文件系统解析失败，无法浏览文件。");
 		}
@@ -140,16 +133,16 @@ public class FileSystemManager {
 	 * 由文件系统得到ID代表的文件视图。
 	 * </p>
 	 * 
-	 * @see kohgylw.kiftd.util.file_system_manager.pojo.FolderView
+	 * @see kohgylw.kiftd.util.file_system_manager.pojo.FileSystemFolderView
 	 * @author 青阳龙野(kohgylw)
 	 * @param folderId java.lang.String 文件夹ID
-	 * @return kohgylw.kiftd.util.file_system_manager.pojo.FolderView 指定的文件夹视图
+	 * @return kohgylw.kiftd.util.file_system_manager.pojo.FileSystemFolderView 指定的文件夹视图
 	 * @throws SQLException 获取失败
 	 */
-	public FolderView getFolderView(String folderId) throws SQLException {
-		Folder target = selectFolderById(folderId);
+	public FileSystemFolderView getFolderView(String folderId) throws SQLException {
+		FolderTreeNode target = selectFolderById(folderId);
 		if (target != null) {
-			FolderView fv = new FolderView();
+			FileSystemFolderView fv = new FileSystemFolderView();
 			fv.setCurrent(target);
 			fv.setFiles(selectNodesByFolderId(folderId));
 			fv.setFolders(getFoldersByParentId(folderId));
@@ -225,7 +218,7 @@ public class FileSystemManager {
 	 */
 	public int hasExistsFilesOrFolders(File[] files, String folderId) throws SQLException {
 		int result = 0;
-		List<Folder> folders = getFoldersByParentId(folderId);
+		List<FolderTreeNode> folders = getFoldersByParentId(folderId);
 		List<Node> nodes = selectNodesByFolderId(folderId);
 		for (File f : files) {
 			if (f.isDirectory() && folders.stream().anyMatch((e) -> e.getFolderName().equals(f.getName()))) {
@@ -255,10 +248,10 @@ public class FileSystemManager {
 	public int hasExistsFilesOrFolders(String[] foldersId, String[] filesId, File path) throws Exception {
 		if (path.isDirectory()) {
 			int c = 0;
-			List<Folder> folders = new ArrayList<>();
+			List<FolderTreeNode> folders = new ArrayList<>();
 			List<Node> nodes = new ArrayList<>();
 			for (String fid : foldersId) {
-				Folder folder = selectFolderById(fid);
+				FolderTreeNode folder = selectFolderById(fid);
 				if (folder != null) {
 					folders.add(folder);
 				}
@@ -320,12 +313,12 @@ public class FileSystemManager {
 	 * 
 	 * @author 青阳龙野(kohgylw)
 	 * @param folderId java.lang.String 需要查询的父文件夹ID
-	 * @return java.util.List<kohgylw.kiftd.server.model.Folder> 文件夹对象列表，如果没有结果则长度为0
+	 * @return java.util.List<FolderTreeNode> 文件夹对象列表，如果没有结果则长度为0
 	 * @throws SQLException 查询失败
 	 */
-	public List<Folder> getFoldersByParentId(String folderId) throws SQLException {
+	public List<FolderTreeNode> getFoldersByParentId(String folderId) throws SQLException {
 		selectFoldersByParentFolderId.setString(1, folderId);
-		List<Folder> folders = new ArrayList<>();
+		List<FolderTreeNode> folders = new ArrayList<>();
 		try (ResultSet r = selectFoldersByParentFolderId.executeQuery()) {
 			while (r.next()) {
 				folders.add(resultSetAccessFolder(r));
@@ -335,7 +328,7 @@ public class FileSystemManager {
 	}
 
 	// 根据ID查询文件夹对象，无符合对象则返回null
-	public Folder selectFolderById(String folderId) throws SQLException {
+	public FolderTreeNode selectFolderById(String folderId) throws SQLException {
 		selectFolderById.setString(1, folderId);
 		try (ResultSet r = selectFolderById.executeQuery()) {
 			if (r.next()) {
@@ -395,7 +388,7 @@ public class FileSystemManager {
 	}
 
 	// 插入一个新的文件夹节点，返回值同上
-	private int insertFolder(Folder f) throws SQLException {
+	private int insertFolder(FolderTreeNode f) throws SQLException {
 		insertFolder.setString(1, f.getFolderId());
 		insertFolder.setString(2, f.getFolderName());
 		insertFolder.setString(3, f.getFolderCreationDate());
@@ -420,8 +413,8 @@ public class FileSystemManager {
 	}
 
 	// 将SQL结果集封装为Folder对象
-	private Folder resultSetAccessFolder(ResultSet r) throws SQLException {
-		Folder folder = new Folder();
+	private FolderTreeNode resultSetAccessFolder(ResultSet r) throws SQLException {
+		FolderTreeNode folder = new FolderTreeNode();
 		folder.setFolderId(r.getString("folder_id"));
 		folder.setFolderName(r.getString("folder_name"));
 		folder.setFolderParent(r.getString("folder_parent"));
@@ -468,7 +461,7 @@ public class FileSystemManager {
 				}
 			}
 			// 如果无重名文件，或是选择了保留两者，那么均以新建一个节点进行插入的逻辑处理
-			if (getFilesTotalNumByFoldersId(folderId) >= MAX_FOLDERS_OR_FILES_LIMIT) {
+			if (getFilesTotalNumByFoldersId(folderId) >= FileNodeUtil.MAXIMUM_NUM_OF_SINGLE_FOLDER) {
 				throw new FilesTotalOutOfLimitException();
 			}
 			// 首先，生成一个新文件节点并写入基本信息
@@ -522,9 +515,9 @@ public class FileSystemManager {
 			String newName = name;
 			per = 0;
 			message = "正在导入文件夹：" + name;
-			Folder parent = selectFolderById(folderId);
-			List<Folder> folders = getFoldersByParentId(folderId);
-			Folder folder = null;
+			FolderTreeNode parent = selectFolderById(folderId);
+			List<FolderTreeNode> folders = getFoldersByParentId(folderId);
+			FolderTreeNode folder = null;
 			if (folders.stream().anyMatch((e) -> e.getFolderName().equals(name))) {
 				switch (type) {
 				case COVER:
@@ -542,10 +535,10 @@ public class FileSystemManager {
 			}
 			per = 50;
 			if (folder == null) {
-				if (getFoldersTotalNumByFoldersId(folderId) >= MAX_FOLDERS_OR_FILES_LIMIT) {
+				if (getFoldersTotalNumByFoldersId(folderId) >= FileNodeUtil.MAXIMUM_NUM_OF_SINGLE_FOLDER) {
 					throw new FoldersTotalOutOfLimitException();// 如果已经超过了最大限值，那么不能继续导入文件夹。
 				}
-				folder = new Folder();
+				folder = new FolderTreeNode();
 				String nFolderId = UUID.randomUUID().toString();
 				folder.setFolderId(nFolderId);
 				folder.setFolderName(newName);
@@ -612,7 +605,7 @@ public class FileSystemManager {
 	}
 
 	// 修改文件夹
-	private int updateFolder(Folder f) throws SQLException {
+	private int updateFolder(FolderTreeNode f) throws SQLException {
 		updateFolderById.setString(1, f.getFolderName());
 		updateFolderById.setString(2, f.getFolderCreationDate());
 		updateFolderById.setString(3, f.getFolderCreator());
@@ -625,7 +618,7 @@ public class FileSystemManager {
 
 	// 删除一个文件夹
 	private void deleteFolder(String folderId) throws Exception {
-		Folder f = selectFolderById(folderId);
+		FolderTreeNode f = selectFolderById(folderId);
 		List<Node> nodes = selectNodesByFolderId(folderId);
 		int size = nodes.size();
 		if (f == null) {
@@ -637,7 +630,7 @@ public class FileSystemManager {
 		for (int i = 0; i < size && gono; i++) {
 			deleteFile(nodes.get(i).getFileId());
 		}
-		List<Folder> folders = getFoldersByParentId(folderId);
+		List<FolderTreeNode> folders = getFoldersByParentId(folderId);
 		size = folders.size();
 		// 迭代删除该文件夹内的所有文件夹
 		for (int i = 0; i < size && gono; i++) {
@@ -664,7 +657,7 @@ public class FileSystemManager {
 			per = 80;
 			List<Node> nodes = selectNodesByPathExcludeById(n.getFilePath(), n.getFileId());
 			String recycleBinPath = ConfigurationManager.instance().getRecycleBinPath();
-			File block = getFileFormBlocks(n);
+			File block = getFileFromBlocks(n);
 			if (nodes == null || nodes.isEmpty()) {
 				// 删除文件节点对应的数据块
 				if (block != null) {
@@ -707,27 +700,35 @@ public class FileSystemManager {
 			File dateDir = new File(recycleBinDir, ServerTimeUtil.accurateToLogName());
 			if (dateDir.isDirectory() || dateDir.mkdir()) {
 				// 如果有，则直接使用，否则创建当前日期的留档子文件夹，之后检查此文件夹内是否有重名留档文件
+				// 注意：此实现需与 kohgylw.kiftd.server.util.FileBlockUtil.saveToRecycleBin 保持同步
 				int i = 0;
-				List<String> fileNames = Arrays.asList(dateDir.list());
+				String[] dateDirList = dateDir.list();
+				List<String> fileNames = dateDirList == null ? Collections.emptyList() : Arrays.asList(dateDirList);
 				String newName = originalName;
+				int lastDotIndex = originalName.lastIndexOf(".");
 				while (fileNames.contains(newName)) {
 					i++;
-					if (originalName.indexOf(".") >= 0) {
-						newName = originalName.substring(0, originalName.lastIndexOf(".")) + " (" + i + ")"
-								+ originalName.substring(originalName.lastIndexOf("."));
+					if (lastDotIndex >= 0) {
+						newName = originalName.substring(0, lastDotIndex) + " (" + i + ")"
+								+ originalName.substring(lastDotIndex);
 					} else {
 						newName = originalName + " (" + i + ")";
 					}
 				}
 				// 在确保不会产生重名文件的前提下，按照移动或拷贝两种方式留档
 				File saveFile = new File(dateDir, newName);
-				if (isCopy) {
-					Files.copy(block.toPath(), saveFile.toPath());
-				} else {
-					Files.move(block.toPath(), saveFile.toPath());
+				try {
+					if (isCopy) {
+						Files.copy(block.toPath(), saveFile.toPath());
+					} else {
+						Files.move(block.toPath(), saveFile.toPath());
+					}
+					// 如果不抛出任何异常，则操作成功
+					return true;
+				} catch (IOException e) {
+					// 与 FileBlockUtil.saveToRecycleBin 保持一致：记录异常后返回失败
+					Printer.instance.print("错误：留档失败。" + e.getMessage());
 				}
-				// 如果不抛出任何异常，则操作成功
-				return true;
 			}
 		}
 		return false;
@@ -762,7 +763,7 @@ public class FileSystemManager {
 				target = new File(path, fileName);
 				target.createNewFile();
 			}
-			File block = getFileFormBlocks(node);
+			File block = getFileFromBlocks(node);
 			if (block == null) {
 				throw new IOException("无法找到要导出的文件块：" + node.getFileName());
 			}
@@ -789,7 +790,7 @@ public class FileSystemManager {
 
 	// 导出一个文件夹
 	private void exportFolder(String folderId, File path, String type) throws Exception {
-		Folder folder = selectFolderById(folderId);
+		FolderTreeNode folder = selectFolderById(folderId);
 		File target = null;
 		per = 0;
 		if (folder != null && path != null && path.isDirectory()) {
@@ -824,7 +825,7 @@ public class FileSystemManager {
 			}
 			per = 100;
 			List<Node> nodes = selectNodesByFolderId(folderId);
-			List<Folder> folders = getFoldersByParentId(folderId);
+			List<FolderTreeNode> folders = getFoldersByParentId(folderId);
 			int size = 0;
 			int i = 0;
 			for (i = 0, size = nodes.size(); i < size && gono; i++) {
@@ -847,12 +848,12 @@ public class FileSystemManager {
 	 * 
 	 * @author 青阳龙野(kohgylw)
 	 */
-	public void cannel() {
+	public void cancel() {
 		message = "正在终止，请稍候...";
 		gono = false;
 	}
 
-	private File getFileFormBlocks(Node f) {
+	private File getFileFromBlocks(Node f) {
 		// 检查该节点对应的文件块存放于哪个位置（主文件系统/扩展存储区）
 		if (f == null) {
 			return null;
@@ -1025,7 +1026,7 @@ public class FileSystemManager {
 				message = "正在移出数据(" + i + "/" + total + ")...";
 				per = (int) (((double) i / total) * 100.0);
 				Node n = nodes.get(i);
-				File b = getFileFormBlocks(n);
+				File b = getFileFromBlocks(n);
 				if (b == null) {
 					throw new IOException("无法找到文件块: " + n.getFileName());
 				}
@@ -1090,7 +1091,7 @@ public class FileSystemManager {
 	// 获取一个文件节点的本地路径，例如/ROOT/foo/bar/target.txt在Windows系统下的本地路径为“ROOT\foo\bar\”
 	private String getNativePath(final Node n) throws SQLException {
 		List<String> parentList = new ArrayList<String>();
-		Folder f = selectFolderById(n.getFileParentFolder());
+		FolderTreeNode f = selectFolderById(n.getFileParentFolder());
 		Set<String> visited = new HashSet<>();
 		while (f != null) {
 			// 防止数据库中出现环形引用（parent 指向自身或成环）导致死循环

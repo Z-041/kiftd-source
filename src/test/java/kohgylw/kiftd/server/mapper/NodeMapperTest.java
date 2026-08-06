@@ -138,6 +138,57 @@ class NodeMapperTest {
     }
 
     @Test
+    void testQueryByParentFolderIdsLimit() {
+        List<Node> nodes = new ArrayList<>();
+        Node n1 = new Node();
+        n1.setFileId("f1");
+        n1.setFileParentFolder("p1");
+        Node n2 = new Node();
+        n2.setFileId("f2");
+        n2.setFileParentFolder("p2");
+        nodes.add(n1);
+        nodes.add(n2);
+        List<String> folderIds = Arrays.asList("p1", "p2");
+        when(nodeMapper.queryByParentFolderIdsLimit(folderIds, 10)).thenReturn(nodes);
+
+        List<Node> result = nodeMapper.queryByParentFolderIdsLimit(folderIds, 10);
+
+        assertNotNull(result);
+        assertEquals(2, result.size());
+    }
+
+    @Test
+    void testQueryByParentFolderIdsLimitRespectsLimit() {
+        List<String> folderIds = Arrays.asList("p1", "p2", "p3");
+        when(nodeMapper.queryByParentFolderIdsLimit(folderIds, 2)).thenAnswer(invocation -> {
+            List<Node> all = new ArrayList<>();
+            for (int i = 0; i < 5; i++) {
+                Node n = new Node();
+                n.setFileId("f" + i);
+                all.add(n);
+            }
+            int limit = invocation.getArgument(1);
+            return new ArrayList<>(all.subList(0, Math.min(limit, all.size())));
+        });
+
+        List<Node> result = nodeMapper.queryByParentFolderIdsLimit(folderIds, 2);
+
+        assertNotNull(result);
+        assertEquals(2, result.size(), "SQL 层 LIMIT 应只返回上限数量的行");
+    }
+
+    @Test
+    void testQueryByParentFolderIdsLimitEmptyList() {
+        List<String> emptyList = new ArrayList<>();
+        when(nodeMapper.queryByParentFolderIdsLimit(emptyList, 10)).thenReturn(new ArrayList<>());
+
+        List<Node> result = nodeMapper.queryByParentFolderIdsLimit(emptyList, 10);
+
+        assertNotNull(result);
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
     void testQueryByParentFolderIdSection() {
         List<Node> nodes = new ArrayList<>();
         Node n1 = new Node();

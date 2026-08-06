@@ -30,6 +30,9 @@ webContext/quickview/src/
 # 日志文件
 *.log
 
+# 运行时日志目录（LogUtil 生成的按日日志）
+logs/
+
 # Windows 缩略图缓存
 Thumbs.db
 

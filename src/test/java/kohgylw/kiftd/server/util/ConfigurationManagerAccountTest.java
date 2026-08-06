@@ -41,6 +41,34 @@ class ConfigurationManagerAccountTest {
     }
 
     @Test
+    void testPasswordHashWriteContract() {
+        // 验证"写入哈希、可被校验"的完整链路：对应 changePassword/createNewAccount/resetPassword
+        // 接入 PasswordUtil.hashPassword 后的存储契约（写入 PBKDF2$ 前缀哈希而非明文）。
+        String hashed = kohgylw.kiftd.server.util.PasswordUtil.hashPassword("newSecret456");
+
+        // 新写入：哈希条目可通过 verifyPassword 校验（checkAccountPwd 的校验路径）
+        assertTrue(kohgylw.kiftd.server.util.PasswordUtil.isPasswordHashed(hashed));
+        assertTrue(kohgylw.kiftd.server.util.PasswordUtil.verifyPassword("newSecret456", hashed));
+        assertFalse(kohgylw.kiftd.server.util.PasswordUtil.verifyPassword("wrong", hashed));
+        // 哈希值不得包含明文（证明未落盘明文）
+        assertFalse(hashed.contains("newSecret456"));
+
+        // 迁移期：历史明文条目仍可登录（verifyPassword 对非 PBKDF2$ 前缀按明文比较）
+        String plain = "userPlain123";
+        assertTrue(kohgylw.kiftd.server.util.PasswordUtil.verifyPassword(plain, plain));
+        assertFalse(kohgylw.kiftd.server.util.PasswordUtil.verifyPassword("wrong", plain));
+    }
+
+    @Test
+    void testDefaultAdminPasswordHashContract() {
+        // 对应 createDefaultAccountPropertiesFile：默认管理员密码以哈希存储且可校验
+        String hashedAdmin = kohgylw.kiftd.server.util.PasswordUtil.hashPassword("000000");
+        assertTrue(kohgylw.kiftd.server.util.PasswordUtil.isPasswordHashed(hashedAdmin));
+        assertTrue(kohgylw.kiftd.server.util.PasswordUtil.verifyPassword("000000", hashedAdmin));
+        assertFalse(hashedAdmin.contains("000000"));
+    }
+
+    @Test
     void testGetAllAccountsFromProps() throws Exception {
         File accountFile = createTempAccountFile();
         java.util.Properties props = new java.util.Properties();

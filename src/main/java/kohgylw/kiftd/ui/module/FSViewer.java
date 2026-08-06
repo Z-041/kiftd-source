@@ -20,7 +20,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-
 import javax.swing.JButton;
 import javax.swing.JDialog;
 import javax.swing.JFileChooser;
@@ -30,9 +29,7 @@ import javax.swing.JToolBar;
 import javax.swing.SwingUtilities;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
-
 import org.apache.commons.io.FileUtils;
-
 import kohgylw.kiftd.printer.Printer;
 import kohgylw.kiftd.server.exception.FilesTotalOutOfLimitException;
 import kohgylw.kiftd.server.exception.FoldersTotalOutOfLimitException;
@@ -40,8 +37,9 @@ import kohgylw.kiftd.server.model.Node;
 import kohgylw.kiftd.server.util.ConfigurationManager;
 import kohgylw.kiftd.ui.util.FilesTable;
 import kohgylw.kiftd.util.file_system_manager.FileSystemManager;
-import kohgylw.kiftd.util.file_system_manager.pojo.Folder;
-import kohgylw.kiftd.util.file_system_manager.pojo.FolderView;
+import kohgylw.kiftd.util.file_system_manager.pojo.FileSystemFolderView;
+import kohgylw.kiftd.util.file_system_manager.pojo.FolderTreeNode;
+
 
 /**
  * 
@@ -66,7 +64,7 @@ public class FSViewer extends KiftdDynamicWindow {
 	private FilesTable filesTable;// 文件列表对象
 
 	private static FSViewer fsv;// 该窗口的唯一实例
-	private static FolderView currentView;// 当前显示的视图
+	private static FileSystemFolderView currentView;// 当前显示的视图
 	private static ExecutorService worker;// 操作线程池
 
 	private static String previewDirName = "preview";// 用于预览的文件导出文件夹名，该文件夹将被创建在文件系统目录内
@@ -308,9 +306,9 @@ public class FSViewer extends KiftdDynamicWindow {
 				worker.execute(() -> {
 					Object i = filesTable.getDoubleClickItem(e);
 					if (i != null) {
-						if (i instanceof Folder) {
+						if (i instanceof FolderTreeNode) {
 							// 如果双击文件夹，则进入此文件夹
-							Folder f = (Folder) i;
+							FolderTreeNode f = (FolderTreeNode) i;
 							try {
 								getFolderView(f.getFolderId());
 							} catch (Exception e1) {
@@ -490,7 +488,7 @@ public class FSViewer extends KiftdDynamicWindow {
 	private void getFolderView(String folderId) throws Exception {
 		try {
 			currentView = FileSystemManager.getInstance().getFolderView(folderId);
-			long maxTotalNum = currentView.getFiles().size() + currentView.getFolders().size();
+			long maxTotalNum = (long) currentView.getFiles().size() + currentView.getFolders().size();
 			if (maxTotalNum > FilesTable.MAX_LIST_LIMIT) {
 				JOptionPane.showMessageDialog(window,
 						"文件夹列表的长度已超过最大限值（" + FilesTable.MAX_LIST_LIMIT + "），只能显示前" + FilesTable.MAX_LIST_LIMIT + "行。",

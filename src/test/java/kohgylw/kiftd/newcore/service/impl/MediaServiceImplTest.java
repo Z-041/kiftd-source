@@ -21,7 +21,6 @@ import jakarta.servlet.http.HttpSession;
 import kohgylw.kiftd.server.enumeration.AccountAuth;
 import kohgylw.kiftd.server.model.Folder;
 import kohgylw.kiftd.server.model.Node;
-import kohgylw.kiftd.server.pojo.PictureViewList;
 import kohgylw.kiftd.server.pojo.VideoInfo;
 import kohgylw.kiftd.server.util.ConfigurationManager;
 import kohgylw.kiftd.newcore.repository.FileNodeRepository;
