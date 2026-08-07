@@ -209,8 +209,9 @@ class SystemServiceImplTest {
             when(folderRepository.selectById("folder1")).thenReturn(folder);
             when(reader.accessFolder(any(Folder.class), anyString())).thenReturn(true);
             when(propertiesRepository.selectByKey("chain_aes_key")).thenReturn(keyProp);
+            when(chainKeyMaster.isWrapped("wrappedKey")).thenReturn(true);
             when(chainKeyMaster.unwrap("wrappedKey")).thenReturn("realAesKey");
-            when(cryptoService.encrypt("realAesKey", "file1")).thenReturn("encryptedKey123");
+            when(cryptoService.encrypt(eq("realAesKey"), contains("file1|"))).thenReturn("encryptedKey123");
 
             String result = systemService.getFileChainKey(request);
 
@@ -243,7 +244,7 @@ class SystemServiceImplTest {
             when(cryptoService.generateRandomAesKey()).thenReturn("newAesKey");
             when(chainKeyMaster.wrap("newAesKey")).thenReturn("wrappedNewKey");
             when(propertiesRepository.insert(any(Property.class))).thenReturn(1);
-            when(cryptoService.encrypt("newAesKey", "file1")).thenReturn("encryptedNewKey123");
+            when(cryptoService.encrypt(eq("newAesKey"), contains("file1|"))).thenReturn("encryptedNewKey123");
 
             String result = systemService.getFileChainKey(request);
 

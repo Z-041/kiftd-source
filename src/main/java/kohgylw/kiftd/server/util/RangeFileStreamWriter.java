@@ -25,7 +25,7 @@ import kohgylw.kiftd.printer.Printer;
  */
 public class RangeFileStreamWriter {
 
-	private static final long DOWNLOAD_CACHE_MAX_AGE = 1800L;
+	public static final long DOWNLOAD_CACHE_MAX_AGE = 1800L;
 
 	/**
 	 * 
@@ -77,11 +77,6 @@ public class RangeFileStreamWriter {
 	private static int writeRangeFile(HttpServletRequest request, HttpServletResponse response, File fo, String fname,
 			String contentType, long maxRate, String eTag, boolean isAttachment, boolean sendBody) {
 		long fileLength = fo.length();// 文件总大小
-		long startOffset = 0; // 起始偏移量
-		boolean hasEnd = false;// 请求区间是否存在结束标识
-		long endOffset = 0; // 结束偏移量
-		long contentLength = 0; // 响应体长度
-		String rangeBytes = "";// 请求中的Range参数
 		int status = HttpServletResponse.SC_OK;// 初始响应码为200
 		// 检查是否有可用的缓存
 		String lastModified = ServerTimeUtil.getLastModifiedFromBlock(fo);
@@ -128,63 +123,73 @@ public class RangeFileStreamWriter {
 		response.setHeader("ETag", eTag);
 		response.setHeader("Last-Modified", ServerTimeUtil.getLastModifiedFromBlock(fo));
 		response.setHeader("Cache-Control", "max-age=" + DOWNLOAD_CACHE_MAX_AGE);
-		// 针对具备断点续传性质的请求进行解析
-		final String rangeTag = request.getHeader("Range");
+		// 针对具备断点续传性质的请求进行解析（RFC 7233，统一解析一次并复用结果）
+		long start = 0, end = 0;
+		boolean hasExplicitEnd = false;
+		boolean isValidRange = false;
+		String range = request.getHeader("Range");
 		final String ifRange = request.getHeader("If-Range");
-		if (rangeTag != null && rangeTag.startsWith("bytes=")
-				&& (ifRange == null || ifRange.trim().equals(eTag) || ifRange.trim().equals(lastModified))) {
-			// 进行断点续传
-			rangeBytes = rangeTag.replace("bytes=", "");
-			if (rangeBytes.indexOf("-") < 0) {
-				// 数据范围请求格式不正确，应为?-?的格式
-				return setAndReturnStatus(response, HttpServletResponse.SC_BAD_REQUEST);
-			}
-			if (rangeBytes.endsWith("-")) {
-				// 解析请求参数范围为仅有起始偏移量而无结束偏移量的情况
-				try {
-					startOffset = Long.parseLong(rangeBytes.substring(0, rangeBytes.indexOf('-')).trim());
-				} catch (NumberFormatException e) {
-					// 数据范围请求不正确
-					return setAndReturnStatus(response, HttpServletResponse.SC_BAD_REQUEST);
-				}
-				// 仅具备起始偏移量时，例如文件长为13，请求为5-，则响应体长度为8
-				contentLength = fileLength - startOffset;
-			} else {
-				hasEnd = true;
-				try {
-					if (rangeBytes.startsWith("-")) {
-						// 解析请求参数范围为仅有结束偏移量而无起始偏移量的情况，例如-3
-						startOffset = fileLength
-								- Long.parseLong(rangeBytes.substring(rangeBytes.indexOf('-') + 1).trim());
-						endOffset = fileLength - 1;
-					} else {
-						// 解析请求参数范围既有起始偏移量又有结束偏移量的情况，例如0-9
-						startOffset = Long.parseLong(rangeBytes.substring(0, rangeBytes.indexOf('-')).trim());
-						endOffset = Long.parseLong(rangeBytes.substring(rangeBytes.indexOf('-') + 1).trim());
+		if (range != null && range.startsWith("bytes=")) {
+			try {
+				String[] values = range.split("=")[1].split("-");
+				if (values[0].trim().length() == 0 && values.length > 1) {
+					// 解析后缀范围 bytes=-N：请求文件末尾 N 字节
+					long suffixLength = Long.parseLong(values[1].trim());
+					if (suffixLength > 0) {
+						start = Math.max(fileLength - suffixLength, 0);
+						end = fileLength - 1;
+						hasExplicitEnd = true;
+						isValidRange = true;
 					}
-				} catch (NumberFormatException e) {
-					// 数据范围请求不正确
-					return setAndReturnStatus(response, HttpServletResponse.SC_BAD_REQUEST);
+				} else {
+					start = Long.parseLong(values[0].trim());
+					if (values.length > 1 && values[1].trim().length() > 0) {
+						end = Long.parseLong(values[1].trim());
+						hasExplicitEnd = true;
+					}
+					isValidRange = true;
 				}
-				// 具备结束偏移量时，例如文件长为10，请求为0-9或-10，则响应体长度为10
-				contentLength = endOffset - startOffset + 1;
+			} catch (NumberFormatException e) {
+				// 无法解析的 Range 头视为无效，回退为整文件响应（RFC 7233 允许忽略无效 Range）
+				start = 0;
+				end = 0;
+				hasExplicitEnd = false;
+				isValidRange = false;
 			}
-			if (contentLength > fileLength || contentLength <= 0) {
-				// 数据范围请求不正确
-				return setAndReturnStatus(response, HttpServletResponse.SC_REQUESTED_RANGE_NOT_SATISFIABLE);
-			}
+		}
+		// RFC 7233：起始位置越界（负值或超出文件长度）时返回 416，避免 seek 越界与空响应体
+		if (isValidRange && (start < 0 || start >= fileLength)) {
+			status = HttpServletResponse.SC_REQUESTED_RANGE_NOT_SATISFIABLE;
+			response.setStatus(status);
+			response.setHeader("Content-Range", "bytes */" + fileLength);
+			return status;
+		}
+		long requestSize = 0;
+		if (hasExplicitEnd && end >= start) {
+			// 防止 end - start + 1 溢出（如 Range: bytes=0-9223372036854775807），并将区间收敛到文件实际长度内
+			long boundedEnd = Math.min(end, fileLength - 1);
+			requestSize = boundedEnd - start + 1;
+		} else {
+			requestSize = fileLength - start;
+		}
+		// 判定是否为有效的部分内容请求（带 If-Range 条件校验）
+		if (isValidRange && (ifRange == null || ifRange.trim().equals(eTag) || ifRange.trim().equals(lastModified))) {
 			// 设置响应状态为206
 			status = HttpServletResponse.SC_PARTIAL_CONTENT;
 			response.setStatus(status);
 			// 设置Content-Range，格式为“bytes 起始偏移-结束偏移/文件的总大小”
-			long rangeEnd = hasEnd ? endOffset : fileLength - 1;
-			String contentRange = "bytes " + startOffset + "-" + rangeEnd + "/" + fileLength;
-			response.setHeader("Content-Range", contentRange);
+			if (hasExplicitEnd) {
+				long boundedEnd = Math.min(end, fileLength - 1);
+				response.setHeader("Content-Length", "" + (boundedEnd - start + 1));
+				response.setHeader("Content-Range", "bytes " + start + "-" + boundedEnd + "/" + fileLength);
+			} else {
+				response.setHeader("Content-Length", "" + (fileLength - start));
+				response.setHeader("Content-Range", "bytes " + start + "-" + (fileLength - 1) + "/" + fileLength);
+			}
 		} else {
-			// 不进行断点续传
-			contentLength = fileLength;
+			// 不进行断点续传，整文件响应
+			response.setHeader("Content-Length", sendBody ? String.valueOf(fileLength) : "0");
 		}
-		response.setHeader("Content-Length", sendBody ? String.valueOf(contentLength) : "0");
 		if (sendBody) {
 			// 写出缓冲
 			byte[] buf = new byte[ConfigurationManager.instance().getBuffSize()];
@@ -194,28 +199,23 @@ public class RangeFileStreamWriter {
 				try (OutputStream out = maxRate > 0 && session != null
 						? new VariableSpeedBufferedOutputStream(response.getOutputStream(), maxRate, session)
 						: new BufferedOutputStream(response.getOutputStream())) {
-					raf.seek(startOffset);
-					if (!hasEnd) {
-					// 无结束偏移量时，将其从起始偏移量开始写到文件整体结束，如果从头开始下载，起始偏移量为0
-					int n = 0;
-					while ((n = raf.read(buf)) != -1) {
-						out.write(buf, 0, n);
+					raf.seek(start);
+					long needSize = requestSize;
+					while (needSize > 0) {
+						int n = raf.read(buf);
+						if (n <= 0) {
+							// 源文件被截断或提前结束，避免死循环
+							break;
+						}
+						int toWrite = (int) Math.min(needSize, n);
+						out.write(buf, 0, toWrite);
+						needSize -= toWrite;
+						if (n < buf.length) {
+							// 已读到文件末尾，剩余部分不可再读
+							break;
+						}
 					}
-				} else {
-					// 有结束偏移量时，将其从起始偏移量开始写至指定偏移量结束。
-				int n = 0;
-				long readLength = 0;// 写出量，用于确定结束位置
-				while (readLength < contentLength) {
-					n = raf.read(buf);
-					if (n == -1) {
-						// 源文件被截断或提前结束，避免 readLength 回退导致的死循环
-						break;
-					}
-					readLength += n;
-					out.write(buf, 0, (int) (readLength <= contentLength ? n : n - (readLength - contentLength)));
-				}
-				}
-				out.flush();
+					out.flush();
 				}
 			} catch (IOException | IndexOutOfBoundsException ex) {
 				// 针对任何IO异常忽略，传输失败不处理

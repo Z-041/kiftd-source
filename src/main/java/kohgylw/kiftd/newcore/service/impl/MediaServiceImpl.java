@@ -1,5 +1,6 @@
 package kohgylw.kiftd.newcore.service.impl;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -165,9 +166,14 @@ public class MediaServiceImpl implements MediaService {
 							} else {
 								size = 1680;
 							}
-							Thumbnails.of(pBlock).size(size, size).outputFormat(format)
-									.toOutputStream(response.getOutputStream());
-						} catch (IOException e) {
+							// 先压缩到内存缓冲，成功后再写出，避免缩略图生成失败时向响应流写入残片后拼接原图导致响应体损坏
+							ByteArrayOutputStream thumbnailOut = new ByteArrayOutputStream();
+							Thumbnails.of(pBlock).size(size, size).outputFormat(format).toOutputStream(thumbnailOut);
+							response.setContentType("image/jpeg");
+							response.setContentLength(thumbnailOut.size());
+							response.getOutputStream().write(thumbnailOut.toByteArray());
+						} catch (Exception e) {
+							logUtil.writeException(e);
 							try {
 								Files.copy(pBlock.toPath(), response.getOutputStream());
 							} catch (IOException e1) {

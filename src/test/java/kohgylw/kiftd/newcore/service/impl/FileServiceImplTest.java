@@ -25,6 +25,7 @@ import kohgylw.kiftd.server.model.Node;
 import kohgylw.kiftd.server.util.ConfigurationManager;
 import kohgylw.kiftd.newcore.repository.FileNodeRepository;
 import kohgylw.kiftd.newcore.repository.FolderRepository;
+import kohgylw.kiftd.newcore.service.FolderService;
 import kohgylw.kiftd.server.util.FileBlockUtil;
 import kohgylw.kiftd.server.util.FolderUtil;
 import kohgylw.kiftd.server.util.IpAddrGetter;
@@ -52,6 +53,8 @@ class FileServiceImplTest {
     @Mock
     private IpAddrGetter ipAddrGetter;
     @Mock
+    private FolderService folderService;
+    @Mock
     private HttpServletRequest request;
     @Mock
     private HttpServletResponse response;
@@ -65,7 +68,7 @@ class FileServiceImplTest {
     @BeforeEach
     void setUp() throws Exception {
         gson = new Gson();
-        fileService = new FileServiceImpl(fileNodeRepository, folderRepository, logUtil, gson, fileBlockUtil, folderUtil, ipAddrGetter);
+        fileService = new FileServiceImpl(fileNodeRepository, folderRepository, logUtil, gson, fileBlockUtil, folderUtil, ipAddrGetter, folderService);
         lenient().when(request.getSession()).thenReturn(session);
         lenient().when(request.getSession(anyBoolean())).thenReturn(session);
     }

@@ -119,9 +119,14 @@ public class ExternalDownloadServiceImpl implements ExternalDownloadService {
 		if (dkey != null) {
 			String fId = null;
 			synchronized (downloadKeyMap) {
-				DownloadKeyEntry entry = downloadKeyMap.remove(dkey);
+				// 密钥在 TTL 内可复用而非一次性消费：视频播放器等客户端的 Range 分片/续传请求
+				// 会复用同一 URL 多次访问，若首请求即移除密钥则后续分片全部 404
+				DownloadKeyEntry entry = downloadKeyMap.get(dkey);
 				if (entry != null) {
-					fId = entry.fileId;
+					// cleanExpiredKeys 仅在生成新 key 时惰性触发，使用侧必须兜底校验过期时间
+					if (System.currentTimeMillis() - entry.createTime <= DOWNLOAD_KEY_EXPIRE_MS) {
+						fId = entry.fileId;
+					}
 				}
 			}
 			if (fId != null) {

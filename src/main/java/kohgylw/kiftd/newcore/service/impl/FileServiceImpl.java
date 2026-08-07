@@ -14,6 +14,7 @@ import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import com.google.gson.Gson;
+import com.google.gson.JsonSyntaxException;
 import com.google.gson.reflect.TypeToken;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
@@ -23,6 +24,7 @@ import kohgylw.kiftd.newcore.domain.AjaxProtocol;
 import kohgylw.kiftd.newcore.repository.FileNodeRepository;
 import kohgylw.kiftd.newcore.repository.FolderRepository;
 import kohgylw.kiftd.newcore.service.FileService;
+import kohgylw.kiftd.newcore.service.FolderService;
 import kohgylw.kiftd.server.enumeration.AccountAuth;
 import kohgylw.kiftd.server.exception.FoldersTotalOutOfLimitException;
 import kohgylw.kiftd.server.listener.ServerInitListener;
@@ -72,6 +74,7 @@ public class FileServiceImpl implements FileService {
 	private final FileBlockUtil fileBlockUtil;
 	private final FolderUtil folderUtil;
 	private final IpAddrGetter ipAddrGetter;
+	private final FolderService folderService;
 
 	private static final String CONTENT_TYPE = "application/octet-stream";
 
@@ -79,7 +82,8 @@ public class FileServiceImpl implements FileService {
 	private CircuitBreaker fileStorageCircuitBreaker;
 
 	public FileServiceImpl(FileNodeRepository fileNodeRepository, FolderRepository folderRepository,
-			LogUtil logUtil, Gson gson, FileBlockUtil fileBlockUtil, FolderUtil folderUtil, IpAddrGetter ipAddrGetter) {
+			LogUtil logUtil, Gson gson, FileBlockUtil fileBlockUtil, FolderUtil folderUtil, IpAddrGetter ipAddrGetter,
+			FolderService folderService) {
 		this.fileNodeRepository = fileNodeRepository;
 		this.folderRepository = folderRepository;
 		this.logUtil = logUtil;
@@ -87,6 +91,7 @@ public class FileServiceImpl implements FileService {
 		this.fileBlockUtil = fileBlockUtil;
 		this.folderUtil = folderUtil;
 		this.ipAddrGetter = ipAddrGetter;
+		this.folderService = folderService;
 	}
 
 	@PostConstruct
@@ -175,6 +180,8 @@ public class FileServiceImpl implements FileService {
 		final String originalFileName = (fname != null ? fname : file.getOriginalFilename());
 		String fileName = originalFileName;
 		final String repeType = request.getParameter("repeType");
+		// 覆盖上传时待清理的旧节点：延后到新节点插入成功后再删除，避免"旧文件先被删除、新文件又插入失败"导致数据永久丢失
+		final List<Node> oldNodes = new ArrayList<>();
 		if (folderId == null || folderId.length() <= 0 || originalFileName == null || originalFileName.length() <= 0) {
 			return UPLOADERROR;
 		}
@@ -206,12 +213,9 @@ public class FileServiceImpl implements FileService {
 					}
 					for (Node f : nodes) {
 						if (f.getFileName().equals(originalFileName)) {
-							if (!fileBlockUtil.deleteNode(f)) {
-								return UPLOADERROR;
-							}
+							oldNodes.add(f);
 						}
 					}
-					nodes = this.fileNodeRepository.selectByParentFolderId(folderId);
 					break;
 				case "both":
 					fileName = FileNodeUtil.getNewNodeName(originalFileName, nodes);
@@ -223,7 +227,8 @@ public class FileServiceImpl implements FileService {
 				return UPLOADERROR;
 			}
 		}
-		if (fileNodeRepository.countByParentFolderId(folderId) >= FileNodeUtil.MAXIMUM_NUM_OF_SINGLE_FOLDER) {
+		if (fileNodeRepository.countByParentFolderId(folderId) - oldNodes.size()
+				+ 1 > FileNodeUtil.MAXIMUM_NUM_OF_SINGLE_FOLDER) {
 			return FILES_TOTAL_OUT_OF_LIMIT;
 		}
 		final File block = RetryUtil.executeWithRetry(
@@ -268,6 +273,14 @@ public class FileServiceImpl implements FileService {
 				},
 				"数据库节点插入", 2, 100, 2.0);
 		if (newNode != null) {
+			// 覆盖上传：新节点落库成功后再清理旧节点。若旧节点清理失败，清理新块并抛出异常触发回滚，
+			// 新节点插入被撤销、旧节点记录恢复，保证任何失败路径下旧文件数据不丢失。
+			for (Node oldNode : oldNodes) {
+				if (!fileBlockUtil.deleteNode(oldNode)) {
+					block.delete();
+					throw new IllegalStateException("覆盖上传旧节点清理失败：" + oldNode.getFileId());
+				}
+			}
 			this.logUtil.writeUploadFileEvent(request, newNode, account);
 			return UPLOADSUCCESS;
 		}
@@ -415,8 +428,22 @@ public class FileServiceImpl implements FileService {
 		final String strFidList = request.getParameter("strFidList");
 		final String account = (String) request.getSession().getAttribute("ACCOUNT");
 		try {
-			final List<String> idList = gson.fromJson(strIdList, new TypeToken<List<String>>() {
-			}.getType());
+			final List<String> idList;
+			final List<String> fidList;
+			try {
+				idList = gson.fromJson(strIdList, new TypeToken<List<String>>() {
+				}.getType());
+				fidList = gson.fromJson(strFidList, new TypeToken<List<String>>() {
+				}.getType());
+			} catch (JsonSyntaxException e) {
+				return AjaxProtocol.ERROR_PARAMETER;
+			}
+			// 缺参或 JSON 解析结果为空时提前返回，避免中途返回导致已删除内容无法回滚
+			if (idList == null || fidList == null) {
+				return AjaxProtocol.ERROR_PARAMETER;
+			}
+			// 前置校验：解析并收集全部待删文件节点，全部通过后才开始执行删除，避免中途失败导致部分提交
+			final List<Node> filesToDelete = new ArrayList<>();
 			for (final String fileId : idList) {
 				if (fileId == null || fileId.length() == 0) {
 					return ERROR_PARAMETER;
@@ -433,13 +460,16 @@ public class FileServiceImpl implements FileService {
 						folderUtil.getAllFoldersId(file.getFileParentFolder()))) {
 					return NO_AUTHORIZED;
 				}
+				filesToDelete.add(file);
+			}
+			// 执行删除：deleteNode 先删 DB 记录（可回滚）、后删磁盘块；失败抛出异常触发事务回滚，保证数据一致性
+			for (final Node file : filesToDelete) {
 				if (!this.fileBlockUtil.deleteNode(file)) {
-					return AjaxProtocol.CANNOT_DELETE_FILE;
+					throw new IllegalStateException("删除文件节点失败：" + file.getFileId());
 				}
 				this.logUtil.writeDeleteFileEvent(request, file);
 			}
-			final List<String> fidList = gson.fromJson(strFidList, new TypeToken<List<String>>() {
-			}.getType());
+			final List<Folder> foldersToDelete = new ArrayList<>();
 			for (String fid : fidList) {
 				Folder folder = folderRepository.selectById(fid);
 				if (folder == null) {
@@ -452,20 +482,23 @@ public class FileServiceImpl implements FileService {
 						folderUtil.getAllFoldersId(folder.getFolderParent()))) {
 					return NO_AUTHORIZED;
 				}
-				final List<Folder> l = this.folderUtil.getParentList(fid);
-				if (folderRepository.deleteById(fid) <= 0) {
-					return AjaxProtocol.CANNOT_DELETE_FILE;
-				} else {
-					folderUtil.deleteAllChildFolder(fid);
-					this.logUtil.writeDeleteFolderEvent(request, folder, l);
-				}
+				foldersToDelete.add(folder);
 			}
-			if (fidList.size() > 0) {
+			for (Folder folder : foldersToDelete) {
+				// 删除编排复用共享入口（幂等跳过：嵌套文件夹已随列表中祖先文件夹的子树删除时返回 0）
+				int result = folderService.deleteFolderChecked(folder.getFolderId(), account, request);
+				if (result == 1) {
+					return NO_AUTHORIZED;
+				}
+				// result==2（删除未生效）维持原有语义：跳过，不中断批量操作
+			}
+			if (foldersToDelete.size() > 0) {
 				ServerInitListener.needCheck = true;
 			}
 			return AjaxProtocol.DELETE_FILE_SUCCESS;
 		} catch (Exception e) {
-			return ERROR_PARAMETER;
+			this.logUtil.writeException(e);
+			throw new RuntimeException("批量删除失败", e);
 		}
 	}
 
@@ -480,7 +513,7 @@ public class FileServiceImpl implements FileService {
 				}.getType());
 				final List<String> fidList = gson.fromJson(strFidList, new TypeToken<List<String>>() {
 				}.getType());
-				if (idList.size() > 0 || fidList.size() > 0) {
+				if ((idList != null && !idList.isEmpty()) || (fidList != null && !fidList.isEmpty())) {
 					final String zipname = this.fileBlockUtil.createZip(idList, fidList, account);
 					this.logUtil.writeDownloadCheckedFileEvent(request, idList, fidList);
 					return zipname;
@@ -560,22 +593,23 @@ public class FileServiceImpl implements FileService {
 
 	private void countFolderFilesId(String account, String fid, List<String> idList) {
 		Folder f = folderRepository.selectById(fid);
-		if (ConfigurationManager.instance().accessFolder(f, account)) {
-			try {
-				final List<Folder> allFolders = this.folderUtil.getAllDescendantFolders(fid);
-				final Set<String> accessibleIds = new HashSet<>();
-				accessibleIds.add(fid);
-				for (final Folder cf : allFolders) {
-					if (accessibleIds.contains(cf.getFolderParent())
-							&& ConfigurationManager.instance().accessFolder(cf, account)) {
-						accessibleIds.add(cf.getFolderId());
-					}
+		if (f == null || !ConfigurationManager.instance().accessFolder(f, account)) {
+			return;
+		}
+		try {
+			final List<Folder> allFolders = this.folderUtil.getAllDescendantFolders(fid);
+			final Set<String> accessibleIds = new HashSet<>();
+			accessibleIds.add(fid);
+			for (final Folder cf : allFolders) {
+				if (accessibleIds.contains(cf.getFolderParent())
+						&& ConfigurationManager.instance().accessFolder(cf, account)) {
+					accessibleIds.add(cf.getFolderId());
 				}
-				final List<Node> files = this.fileNodeRepository.selectByParentFolderIds(new ArrayList<>(accessibleIds));
-				idList.addAll(files.stream().map(Node::getFileId).collect(Collectors.toList()));
-			} catch (Exception e2) {
-				this.logUtil.writeException(e2);
 			}
+			final List<Node> files = this.fileNodeRepository.selectByParentFolderIds(new ArrayList<>(accessibleIds));
+			idList.addAll(files.stream().map(Node::getFileId).collect(Collectors.toList()));
+		} catch (Exception e2) {
+			this.logUtil.writeException(e2);
 		}
 	}
 
@@ -658,18 +692,18 @@ public class FileServiceImpl implements FileService {
 								Node copyNode = fileBlockUtil.insertNewNode(node.getFileName(), account, node.getFilePath(),
 										node.getFileSize(), locationpath);
 								if (copyNode == null) {
-									return AjaxProtocol.CANNOT_MOVE_FILES;
+									throw new IllegalStateException("移动文件操作失败");
 								}
 								this.logUtil.writeMoveFileEvent(account, ip, originPath, fileBlockUtil.getNodePath(copyNode), isCopy);
 							} else {
 								node.setFileParentFolder(locationpath);
 								if (this.fileNodeRepository.update(node) <= 0) {
-									return AjaxProtocol.CANNOT_MOVE_FILES;
+									throw new IllegalStateException("移动文件操作失败");
 								}
 								this.logUtil.writeMoveFileEvent(account, ip, originPath, fileBlockUtil.getNodePath(node), isCopy);
 							}
 						} else {
-							return AjaxProtocol.CANNOT_MOVE_FILES;
+							throw new IllegalStateException("移动文件操作失败");
 						}
 						break;
 					case "both":
@@ -682,7 +716,7 @@ public class FileServiceImpl implements FileService {
 											fileNodeRepository.selectByParentFolderId(locationpath)),
 									account, node.getFilePath(), node.getFileSize(), locationpath);
 							if (copyNode == null) {
-								return AjaxProtocol.CANNOT_MOVE_FILES;
+								throw new IllegalStateException("移动文件操作失败");
 							}
 							this.logUtil.writeMoveFileEvent(account, ip, originPath, fileBlockUtil.getNodePath(copyNode), isCopy);
 						} else {
@@ -690,7 +724,7 @@ public class FileServiceImpl implements FileService {
 									fileNodeRepository.selectByParentFolderId(locationpath)));
 							node.setFileParentFolder(locationpath);
 							if (fileNodeRepository.update(node) <= 0) {
-								return AjaxProtocol.CANNOT_MOVE_FILES;
+								throw new IllegalStateException("移动文件操作失败");
 							}
 							this.logUtil.writeMoveFileEvent(account, ip, originPath, fileBlockUtil.getNodePath(node), isCopy);
 						}
@@ -708,13 +742,13 @@ public class FileServiceImpl implements FileService {
 						Node newNode = fileBlockUtil.insertNewNode(node.getFileName(), account, node.getFilePath(),
 								node.getFileSize(), locationpath);
 						if (newNode == null) {
-							return AjaxProtocol.CANNOT_MOVE_FILES;
+							throw new IllegalStateException("移动文件操作失败");
 						}
 						this.logUtil.writeMoveFileEvent(account, ip, originPath, fileBlockUtil.getNodePath(newNode), isCopy);
 					} else {
 						node.setFileParentFolder(locationpath);
 						if (this.fileNodeRepository.update(node) <= 0) {
-							return AjaxProtocol.CANNOT_MOVE_FILES;
+							throw new IllegalStateException("移动文件操作失败");
 						}
 						this.logUtil.writeMoveFileEvent(account, ip, originPath, fileBlockUtil.getNodePath(node), isCopy);
 					}
@@ -766,6 +800,13 @@ public class FileServiceImpl implements FileService {
 						if (f == null) {
 							break;
 						}
+						// 数据一致性防护：源文件夹位于目标同名文件夹子树内时（如把 backup/docs/docs 移入 backup 并覆盖
+						// backup/docs），删除目标子树会连带删除源文件夹记录及其磁盘块，随后的移动失败回滚只能恢复 DB
+						// 记录而磁盘块已永久丢失，故直接拒绝该操作
+						if (!isCopy && folderUtil.getParentList(fid).stream()
+								.anyMatch((e) -> e.getFolderId().equals(f.getFolderId()))) {
+							return ERROR_PARAMETER;
+						}
 						if (folderRepository.deleteById(f.getFolderId()) > 0) {
 							if (isCopy) {
 								Folder newFolder = folderUtil.copyFolderByNewNameToPath(folder, account, targetFolder, null);
@@ -794,7 +835,7 @@ public class FileServiceImpl implements FileService {
 								}
 							}
 						}
-						return AjaxProtocol.CANNOT_MOVE_FILES;
+						throw new IllegalStateException("移动文件操作失败");
 					case "both":
 						if (folderRepository.countByParentId(locationpath) >= FileNodeUtil.MAXIMUM_NUM_OF_SINGLE_FOLDER) {
 							return FOLDERS_TOTAL_OUT_OF_LIMIT;
@@ -803,7 +844,7 @@ public class FileServiceImpl implements FileService {
 							Folder newFolder = folderUtil.copyFolderByNewNameToPath(folder, account, targetFolder, FileNodeUtil
 									.getNewFolderName(folder.getFolderName(), folderRepository.selectByParentId(locationpath)));
 							if (newFolder == null) {
-								return AjaxProtocol.CANNOT_MOVE_FILES;
+								throw new IllegalStateException("移动文件操作失败");
 							}
 							this.logUtil.writeMoveFolderEvent(account, ip, originPath, folderUtil.getFolderPath(newFolder), isCopy);
 						} else {
@@ -816,7 +857,7 @@ public class FileServiceImpl implements FileService {
 								needChangeChildsConstranint = true;
 							}
 							if (this.folderRepository.update(folder) <= 0) {
-								return AjaxProtocol.CANNOT_MOVE_FILES;
+								throw new IllegalStateException("移动文件操作失败");
 							}
 							if (needChangeChildsConstranint) {
 								folderUtil.changeChildFolderConstraint(folder.getFolderId(),
@@ -837,7 +878,7 @@ public class FileServiceImpl implements FileService {
 					if (isCopy) {
 						Folder newFolder = folderUtil.copyFolderByNewNameToPath(folder, account, targetFolder, null);
 						if (newFolder == null) {
-							return AjaxProtocol.CANNOT_MOVE_FILES;
+							throw new IllegalStateException("移动文件操作失败");
 						}
 						this.logUtil.writeMoveFolderEvent(account, ip, originPath, folderUtil.getFolderPath(newFolder), isCopy);
 					} else {
@@ -848,7 +889,7 @@ public class FileServiceImpl implements FileService {
 							needChangeChildsConstranint = true;
 						}
 						if (this.folderRepository.update(folder) <= 0) {
-							return AjaxProtocol.CANNOT_MOVE_FILES;
+							throw new IllegalStateException("移动文件操作失败");
 						}
 						if (needChangeChildsConstranint) {
 							folderUtil.changeChildFolderConstraint(folder.getFolderId(), targetFolder.getFolderConstraint());
@@ -862,7 +903,8 @@ public class FileServiceImpl implements FileService {
 			}
 			return "moveFilesSuccess";
 		} catch (Exception e) {
-			return ERROR_PARAMETER;
+			this.logUtil.writeException(e);
+			throw new RuntimeException("移动文件失败", e);
 		}
 	}
 
@@ -1087,11 +1129,20 @@ public class FileServiceImpl implements FileService {
 		if (newFolderName != null && newFolderName.length() > 0) {
 			paths[0] = newFolderName;
 		}
+		// 先保存文件块（磁盘操作）：失败时尚未创建任何文件夹，无残留
+		final File block = this.fileBlockUtil.saveToFileBlocks(file);
+		if (block == null) {
+			return UPLOADERROR;
+		}
+		// 创建中间文件夹，记录本次新建的文件夹ID，任一失败逆序清理，避免残留空目录
+		final List<String> createdFolderIds = new ArrayList<>();
 		for (String pName : paths) {
 			Folder newFolder;
 			try {
 				newFolder = folderUtil.createNewFolder(folderId, account, pName, folderConstraint);
 			} catch (FoldersTotalOutOfLimitException e1) {
+				block.delete();
+				cleanupCreatedFolders(createdFolderIds);
 				return FOLDERS_TOTAL_OUT_OF_LIMIT;
 			}
 			if (newFolder == null) {
@@ -1102,26 +1153,31 @@ public class FileServiceImpl implements FileService {
 				if (target != null) {
 					folderId = target.getFolderId();
 				} else {
+					block.delete();
+					cleanupCreatedFolders(createdFolderIds);
 					return UPLOADERROR;
 				}
 			} else {
 				if (!folderUtil.isValidFolder(newFolder)) {
+					block.delete();
+					cleanupCreatedFolders(createdFolderIds);
 					return UPLOADERROR;
 				}
+				createdFolderIds.add(newFolder.getFolderId());
 				folderId = newFolder.getFolderId();
 			}
 		}
 		String fileName = getFileNameFormPath(originalFileName);
 		if (fileName == null || fileName.length() <= 0
 				|| !TextFormateUtil.instance().matcherFileName(fileName)) {
+			block.delete();
+			cleanupCreatedFolders(createdFolderIds);
 			return UPLOADERROR;
 		}
 		if (fileNodeRepository.countByParentFolderId(folderId) >= FileNodeUtil.MAXIMUM_NUM_OF_SINGLE_FOLDER) {
+			block.delete();
+			cleanupCreatedFolders(createdFolderIds);
 			return FILES_TOTAL_OUT_OF_LIMIT;
-		}
-		final File block = this.fileBlockUtil.saveToFileBlocks(file);
-		if (block == null) {
-			return UPLOADERROR;
 		}
 		final String fsize = this.fileBlockUtil.getFileSize(file.getSize());
 		int retryCount = 0;
@@ -1130,6 +1186,7 @@ public class FileServiceImpl implements FileService {
 			List<Node> currentFiles = this.fileNodeRepository.selectByParentFolderId(folderId);
 			if (currentFiles.stream().anyMatch((e) -> e.getFileName().equals(fileName))) {
 				block.delete();
+				cleanupCreatedFolders(createdFolderIds);
 				return UPLOADERROR;
 			}
 			newNode = fileBlockUtil.insertNewNode(fileName, account, block.getName(), fsize, folderId);
@@ -1143,7 +1200,17 @@ public class FileServiceImpl implements FileService {
 			return UPLOADSUCCESS;
 		}
 		block.delete();
+		cleanupCreatedFolders(createdFolderIds);
 		return UPLOADERROR;
+	}
+
+	/**
+	 * 逆序删除本次导入过程中新建的空文件夹，避免失败残留
+	 */
+	private void cleanupCreatedFolders(List<String> createdFolderIds) {
+		for (int i = createdFolderIds.size() - 1; i >= 0; i--) {
+			folderRepository.deleteById(createdFolderIds.get(i));
+		}
 	}
 
 	private String[] getParentPath(String path) {

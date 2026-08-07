@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.multipart.MultipartFile;
@@ -28,7 +29,7 @@ public class FileController {
 		this.folderViewService = folderViewService;
 	}
 
-	@RequestMapping(value = { "/douploadFile.ajax" }, produces = { CHARSET_BY_AJAX })
+	@PostMapping(value = { "/douploadFile.ajax" }, produces = { CHARSET_BY_AJAX })
 	@ResponseBody
 	public String douploadFile(final HttpServletRequest request, final HttpServletResponse response,
 			final MultipartFile file, final HttpSession session) {
@@ -48,7 +49,7 @@ public class FileController {
 		return this.fileService.checkImportFolder(request);
 	}
 
-	@RequestMapping(value = { "/doImportFolder.ajax" }, produces = { CHARSET_BY_AJAX })
+	@PostMapping(value = { "/doImportFolder.ajax" }, produces = { CHARSET_BY_AJAX })
 	@ResponseBody
 	public String doImportFolder(final HttpServletRequest request, final MultipartFile file,
 			final HttpSession session) {
@@ -61,13 +62,13 @@ public class FileController {
 		return folderService.deleteFolderByName(request);
 	}
 
-	@RequestMapping(value = { "/createNewFolderByName.ajax" }, produces = { CHARSET_BY_AJAX })
+	@PostMapping(value = { "/createNewFolderByName.ajax" }, produces = { CHARSET_BY_AJAX })
 	@ResponseBody
 	public String createNewFolderByName(final HttpServletRequest request, final HttpSession session) {
 		return folderService.createNewFolderByName(request);
 	}
 
-	@RequestMapping({ "/deleteFile.ajax" })
+	@PostMapping({ "/deleteFile.ajax" })
 	@ResponseBody
 	public String deleteFile(final HttpServletRequest request, final HttpSession session) {
 		return this.fileService.deleteFile(request);
@@ -85,7 +86,7 @@ public class FileController {
 		return this.fileService.doRenameFile(request);
 	}
 
-	@RequestMapping({ "/deleteCheckedFiles.ajax" })
+	@PostMapping({ "/deleteCheckedFiles.ajax" })
 	@ResponseBody
 	public String deleteCheckedFiles(final HttpServletRequest request, final HttpSession session) {
 		return this.fileService.deleteCheckedFiles(request);
@@ -97,25 +98,25 @@ public class FileController {
 		return this.fileService.getPackTime(request);
 	}
 
-	@RequestMapping({ "/downloadCheckedFiles.ajax" })
+	@PostMapping({ "/downloadCheckedFiles.ajax" })
 	@ResponseBody
 	public String downloadCheckedFiles(final HttpServletRequest request, final HttpSession session) {
 		return this.fileService.downloadCheckedFiles(request);
 	}
 
-	@RequestMapping({ "/downloadCheckedFilesZip.do" })
+	@PostMapping({ "/downloadCheckedFilesZip.do" })
 	public void downloadCheckedFilesZip(final HttpServletRequest request, final HttpServletResponse response,
 			final HttpSession session) throws Exception {
 		this.fileService.downloadCheckedFilesZip(request, response);
 	}
 
-	@RequestMapping(value = { "/confirmMoveFiles.ajax" }, produces = { CHARSET_BY_AJAX })
+	@PostMapping(value = { "/confirmMoveFiles.ajax" }, produces = { CHARSET_BY_AJAX })
 	@ResponseBody
 	public String confirmMoveFiles(final HttpServletRequest request, final HttpSession session) {
 		return fileService.confirmMoveFiles(request);
 	}
 
-	@RequestMapping({ "/moveCheckedFiles.ajax" })
+	@PostMapping({ "/moveCheckedFiles.ajax" })
 	@ResponseBody
 	public String moveCheckedFiles(final HttpServletRequest request, final HttpSession session) {
 		return fileService.doMoveFiles(request);

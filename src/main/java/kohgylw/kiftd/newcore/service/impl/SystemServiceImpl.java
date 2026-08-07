@@ -34,6 +34,11 @@ import kohgylw.kiftd.server.util.LogUtil;
 @Primary
 public class SystemServiceImpl implements SystemService {
 
+	private static final String CHAIN_AES_KEY = "chain_aes_key";
+	// 链密钥初始化/迁移的专用锁：仅序列化首次初始化与旧格式迁移的读-改-写，
+	// 常见路径（已初始化且为包装格式）无锁读取，避免与整个服务实例耦合
+	private static final Object CHAIN_KEY_LOCK = new Object();
+
 	private final FileNodeRepository fileNodeRepository;
 	private final FolderRepository folderRepository;
 	private final PropertiesRepository propertiesRepository;
@@ -72,22 +77,32 @@ public class SystemServiceImpl implements SystemService {
 						Folder folder = folderRepository.selectById(f.getFileParentFolder());
 						if (folder != null && ConfigurationManager.instance().accessFolder(folder, account)) {
 							try {
-								Property keyProp = propertiesRepository.selectByKey("chain_aes_key");
-								if (keyProp == null) {
-									String aesKey = cryptoService.generateRandomAesKey();
-									Property chainAESKey = new Property();
-									chainAESKey.setPropertyKey("chain_aes_key");
-									chainAESKey.setPropertyValue(chainKeyMaster.wrap(aesKey));
-									if (propertiesRepository.insert(chainAESKey) > 0) {
-										return cryptoService.encrypt(aesKey, fid);
+								// 常见路径：密钥已初始化且为包装格式，只读无需加锁
+								Property keyProp = propertiesRepository.selectByKey(CHAIN_AES_KEY);
+								if (keyProp != null && chainKeyMaster.isWrapped(keyProp.getPropertyValue())) {
+									String aesKey = chainKeyMaster.unwrap(keyProp.getPropertyValue());
+									// 链密钥明文内嵌签发时间戳，消费侧据此做有效期校验
+									return cryptoService.encrypt(aesKey, fid + "|" + System.currentTimeMillis());
+								}
+								// 首次初始化或旧格式迁移：读-改-写序列加锁，避免并发首次访问时重复插入
+								synchronized (CHAIN_KEY_LOCK) {
+									keyProp = propertiesRepository.selectByKey(CHAIN_AES_KEY);
+									if (keyProp == null) {
+										String aesKey = cryptoService.generateRandomAesKey();
+										Property chainAESKey = new Property();
+										chainAESKey.setPropertyKey(CHAIN_AES_KEY);
+										chainAESKey.setPropertyValue(chainKeyMaster.wrap(aesKey));
+										if (propertiesRepository.insert(chainAESKey) > 0) {
+											return cryptoService.encrypt(aesKey, fid + "|" + System.currentTimeMillis());
+										}
+										return null;
 									}
-								} else {
 									String aesKey = chainKeyMaster.unwrap(keyProp.getPropertyValue());
 									if (!chainKeyMaster.isWrapped(keyProp.getPropertyValue())) {
 										keyProp.setPropertyValue(chainKeyMaster.wrap(aesKey));
 										propertiesRepository.update(keyProp);
 									}
-									return cryptoService.encrypt(aesKey, fid);
+									return cryptoService.encrypt(aesKey, fid + "|" + System.currentTimeMillis());
 								}
 							} catch (Exception e) {
 								logUtil.writeException(e);

@@ -32,7 +32,7 @@ class MastLoginFilterTest {
     @Test
     void testMustLoginDisabled_allRequestsPass() throws Exception {
         MastLoginFilter filter = new MastLoginFilter();
-        when(request.getSession()).thenReturn(session);
+        when(request.getSession(false)).thenReturn(session);
         when(request.getServletPath()).thenReturn("/homeController/anyAction.do");
 
         try (var cr = mockStatic(ConfigurationManager.class)) {
@@ -49,7 +49,7 @@ class MastLoginFilterTest {
     @Test
     void testLoginPagePassesWithoutAuth() throws Exception {
         MastLoginFilter filter = new MastLoginFilter();
-        when(request.getSession()).thenReturn(session);
+        when(request.getSession(false)).thenReturn(session);
         when(request.getServletPath()).thenReturn("/prv/login.html");
 
         try (var cr = mockStatic(ConfigurationManager.class)) {
@@ -65,7 +65,7 @@ class MastLoginFilterTest {
     @Test
     void testExternalLinksControllerPassesWithoutAuth() throws Exception {
         MastLoginFilter filter = new MastLoginFilter();
-        when(request.getSession()).thenReturn(session);
+        when(request.getSession(false)).thenReturn(session);
         when(request.getServletPath()).thenReturn("/externalLinksController/view.do");
 
         try (var cr = mockStatic(ConfigurationManager.class)) {
@@ -81,7 +81,7 @@ class MastLoginFilterTest {
     @Test
     void testProtectedPageWithoutSession_redirectsToLogin() throws Exception {
         MastLoginFilter filter = new MastLoginFilter();
-        when(request.getSession()).thenReturn(session);
+        when(request.getSession(false)).thenReturn(session);
         when(request.getServletPath()).thenReturn("/homeController/listFile.do");
         when(session.getAttribute("ACCOUNT")).thenReturn(null);
 
@@ -100,7 +100,7 @@ class MastLoginFilterTest {
     @Test
     void testProtectedPageWithInvalidAccount_redirectsToLogin() throws Exception {
         MastLoginFilter filter = new MastLoginFilter();
-        when(request.getSession()).thenReturn(session);
+        when(request.getSession(false)).thenReturn(session);
         when(request.getServletPath()).thenReturn("/homeController/listFile.do");
         when(session.getAttribute("ACCOUNT")).thenReturn("unknownUser");
 
@@ -120,7 +120,7 @@ class MastLoginFilterTest {
     @Test
     void testProtectedPageWithValidAccount_passesThrough() throws Exception {
         MastLoginFilter filter = new MastLoginFilter();
-        when(request.getSession()).thenReturn(session);
+        when(request.getSession(false)).thenReturn(session);
         when(request.getServletPath()).thenReturn("/homeController/listFile.do");
         when(session.getAttribute("ACCOUNT")).thenReturn("admin");
 
@@ -141,7 +141,7 @@ class MastLoginFilterTest {
         MastLoginFilter filter = new MastLoginFilter();
         StringWriter sw = new StringWriter();
         PrintWriter pw = new PrintWriter(sw);
-        when(request.getSession()).thenReturn(session);
+        when(request.getSession(false)).thenReturn(session);
         when(request.getServletPath()).thenReturn("/homeController/renameFile.ajax");
         when(session.getAttribute("ACCOUNT")).thenReturn(null);
         when(response.getWriter()).thenReturn(pw);
@@ -163,7 +163,7 @@ class MastLoginFilterTest {
     @Test
     void testAjaxLoginRequestPassesWithoutAuth() throws Exception {
         MastLoginFilter filter = new MastLoginFilter();
-        when(request.getSession()).thenReturn(session);
+        when(request.getSession(false)).thenReturn(session);
         when(request.getServletPath()).thenReturn("/homeController/doLogin.ajax");
 
         try (var cr = mockStatic(ConfigurationManager.class)) {
@@ -178,9 +178,9 @@ class MastLoginFilterTest {
     }
 
     @Test
-    void testStaticResourceRedirectsToLoginWhenMustLogin() throws Exception {
+    void testStaticResourcePassesThroughWhenMustLogin() throws Exception {
         MastLoginFilter filter = new MastLoginFilter();
-        when(request.getSession()).thenReturn(session);
+        when(request.getSession(false)).thenReturn(session);
         when(request.getServletPath()).thenReturn("/css/style.css");
 
         try (var cr = mockStatic(ConfigurationManager.class)) {
@@ -190,7 +190,9 @@ class MastLoginFilterTest {
 
             filter.doFilter(request, response, chain);
 
-            verify(response, times(1)).sendRedirect("/prv/login.html");
+            // 静态资源（css/js/图片/字体）不含业务数据，必须放行以便登录/注册页自身样式与脚本正常加载
+            verify(chain, times(1)).doFilter(request, response);
+            verify(response, never()).sendRedirect("/prv/login.html");
         }
     }
 

@@ -91,7 +91,8 @@ public class FolderServiceImpl implements FolderService {
 		if (folderConstraint != null) {
 			try {
 				constraintValue = Integer.parseInt(folderConstraint);
-				if (constraintValue != 0 && account == null) {
+				// 与 FolderUtil.createNewFolder 保持一致：匿名账户不得设置正约束（防止匿名提升目录权限）
+				if (constraintValue > 0 && account == null) {
 					return AjaxProtocol.ERROR_PARAMETER;
 				}
 				if (constraintValue < pc) {
@@ -153,25 +154,42 @@ public class FolderServiceImpl implements FolderService {
 		if (folderId == null || folderId.length() == 0 || "root".equals(folderId)) {
 			return AjaxProtocol.ERROR_PARAMETER;
 		}
+		// 删除编排复用共享入口（含权限校验、子树删除与日志记录）
+		int result = deleteFolderChecked(folderId, account, request);
+		if (result == 1) {
+			return AjaxProtocol.NO_AUTHORIZED;
+		}
+		if (result == 2) {
+			return AjaxProtocol.CANNOT_DELETE_FOLDER;
+		}
+		ServerInitListener.needCheck = true;
+		return AjaxProtocol.DELETE_FOLDER_SUCCESS;
+	}
+
+	@Override
+	public int deleteFolderChecked(String folderId, String account, HttpServletRequest request) {
+		if (folderId == null || folderId.length() == 0 || "root".equals(folderId)) {
+			return 2;
+		}
 		final Folder folder = this.folderRepository.selectById(folderId);
 		if (folder == null) {
-			return AjaxProtocol.DELETE_FOLDER_SUCCESS;
+			// 文件夹不存在视为幂等成功（批量删除时子目录可能已随祖先文件夹的子树一并删除）
+			return 0;
 		}
 		if (!ConfigurationManager.instance().accessFolder(folder, account)) {
-			return AjaxProtocol.NO_AUTHORIZED;
+			return 1;
 		}
 		if (!ConfigurationManager.instance().authorized(account, AccountAuth.DELETE_FILE_OR_FOLDER,
 				folderUtil.getAllFoldersId(folder.getFolderParent()))) {
-			return AjaxProtocol.NO_AUTHORIZED;
+			return 1;
 		}
 		final List<Folder> l = this.folderUtil.getParentList(folderId);
 		if (this.folderRepository.deleteById(folderId) > 0) {
 			folderUtil.deleteAllChildFolder(folderId);
 			this.logUtil.writeDeleteFolderEvent(request, folder, l);
-			ServerInitListener.needCheck = true;
-			return AjaxProtocol.DELETE_FOLDER_SUCCESS;
+			return 0;
 		}
-		return AjaxProtocol.CANNOT_DELETE_FOLDER;
+		return 2;
 	}
 
 	@Transactional
@@ -212,42 +230,42 @@ public class FolderServiceImpl implements FolderService {
 				}
 				if (constraintValue < pc) {
 					return AjaxProtocol.ERROR_PARAMETER;
-				} else {
-					Folder folderToUpdate = folderRepository.selectById(folderId);
-					if (folderToUpdate != null) {
-						folderToUpdate.setFolderConstraint(constraintValue);
-						folderRepository.update(folderToUpdate);
-					}
-					folderUtil.changeChildFolderConstraint(folderId, constraintValue);
-					if (!folder.getFolderName().equals(newName)) {
-						int retryCount = 0;
-						boolean success = false;
-						while (retryCount < 3) {
-							if (folderRepository.selectByParentId(parentFolder.getFolderId()).stream()
-								.anyMatch((e) -> e.getFolderName().equals(newName))) {
-								return AjaxProtocol.NAME_OCCUPIED;
-							}
-							Folder renameFolder = folderRepository.selectById(folderId);
-							if (renameFolder != null) {
-								renameFolder.setFolderName(newName);
-								if (folderRepository.update(renameFolder) > 0) {
-									Folder updatedFolder = folderRepository.selectById(folderId);
-									if (updatedFolder != null && newName.equals(updatedFolder.getFolderName())) {
-										success = true;
-										break;
-									}
+				}
+				// 先完成重名检查与重命名，全部成功后才应用约束变更，避免重名失败返回时约束已被静默提交
+				if (!folder.getFolderName().equals(newName)) {
+					int retryCount = 0;
+					boolean success = false;
+					while (retryCount < 3) {
+						if (folderRepository.selectByParentId(parentFolder.getFolderId()).stream()
+							.anyMatch((e) -> e.getFolderName().equals(newName))) {
+							return AjaxProtocol.NAME_OCCUPIED;
+						}
+						Folder renameFolder = folderRepository.selectById(folderId);
+						if (renameFolder != null) {
+							renameFolder.setFolderName(newName);
+							if (folderRepository.update(renameFolder) > 0) {
+								Folder updatedFolder = folderRepository.selectById(folderId);
+								if (updatedFolder != null && newName.equals(updatedFolder.getFolderName())) {
+									success = true;
+									break;
 								}
 							}
-							retryCount++;
 						}
-						if (!success) {
-							return AjaxProtocol.ERROR_PARAMETER;
-						}
+						retryCount++;
 					}
-					this.logUtil.writeRenameFolderEvent(account, ipAddrGetter.getIpAddr(request), folder.getFolderId(),
-							folder.getFolderName(), newName, folder.getFolderConstraint() + "", folderConstraint);
-					return AjaxProtocol.RENAME_FOLDER_SUCCESS;
+					if (!success) {
+						return AjaxProtocol.ERROR_PARAMETER;
+					}
 				}
+				Folder folderToUpdate = folderRepository.selectById(folderId);
+				if (folderToUpdate != null) {
+					folderToUpdate.setFolderConstraint(constraintValue);
+					folderRepository.update(folderToUpdate);
+				}
+				folderUtil.changeChildFolderConstraint(folderId, constraintValue);
+				this.logUtil.writeRenameFolderEvent(account, ipAddrGetter.getIpAddr(request), folder.getFolderId(),
+						folder.getFolderName(), newName, folder.getFolderConstraint() + "", folderConstraint);
+				return AjaxProtocol.RENAME_FOLDER_SUCCESS;
 			} catch (NumberFormatException e) {
 				return AjaxProtocol.ERROR_PARAMETER;
 			}
@@ -277,14 +295,8 @@ public class FolderServiceImpl implements FolderService {
 				.filter((f) -> f.getFolderName().equals(folderName))
 				.toArray(Folder[]::new);
 		for (Folder rf : repeatFolders) {
-			if (!ConfigurationManager.instance().accessFolder(rf, account)) {
-				return AjaxProtocol.DELETE_ERROR;
-			}
-			final List<Folder> l = this.folderUtil.getParentList(rf.getFolderId());
-			if (this.folderRepository.deleteById(rf.getFolderId()) > 0) {
-				folderUtil.deleteAllChildFolder(rf.getFolderId());
-				this.logUtil.writeDeleteFolderEvent(request, rf, l);
-			} else {
+			// 删除编排复用共享入口（含权限校验、子树删除与日志记录）
+			if (deleteFolderChecked(rf.getFolderId(), account, request) != 0) {
 				return AjaxProtocol.DELETE_ERROR;
 			}
 		}

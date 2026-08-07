@@ -29,6 +29,7 @@ import kohgylw.kiftd.server.util.FileBlockUtil;
 import kohgylw.kiftd.server.util.LogUtil;
 
 import java.io.IOException;
+import java.util.concurrent.TimeUnit;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -179,6 +180,54 @@ class FileChainServiceImplTest {
 
             verify(response, times(1)).sendError(500);
             verify(lu, times(1)).writeException(any(Exception.class));
+        }
+    }
+
+    @Test
+    void testGetResourceByChainKey_ExpiredTimestamp() throws Exception {
+        try (MockedStatic<ConfigurationManager> crMock = mockStatic(ConfigurationManager.class)) {
+            ConfigurationManager reader = mock(ConfigurationManager.class);
+            crMock.when(ConfigurationManager::instance).thenReturn(reader);
+            when(reader.isOpenFileChain()).thenReturn(true);
+
+            Property keyProp = new Property();
+            keyProp.setPropertyKey("chain_aes_key");
+            keyProp.setPropertyValue("wrappedkey");
+
+            when(request.getParameter("ckey")).thenReturn("someckey");
+            when(pm.selectByKey("chain_aes_key")).thenReturn(keyProp);
+            when(chainKeyMaster.unwrap("wrappedkey")).thenReturn("aeskey");
+            // 载荷带 31 天前的时间戳 → 已超过 30 天有效期，应拒绝访问
+            when(cipher.decrypt("aeskey", "someckey")).thenReturn(
+                    "file1|" + (System.currentTimeMillis() - TimeUnit.DAYS.toMillis(31)));
+
+            fileChainService.getResourceByChainKey(request, response);
+
+            verify(response, times(1)).sendError(404);
+        }
+    }
+
+    @Test
+    void testGetResourceByChainKey_ValidTimestamp() throws Exception {
+        try (MockedStatic<ConfigurationManager> crMock = mockStatic(ConfigurationManager.class)) {
+            ConfigurationManager reader = mock(ConfigurationManager.class);
+            crMock.when(ConfigurationManager::instance).thenReturn(reader);
+            when(reader.isOpenFileChain()).thenReturn(true);
+
+            Property keyProp = new Property();
+            keyProp.setPropertyKey("chain_aes_key");
+            keyProp.setPropertyValue("wrappedkey");
+
+            when(request.getParameter("ckey")).thenReturn("someckey");
+            when(pm.selectByKey("chain_aes_key")).thenReturn(keyProp);
+            when(chainKeyMaster.unwrap("wrappedkey")).thenReturn("aeskey");
+            // 有效期内的时间戳载荷 → 正常进入文件解析流程
+            when(cipher.decrypt("aeskey", "someckey")).thenReturn("file1|" + System.currentTimeMillis());
+            when(nm.selectById("file1")).thenReturn(null);
+
+            fileChainService.getResourceByChainKey(request, response);
+
+            verify(response, times(1)).sendError(404);
         }
     }
 

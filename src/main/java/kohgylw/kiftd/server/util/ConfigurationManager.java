@@ -220,6 +220,22 @@ public class ConfigurationManager {
 		}
 	}
 
+	/**
+	 * 判断是否为系统保留账户名（内部导入账户 SYS_IN、Anonymous、匿名用户及配置的导入账户）。
+	 * 保留名不允许被注册或创建为普通账户，避免与系统账户语义混淆。
+	 */
+	public boolean isSystemAccount(final String account) {
+		if (account == null) {
+			return false;
+		}
+		for (String sysAccount : SYS_ACCOUNTS) {
+			if (sysAccount.equals(account)) {
+				return true;
+			}
+		}
+		return getImportAccount().equals(account);
+	}
+
 	public boolean checkAccountPwd(final String account, final String pwd) {
 		final String apwd = this.accountp.getProperty(account + ".pwd");
 		if (apwd == null) {
@@ -448,11 +464,10 @@ public class ConfigurationManager {
 			if (accountp.getProperty(account + ".pwd") == null) {
 				return false;
 			}
-			accountp.setProperty(account + ".pwd", newPassword);
-			try (FileOutputStream out = new FileOutputStream(this.confDir + "account.properties")) {
-				accountp.store(out, null);
-				return true;
-			}
+			// 以 PBKDF2 哈希形式存储，禁止明文落盘；verifyPassword 兼容历史明文，可平滑迁移
+			accountp.setProperty(account + ".pwd", PasswordUtil.hashPassword(newPassword));
+			storePropertiesAtomically("account.properties", accountp, null);
+			return true;
 		}
 	}
 

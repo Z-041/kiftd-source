@@ -2,6 +2,7 @@ package kohgylw.kiftd.newcore.service.impl;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.concurrent.TimeUnit;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Primary;
@@ -32,6 +33,8 @@ public class FileChainServiceImpl implements FileChainService {
 	private final ChainKeyMaster chainKeyMaster;
 	private final PropertiesMapper pm;
 
+	private static final long CHAIN_KEY_TTL_MS = TimeUnit.DAYS.toMillis(30);
+
 	public FileChainServiceImpl(NodeMapper nm, FileBlockUtil fbu, ContentTypeMap ctm, LogUtil lu,
 			AESCipher cipher, ChainKeyMaster chainKeyMaster, PropertiesMapper pm) {
 		this.nm = nm;
@@ -53,29 +56,50 @@ public class FileChainServiceImpl implements FileChainService {
 				if (keyProp != null) {
 					try {
 						String aesKey = chainKeyMaster.unwrap(keyProp.getPropertyValue());
-						String fid = cipher.decrypt(aesKey, ckey);
-						Node f = this.nm.selectById(fid);
-						if (f != null) {
-							File target = this.fbu.getFileFromBlocks(f);
-							if (target != null && target.isFile()) {
-								String fileName = f.getFileName();
-								String suffix = "";
-								if (fileName.indexOf(".") >= 0) {
-									suffix = fileName.substring(fileName.lastIndexOf(".")).trim().toLowerCase();
+						String payload = cipher.decrypt(aesKey, ckey);
+						if (payload == null || payload.length() == 0) {
+							statusCode = 404;
+						} else {
+							// 明文字段格式：fid|签发时间戳；旧版本签发的密钥不含时间戳，视为永久有效（兼容升级前已分享的链接）
+							String[] parts = payload.split("\\|", -1);
+							String fid = parts[0];
+							if (parts.length > 1 && parts[1].length() > 0) {
+								try {
+									long issuedAt = Long.parseLong(parts[1]);
+									if (System.currentTimeMillis() - issuedAt > CHAIN_KEY_TTL_MS) {
+										statusCode = 404;
+										respond(response, statusCode);
+										return;
+									}
+								} catch (NumberFormatException e) {
+									statusCode = 404;
+									respond(response, statusCode);
+									return;
 								}
-								String range = request.getHeader("Range");
-								int status = RangeFileStreamWriter.writeRangeFileStream(request, response, target,
-										f.getFileName(), ctm.getContentType(suffix),
-										ConfigurationManager.instance().getDownloadMaxRate(null), fbu.getETag(target),
-										false);
-								if (status == HttpServletResponse.SC_OK
-										|| (range != null && range.startsWith("bytes=0-"))) {
-									this.lu.writeChainEvent(request, f);
-								}
-								return;
 							}
+							Node f = this.nm.selectById(fid);
+							if (f != null) {
+								File target = this.fbu.getFileFromBlocks(f);
+								if (target != null && target.isFile()) {
+									String fileName = f.getFileName();
+									String suffix = "";
+									if (fileName.indexOf(".") >= 0) {
+										suffix = fileName.substring(fileName.lastIndexOf(".")).trim().toLowerCase();
+									}
+									String range = request.getHeader("Range");
+									int status = RangeFileStreamWriter.writeRangeFileStream(request, response, target,
+											f.getFileName(), ctm.getContentType(suffix),
+											ConfigurationManager.instance().getDownloadMaxRate(null), fbu.getETag(target),
+											false);
+									if (status == HttpServletResponse.SC_OK
+											|| (range != null && range.startsWith("bytes=0-"))) {
+										this.lu.writeChainEvent(request, f);
+									}
+									return;
+								}
+							}
+							statusCode = 404;
 						}
-						statusCode = 404;
 					} catch (Exception e) {
 						lu.writeException(e);
 						statusCode = 500;
@@ -85,6 +109,10 @@ public class FileChainServiceImpl implements FileChainService {
 				}
 			}
 		}
+		respond(response, statusCode);
+	}
+
+	private void respond(HttpServletResponse response, int statusCode) {
 		try {
 			response.sendError(statusCode);
 		} catch (IOException e) {

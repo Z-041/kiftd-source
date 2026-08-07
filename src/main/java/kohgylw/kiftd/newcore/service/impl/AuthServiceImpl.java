@@ -59,6 +59,7 @@ public class AuthServiceImpl implements AuthService {
 	private static class LoginFailRecord {
 		volatile int count;
 		volatile long lockUntil;
+		volatile long lastFailTime;
 	}
 
 	public AuthServiceImpl(RSAKeyUtil ku, LogUtil lu, Gson gson, IpAddrGetter ipAddrGetter) {
@@ -162,6 +163,7 @@ public class AuthServiceImpl implements AuthService {
 	 */
 	private void recordLoginFail(LoginFailRecord record) {
 		synchronized (record) {
+			record.lastFailTime = System.currentTimeMillis();
 			if (++record.count >= MAX_LOGIN_FAILURES) {
 				record.lockUntil = System.currentTimeMillis() + LOGIN_LOCK_DURATION_MS;
 				record.count = 0;

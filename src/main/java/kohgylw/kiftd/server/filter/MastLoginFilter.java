@@ -8,11 +8,9 @@ import jakarta.servlet.FilterConfig;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
-import jakarta.servlet.annotation.WebFilter;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
-import org.springframework.core.annotation.Order;
 import kohgylw.kiftd.server.util.ConfigurationManager;
 
 
@@ -29,8 +27,6 @@ import kohgylw.kiftd.server.util.ConfigurationManager;
  * @author 青阳龙野(kohgylw)
  * @version 1.0
  */
-@WebFilter
-@Order(2)
 public class MastLoginFilter implements Filter {
 
 	@Override
@@ -45,7 +41,8 @@ public class MastLoginFilter implements Filter {
 		final HttpServletRequest hsq = (HttpServletRequest) request;
 		final HttpServletResponse hsr = (HttpServletResponse) response;
 		final String url = hsq.getServletPath().replaceAll("/{2,}", "/");
-		final HttpSession session = hsq.getSession();
+		// 仅在有会话时读取，避免为匿名/静态资源请求无条件新建 HttpSession（会话对象堆积的内存 DoS 面）
+		final HttpSession session = hsq.getSession(false);
 		if (url.startsWith("/externalLinksController")
 				|| url.startsWith("/homeController/getNewVerCode.do")) {
 			chain.doFilter(request, response);// 对于外部链接控制器、验证码的请求直接放行。
@@ -93,6 +90,9 @@ public class MastLoginFilter implements Filter {
 					pw2.print("mustLogin");
 					pw2.flush();
 				}
+			} else if (isStaticResource(url)) {
+				// 静态资源（css/js/图片/字体等）不含业务数据，且登录页/注册页自身的样式与脚本依赖其放行
+				chain.doFilter(request, response);
 			} else if (session != null && session.getAttribute("ACCOUNT") != null) {
 				final String account = (String) session.getAttribute("ACCOUNT");
 				if (cr.foundAccount(account)) {
@@ -105,6 +105,37 @@ public class MastLoginFilter implements Filter {
 			}
 		} else {
 			chain.doFilter(request, response);
+		}
+	}
+
+	/**
+	 * 判断是否为无需登录即可访问的静态资源扩展名（不含用户业务数据）
+	 */
+	private boolean isStaticResource(String url) {
+		int dot = url.lastIndexOf('.');
+		if (dot < 0 || dot == url.length() - 1) {
+			return false;
+		}
+		switch (url.substring(dot + 1).toLowerCase()) {
+		case "css":
+		case "js":
+		case "map":
+		case "png":
+		case "jpg":
+		case "jpeg":
+		case "gif":
+		case "svg":
+		case "webp":
+		case "bmp":
+		case "ico":
+		case "woff":
+		case "woff2":
+		case "ttf":
+		case "eot":
+		case "otf":
+			return true;
+		default:
+			return false;
 		}
 	}
 
