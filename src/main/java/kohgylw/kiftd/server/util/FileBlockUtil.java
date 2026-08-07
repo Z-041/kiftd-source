@@ -191,7 +191,8 @@ public class FileBlockUtil {
 	 * @return java.util.List&lt;ExtendStores&rt; 排序好的扩展存储区列表。
 	 */
 	public static List<ExtendStores> getExtendStoresBySort() {
-		List<ExtendStores> ess = ConfigurationManager.instance().getExtendStores();
+		// getExtendStores() 返回的是共享的内部列表，必须先拷贝再排序，否则并发上传时会并发修改同一列表
+		List<ExtendStores> ess = new ArrayList<>(ConfigurationManager.instance().getExtendStores());
 		if (ess.size() > 0) {
 			Collections.sort(ess, (o1, o2) -> {
 				try {
@@ -440,6 +441,7 @@ public class FileBlockUtil {
 	 * @author 青阳龙野(kohgylw)
 	 */
 	public void checkFileBlocks() {
+		// 文件块校验与请求处理无依赖，置为 daemon 线程避免阻塞服务器正常关闭
 		Thread checkThread = new Thread(() -> {
 			try {
 				// 检查是否存在未正确对应文件块的文件节点信息，若有则删除，从而确保文件节点信息不出现遗留问题
@@ -472,6 +474,8 @@ public class FileBlockUtil {
 				lu.writeException(e);
 			}
 		});
+		checkThread.setName("kiftd-fileblock-check");
+		checkThread.setDaemon(true);
 		checkThread.start();
 	}
 
@@ -595,7 +599,11 @@ public class FileBlockUtil {
 							break;
 						}
 					}
-					zs.add((ZipEntrySource) new FileSource(node.getFileName(), getFileFromBlocks(node)));
+					File blockFile = getFileFromBlocks(node);
+					// 文件块缺失（如被误删）时跳过该条目，避免 FileSource 构造/打包时因 null 导致整个压缩任务失败
+					if (blockFile != null && blockFile.isFile()) {
+						zs.add((ZipEntrySource) new FileSource(node.getFileName(), blockFile));
+					}
 				}
 			}
 			ZipUtil.pack(zs.toArray(new ZipEntrySource[0]), f);
@@ -651,7 +659,11 @@ public class FileBlockUtil {
 						break;
 					}
 				}
-				zs.add(new FileSource(thisPath + node.getFileName(), getFileFromBlocks(node)));
+				File blockFile = getFileFromBlocks(node);
+				// 文件块缺失（如被误删）时跳过该条目，避免 FileSource 构造/打包时因 null 导致整个压缩任务失败
+				if (blockFile != null && blockFile.isFile()) {
+					zs.add(new FileSource(thisPath + node.getFileName(), blockFile));
+				}
 			}
 		}
 	}

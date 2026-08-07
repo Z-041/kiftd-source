@@ -19,7 +19,6 @@ import kohgylw.kiftd.server.mapper.FolderMapper;
 import kohgylw.kiftd.server.util.ConfigurationManager;
 import kohgylw.kiftd.server.util.FileBlockUtil;
 import kohgylw.kiftd.server.util.FileNodeUtil;
-import kohgylw.kiftd.server.util.LogUtil;
 import kohgylw.kiftd.server.util.NoticeUtil;
 
 
@@ -50,12 +49,15 @@ public class ServerInitListener implements ServletContextListener {
 	private FileBlockUtil fbu;// 文件块操作工具
 	private NoticeUtil nu;// 公告信息解析工具
 	private FolderMapper nm;// 文件夹映射表
-	private LogUtil lu;// 日志记录工具
 
 	public void contextInitialized(final ServletContextEvent sce) {
 		// 获取IOC容器，用于实例化一些必要的工具
 		final ApplicationContext context = (ApplicationContext) WebApplicationContextUtils
 				.getWebApplicationContext(sce.getServletContext());
+		if (context == null) {
+			// 未获取到IOC容器时直接抛错，避免后续所有 getBean 调用以 NPE 方式失败
+			throw new IllegalStateException("无法获取Spring IOC容器，服务器初始化失败。");
+		}
 		// 1，初始化文件节点数据库
 		FileNodeUtil.initNodeTableToDataBase();
 		// 2，校对文件块并清理临时文件夹
@@ -77,7 +79,6 @@ public class ServerInitListener implements ServletContextListener {
 		doWatch();
 		// 5，启动失效额外权限检查线程，对删除的文件夹对应的额外权限设置进行清理工作，避免堆积
 		nm = context.getBean(FolderMapper.class);
-		lu = context.getBean(LogUtil.class);
 		cleanInvalidAddedAuth();
 	}
 
@@ -113,12 +114,13 @@ public class ServerInitListener implements ServletContextListener {
 						WatchKey wk = ws.take();
 						List<WatchEvent<?>> es = wk.pollEvents();
 						for (WatchEvent<?> we : es) {
-							switch (we.context().toString()) {
-							case NoticeUtil.NOTICE_FILE_NAME:
+							// OVERFLOW 事件的 context 为 null，直接访问会抛 NPE 导致监听线程死亡，
+							// 应跳过该标记事件，只处理真实文件事件
+							if (we.kind() == StandardWatchEventKinds.OVERFLOW) {
+								continue;
+							}
+							if (NoticeUtil.NOTICE_FILE_NAME.equals(we.context().toString())) {
 								nu.loadNotice();
-								break;
-							default:
-								break;
 							}
 						}
 						if (!wk.reset()) {
@@ -130,7 +132,8 @@ public class ServerInitListener implements ServletContextListener {
 						Printer.instance.print("错误：服务器文件自动更新失败，该功能已失效。某些文件将无法自动载入最新内容（请尝试重启程序以恢复该功能）。");
 					}
 				}
-			});
+			}, "kiftd-file-watch");
+			pathWatchServiceThread.setDaemon(true);
 			pathWatchServiceThread.start();
 		}
 	}
@@ -142,18 +145,23 @@ public class ServerInitListener implements ServletContextListener {
 			cleanInnvalidAddedAuthThread = new Thread(() -> {
 				while (continueCheck) {
 					if (needCheck) {
-						List<String> invalidIdList = new ArrayList<>();
-						List<String> idList = ConfigurationManager.instance().getAllAddedAuthFoldersId();
-						for (String id : idList) {
-							if (nm.selectById(id) == null) {
-								invalidIdList.add(id);
-								Printer.instance.print("文件夹ID：" + id + "对应的文件夹不存在或已被删除，相关的额外权限设置将被清理。");
+						try {
+							List<String> invalidIdList = new ArrayList<>();
+							List<String> idList = ConfigurationManager.instance().getAllAddedAuthFoldersId();
+							for (String id : idList) {
+								if (nm.selectById(id) == null) {
+									invalidIdList.add(id);
+									Printer.instance.print("文件夹ID：" + id + "对应的文件夹不存在或已被删除，相关的额外权限设置将被清理。");
+								}
 							}
+							if (ConfigurationManager.instance().removeAddedAuthByFolderId(invalidIdList)) {
+								Printer.instance.print("失效的额外权限设置已经清理完成。");
+							}
+							needCheck = false;
+						} catch (Exception e) {
+							// 仅记录错误并保留 needCheck，避免一次瞬时错误导致清理线程退出、功能永久失效
+							Printer.instance.print("错误：失效额外权限检查失败：" + e.getMessage());
 						}
-						if (ConfigurationManager.instance().removeAddedAuthByFolderId(invalidIdList)) {
-							Printer.instance.print("失效的额外权限设置已经清理完成。");
-						}
-						needCheck = false;
 					}
 					try {
 						Thread.sleep(CYVLE_TIME);
@@ -161,7 +169,8 @@ public class ServerInitListener implements ServletContextListener {
 						continueCheck = false;
 					}
 				}
-			});
+			}, "kiftd-clean-invalid-auth");
+			cleanInnvalidAddedAuthThread.setDaemon(true);
 			cleanInnvalidAddedAuthThread.start();
 		}
 	}

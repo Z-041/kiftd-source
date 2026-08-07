@@ -3,6 +3,7 @@ package kohgylw.kiftd.newcore.controller;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 import kohgylw.kiftd.newcore.service.FolderService;
@@ -35,19 +36,19 @@ public class FolderController {
 		return folderViewService.getRemainingFolderViewJson(request);
 	}
 
-	@RequestMapping({ "/newFolder.ajax" })
+	@PostMapping({ "/newFolder.ajax" })
 	@ResponseBody
 	public String newFolder(final HttpServletRequest request) {
 		return this.folderService.newFolder(request);
 	}
 
-	@RequestMapping({ "/deleteFolder.ajax" })
+	@PostMapping({ "/deleteFolder.ajax" })
 	@ResponseBody
 	public String deleteFolder(final HttpServletRequest request) {
 		return this.folderService.deleteFolder(request);
 	}
 
-	@RequestMapping({ "/renameFolder.ajax" })
+	@PostMapping({ "/renameFolder.ajax" })
 	@ResponseBody
 	public String renameFolder(final HttpServletRequest request) {
 		return this.folderService.renameFolder(request);

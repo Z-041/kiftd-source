@@ -1,13 +1,16 @@
 package kohgylw.kiftd.ui.util;
 
 import java.awt.Color;
+import java.awt.Component;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.List;
 
+import javax.swing.JLabel;
 import javax.swing.JTable;
+import javax.swing.SwingUtilities;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.JTableHeader;
 import javax.swing.table.TableModel;
@@ -40,6 +43,9 @@ public class FilesTable extends JTable {
 			.withInitial(() -> new SimpleDateFormat("yyyy年MM月dd日"));
 	private int sortBySize = 1;
 	private int sortByCreator = 1;
+	// 当前排序状态，用于表头方向指示（-1 表示未排序）
+	private int sortColumn = -1;
+	private boolean sortAscending = true;
 
 	private static final long serialVersionUID = -3436472714356711024L;
 
@@ -58,6 +64,8 @@ public class FilesTable extends JTable {
 					if (folders != null) {
 						folders.sort((e1, e2) -> sortByName * e1.getFolderName().compareTo(e2.getFolderName()));
 					}
+					sortColumn = 0;
+					sortAscending = sortByName == 1;
 					sortByName = sortByName * -1;
 					sortByDate = 1;
 					sortBySize = 1;
@@ -86,6 +94,8 @@ public class FilesTable extends JTable {
 							}
 						});
 					}
+					sortColumn = 1;
+					sortAscending = sortByDate == 1;
 					sortByDate = sortByDate * -1;
 					sortByName = 1;
 					sortBySize = 1;
@@ -96,6 +106,8 @@ public class FilesTable extends JTable {
 						files.sort((e1, e2) -> sortBySize
 								* Long.compare(Long.parseLong(e1.getFileSize()), Long.parseLong(e2.getFileSize())));
 					}
+					sortColumn = 2;
+					sortAscending = sortBySize == 1;
 					sortBySize = sortBySize * -1;
 					sortByName = 1;
 					sortByDate = 1;
@@ -108,6 +120,8 @@ public class FilesTable extends JTable {
 					if (folders != null) {
 						folders.sort((e1, e2) -> sortByCreator * e1.getFolderCreator().compareTo(e2.getFolderCreator()));
 					}
+					sortColumn = 3;
+					sortAscending = sortByCreator == 1;
 					sortByCreator = sortByCreator * -1;
 					sortByName = 1;
 					sortByDate = 1;
@@ -119,6 +133,21 @@ public class FilesTable extends JTable {
 				updateValues(folders, files);
 			}
 		});
+		// 表头排序方向指示：当前排序列显示 ▲（升序）/ ▼（降序）
+		filesTableHeader.setDefaultRenderer(new DefaultTableCellRenderer() {
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
+					boolean hasFocus, int row, int column) {
+				JLabel label = (JLabel) super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row,
+						column);
+				if (convertColumnIndexToModel(column) == sortColumn) {
+					label.setText(label.getText() + (sortAscending ? " ▲" : " ▼"));
+				}
+				return label;
+			}
+		});
 	}
 
 	@Override
@@ -127,6 +156,10 @@ public class FilesTable extends JTable {
 	}
 
 	public void updateValues(List<FolderTreeNode> folders, List<Node> files) {
+		if (!SwingUtilities.isEventDispatchThread()) {
+			SwingUtilities.invokeLater(() -> updateValues(folders, files));
+			return;
+		}
 		try {
 			setModel(new TableModel() {
 				@Override

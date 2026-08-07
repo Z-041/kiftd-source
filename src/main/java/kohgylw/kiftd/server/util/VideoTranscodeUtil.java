@@ -158,13 +158,23 @@ public class VideoTranscodeUtil {
 			if (!SUPPORTED_VIDEO_SUFFIXES.contains(suffix)) {
 				throw new IllegalArgumentException();
 			}
+			// 在线解码功能未启用（如未配置 ffmpeg）时拒绝创建转码任务，避免启动注定失败的转码线程
+			if (!kfl.isEnableFFmpeg()) {
+				return null;
+			}
 			long activeCount = videoTranscodeThreads.values().stream()
 					.filter(t -> !"FIN".equals(t.getProgress()))
 					.count();
 			if (activeCount >= MAX_CONCURRENT_TRANSCODES) {
 				return "WAIT";
 			}
-			videoTranscodeThreads.put(fId, new VideoTranscodeThread(f, ea, kfl));
+			try {
+				videoTranscodeThreads.put(fId, new VideoTranscodeThread(f, ea, kfl));
+			} catch (Exception e) {
+				// 转码任务创建失败（如源文件读取异常），移除占位记录并返回 null，避免留下悬挂任务
+				videoTranscodeThreads.remove(fId);
+				return null;
+			}
 			return "0.0";
 		}
 	}

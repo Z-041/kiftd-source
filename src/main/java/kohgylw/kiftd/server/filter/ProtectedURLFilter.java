@@ -8,11 +8,8 @@ import jakarta.servlet.FilterConfig;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
-import jakarta.servlet.annotation.WebFilter;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-
-import org.springframework.core.annotation.Order;
 
 import kohgylw.kiftd.server.util.ConfigurationManager;
 
@@ -29,8 +26,6 @@ import kohgylw.kiftd.server.util.ConfigurationManager;
  * @author 青阳龙野(kohgylw)
  * @version 1.0
  */
-@WebFilter({ "/prv/*" })
-@Order(4)
 public class ProtectedURLFilter implements Filter {
 
 	@Override

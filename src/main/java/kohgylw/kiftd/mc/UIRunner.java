@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import javax.swing.SwingUtilities;
+import javax.swing.UIManager;
 
 import kohgylw.kiftd.newcore.KiftdApplication;
 import kohgylw.kiftd.printer.Printer;
@@ -26,6 +27,12 @@ public class UIRunner {
 		SwingUtilities.invokeAndWait(() -> {
 			try {
 				Printer.init(true);
+				// 启用系统外观（Windows 原生风格），须在任何 Swing 组件创建之前设置
+				try {
+					UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+				} catch (Exception e) {
+					// 系统外观不可用时保留默认外观，不影响使用
+				}
 			} catch (Exception e) {
 				throw new RuntimeException(e);
 			}

@@ -11,6 +11,7 @@ import java.awt.SystemTray;
 import java.awt.TrayIcon;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.io.IOException;
@@ -64,6 +65,7 @@ public class ServerUIModule extends KiftdDynamicWindow implements MessageOutput 
 	private static JButton exit;
 	private static JLabel serverStatusLab;
 	private static JLabel portStatusLab;
+	private static JLabel addrLab;
 	private static JLabel logLevelLab;
 	private static JLabel bufferSizeLab;
 	private static final String S_STOP = "停止[Stopped]";
@@ -74,6 +76,8 @@ public class ServerUIModule extends KiftdDynamicWindow implements MessageOutput 
 	protected static final String L_EXCEPTION = "仅异常(EXCEPTION)";
 	protected static final String L_NONE = "不记录(NONE)";
 	private SimpleDateFormat sdf;
+	// 输出区插入计数：用于降低日志滚动与清理的执行频率
+	private static long insertCounter = 0;
 	/**
 	 * 窗口原始宽度
 	 */
@@ -167,12 +171,21 @@ public class ServerUIModule extends KiftdDynamicWindow implements MessageOutput 
 					show();
 				}
 			});
-			pMenu.add(exit);
-			pMenu.addSeparator();
-			pMenu.add(filesViewer);
 			pMenu.add(show);
+			pMenu.add(filesViewer);
+			pMenu.addSeparator();
+			pMenu.add(exit);
 			ServerUIModule.trayIcon.setPopupMenu(pMenu);
 			ServerUIModule.tray.add(ServerUIModule.trayIcon);
+			// 关闭主窗口时仅隐藏到托盘并给出气泡提示，避免用户误以为程序已退出
+			ServerUIModule.window.addWindowListener(new java.awt.event.WindowAdapter() {
+				@Override
+				public void windowClosing(java.awt.event.WindowEvent e) {
+					if (trayIcon != null) {
+						trayIcon.displayMessage("kiftd", "已最小化到系统托盘，服务器仍在后台运行。", TrayIcon.MessageType.INFO);
+					}
+				}
+			});
 
 		} else {
 			// 无系统托盘环境下，关闭窗口即退出程序，避免进程驻留后台无法退出
@@ -182,13 +195,13 @@ public class ServerUIModule extends KiftdDynamicWindow implements MessageOutput 
 		final JPanel titlebox = new JPanel(new FlowLayout(1));
 		titlebox.setBorder(new EmptyBorder((int) (8 * proportion), 0, 0, 0));
 		final JLabel title = new JLabel("kiftd");
-		title.setFont(new Font("宋体", 1, (int) (30 * proportion)));
+		title.setFont(new Font("微软雅黑", 1, (int) (30 * proportion)));
 		titlebox.add(title);
 		ServerUIModule.window.add(titlebox);
 		final JPanel subtitlebox = new JPanel(new FlowLayout(1));
 		subtitlebox.setBorder(new EmptyBorder(0, 0, (int) (5 * proportion), 0));
 		final JLabel subtitle = new JLabel("青阳网络文件系统-服务器");
-		subtitle.setFont(new Font("宋体", 0, (int) (13 * proportion)));
+		subtitle.setFont(new Font("微软雅黑", 0, (int) (13 * proportion)));
 		subtitlebox.add(subtitle);
 		ServerUIModule.window.add(subtitlebox);
 		final JPanel statusBox = new JPanel(new GridLayout(4, 1, 0, (int) (2 * proportion)));
@@ -202,6 +215,7 @@ public class ServerUIModule extends KiftdDynamicWindow implements MessageOutput 
 		portStatus.setBorder(new EmptyBorder(0, (int) (5 * proportion), 0, 0));
 		portStatus.add(new JLabel("端口号(Port)："));
 		portStatus.add(ServerUIModule.portStatusLab = new JLabel("--"));
+		portStatus.add(ServerUIModule.addrLab = new JLabel(""));
 		statusBox.add(portStatus);
 		final JPanel addrStatus = new JPanel(new FlowLayout(FlowLayout.LEFT));
 		addrStatus.setBorder(new EmptyBorder(0, (int) (5 * proportion), 0, 0));
@@ -216,12 +230,19 @@ public class ServerUIModule extends KiftdDynamicWindow implements MessageOutput 
 		ServerUIModule.window.add(statusBox);
 		final JPanel buttonBox = new JPanel(new GridLayout(3, 2, (int) (6 * proportion), (int) (4 * proportion)));
 		buttonBox.setBorder(new EmptyBorder((int) (5 * proportion), 0, (int) (5 * proportion), 0));
-		buttonBox.add(ServerUIModule.start = new JButton("开启(Start)>>"));
-		buttonBox.add(ServerUIModule.stop = new JButton("关闭(Stop)||"));
-		buttonBox.add(ServerUIModule.resatrt = new JButton("重启(Restart)~>"));
-		buttonBox.add(ServerUIModule.fileIOUtil = new JButton("文件(Files)[*]"));
-		buttonBox.add(ServerUIModule.setting = new JButton("设置(Setting)[/]"));
-		buttonBox.add(ServerUIModule.exit = new JButton("退出(Exit)[X]"));
+		buttonBox.add(ServerUIModule.start = new JButton("开启(Start)"));
+		buttonBox.add(ServerUIModule.stop = new JButton("关闭(Stop)"));
+		buttonBox.add(ServerUIModule.resatrt = new JButton("重启(Restart)"));
+		buttonBox.add(ServerUIModule.fileIOUtil = new JButton("文件(Files)"));
+		buttonBox.add(ServerUIModule.setting = new JButton("设置(Setting)"));
+		buttonBox.add(ServerUIModule.exit = new JButton("退出(Exit)"));
+		// 为按钮绑定快捷键（Alt+字母）
+		ServerUIModule.start.setMnemonic(KeyEvent.VK_S);
+		ServerUIModule.stop.setMnemonic(KeyEvent.VK_T);
+		ServerUIModule.resatrt.setMnemonic(KeyEvent.VK_R);
+		ServerUIModule.fileIOUtil.setMnemonic(KeyEvent.VK_F);
+		ServerUIModule.setting.setMnemonic(KeyEvent.VK_G);
+		ServerUIModule.exit.setMnemonic(KeyEvent.VK_X);
 		ServerUIModule.window.add(buttonBox);
 		final JPanel outputBox = new JPanel(new BorderLayout());
 		outputBox.setBorder(new EmptyBorder(0, (int) (2 * proportion), 0, (int) (2 * proportion)));
@@ -229,7 +250,7 @@ public class ServerUIModule extends KiftdDynamicWindow implements MessageOutput 
 		(ServerUIModule.output = new JTextArea()).setLineWrap(true);
 		output.setRows(6);
 		ServerUIModule.output.setEditable(false);
-		ServerUIModule.output.setForeground(Color.GRAY);
+		ServerUIModule.output.setForeground(new Color(0x37474F));// 深灰文字，提升白底对比度
 		ServerUIModule.output.getDocument().addDocumentListener(new DocumentListener() {
 
 			@Override
@@ -238,6 +259,10 @@ public class ServerUIModule extends KiftdDynamicWindow implements MessageOutput 
 
 			@Override
 			public void insertUpdate(DocumentEvent e) {
+				// 降低 EDT 任务频率：仅在部分插入时执行清理与滚动，避免逐行全文拷贝
+				if (++insertCounter % 20 != 0) {
+					return;
+				}
 				// 在 EDT 上处理输出区更新，避免非 EDT 线程直接操作 Swing 组件
 				SwingUtilities.invokeLater(() -> {
 					if (output.getLineCount() >= 1000) {
@@ -249,14 +274,15 @@ public class ServerUIModule extends KiftdDynamicWindow implements MessageOutput 
 						}
 						output.replaceRange("", 0, end);
 					}
-					output.setCaretPosition(output.getText().length());
+					// 使用文档长度定位光标，避免 getText() 全文拷贝开销
+					output.setCaretPosition(output.getDocument().getLength());
 				});
 			}
 
 			@Override
 			public void changedUpdate(DocumentEvent e) {
 				// 仅滚动到输出末尾，不做全选、不抢焦点，避免打断用户操作
-				SwingUtilities.invokeLater(() -> output.setCaretPosition(output.getText().length()));
+				SwingUtilities.invokeLater(() -> output.setCaretPosition(output.getDocument().getLength()));
 			}
 		});
 		outputBox.add(new JScrollPane(ServerUIModule.output), BorderLayout.CENTER);
@@ -324,7 +350,8 @@ public class ServerUIModule extends KiftdDynamicWindow implements MessageOutput 
 							} else {
 								printMessage("KIFT无法启动，请检查设置或查看异常信息。");
 							}
-							serverStatusLab.setText(S_STOP);
+							// 在 EDT 上回写状态，避免工作线程直接操作组件
+							SwingUtilities.invokeLater(() -> serverStatusLab.setText(S_STOP));
 						}
 						updateServerStatus();
 					});
@@ -403,10 +430,8 @@ public class ServerUIModule extends KiftdDynamicWindow implements MessageOutput 
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				ServerUIModule.sw = SettingWindow.getInstance();
-				Thread t = new Thread(() -> {
-					sw.show();
-				});
-				t.start();
+				// 设置窗口为模态对话框，需在 EDT 上显示
+				SwingUtilities.invokeLater(sw::show);
 			}
 		});
 		ServerUIModule.fileIOUtil.addActionListener((e) -> {
@@ -457,53 +482,73 @@ public class ServerUIModule extends KiftdDynamicWindow implements MessageOutput 
 	}
 
 	public void updateServerStatus() {
-		if (ServerUIModule.st != null) {
-			Thread t = new Thread(() -> {
-				if (ServerUIModule.st.getServerStatus()) {
-					ServerUIModule.serverStatusLab.setText(S_START);
-					ServerUIModule.start.setEnabled(false);
-					ServerUIModule.stop.setEnabled(true);
-					ServerUIModule.resatrt.setEnabled(true);
-					ServerUIModule.setting.setEnabled(false);
-				} else {
-					ServerUIModule.serverStatusLab.setText(S_STOP);
-					ServerUIModule.start.setEnabled(true);
-					ServerUIModule.stop.setEnabled(false);
-					ServerUIModule.resatrt.setEnabled(false);
-					ServerUIModule.setting.setEnabled(true);
-				}
-				fileIOUtil.setEnabled(true);
-				if (filesViewer != null) {
-					filesViewer.setEnabled(true);
-				}
-				ServerUIModule.portStatusLab.setText(ServerUIModule.st.getPort() + "");
-				if (ServerUIModule.st.getLogLevel() != null) {
-					switch (ServerUIModule.st.getLogLevel()) {
-					case Event: {
-						ServerUIModule.logLevelLab.setText(L_ALL);
-						break;
-					}
-					case None: {
-						ServerUIModule.logLevelLab.setText(L_NONE);
-						break;
-					}
-					case Runtime_Exception: {
-						ServerUIModule.logLevelLab.setText(L_EXCEPTION);
-						break;
-					}
-					default: {
-						ServerUIModule.logLevelLab.setText("无法获取(?)");
-						break;
-					}
-					}
-				}
-				ServerUIModule.bufferSizeLab.setText(ServerUIModule.st.getBufferSize() / 1024 + " KB");
-			});
-			t.start();
+		if (ServerUIModule.st == null) {
+			return;
 		}
+		// 在 EDT 上更新界面元素，避免工作线程直接操作 Swing 组件
+		SwingUtilities.invokeLater(() -> {
+			if (ServerUIModule.st.getServerStatus()) {
+				ServerUIModule.serverStatusLab.setText(S_START);
+				ServerUIModule.start.setEnabled(false);
+				ServerUIModule.stop.setEnabled(true);
+				ServerUIModule.resatrt.setEnabled(true);
+				ServerUIModule.setting.setEnabled(false);
+			} else {
+				ServerUIModule.serverStatusLab.setText(S_STOP);
+				ServerUIModule.start.setEnabled(true);
+				ServerUIModule.stop.setEnabled(false);
+				ServerUIModule.resatrt.setEnabled(false);
+				ServerUIModule.setting.setEnabled(true);
+			}
+			fileIOUtil.setEnabled(true);
+			if (filesViewer != null) {
+				filesViewer.setEnabled(true);
+			}
+			// 未启动时端口可能为 0，回退显示默认配置端口
+			int port = ServerUIModule.st.getPort();
+			if (port == 0) {
+				try {
+					port = Integer.parseInt(ServerUIModule.st.getInitProt());
+				} catch (NumberFormatException e) {
+					port = 8080;
+				}
+			}
+			ServerUIModule.portStatusLab.setText(port + "");
+			if (addrLab != null) {
+				addrLab.setText("  访问：http://localhost:" + port);
+			}
+			if (ServerUIModule.st.getLogLevel() != null) {
+				switch (ServerUIModule.st.getLogLevel()) {
+				case Event: {
+					ServerUIModule.logLevelLab.setText(L_ALL);
+					break;
+				}
+				case None: {
+					ServerUIModule.logLevelLab.setText(L_NONE);
+					break;
+				}
+				case Runtime_Exception: {
+					ServerUIModule.logLevelLab.setText(L_EXCEPTION);
+					break;
+				}
+				default: {
+					ServerUIModule.logLevelLab.setText("无法获取(?)");
+					break;
+				}
+				}
+			}
+			ServerUIModule.bufferSizeLab.setText(ServerUIModule.st.getBufferSize() / 1024 + " KB");
+		});
 	}
 
 	private void exit() {
+		// 退出确认：服务器运行时明确警示将中断所有访问
+		boolean running = ServerUIModule.st != null && ServerUIModule.st.getServerStatus();
+		String msg = running ? "服务器仍在运行，退出程序将关闭服务器并终止所有访问。\n确认退出吗？" : "确认退出程序吗？";
+		if (JOptionPane.showConfirmDialog(window, msg, "退出", JOptionPane.YES_NO_OPTION,
+				running ? JOptionPane.WARNING_MESSAGE : JOptionPane.QUESTION_MESSAGE) != JOptionPane.YES_OPTION) {
+			return;
+		}
 		ServerUIModule.start.setEnabled(false);
 		ServerUIModule.stop.setEnabled(false);
 		ServerUIModule.exit.setEnabled(false);
@@ -525,12 +570,15 @@ public class ServerUIModule extends KiftdDynamicWindow implements MessageOutput 
 	}
 
 	public void printMessage(final String context) {
-		ServerUIModule.output.append("[" + this.getFormateDate() + "]" + context + "\n");
+		// 输出区为 Swing 组件，必须在 EDT 中操作；调用方遍布各工作线程（启动/停止/日志线程池等）
+		SwingUtilities.invokeLater(() -> {
+			ServerUIModule.output.append("[" + this.getFormateDate() + "]" + context + "\n");
+		});
 	}
 
 	private String getFormateDate() {
 		if (null == sdf) {
-			sdf = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss");
+			sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");// 24 小时制，避免上下午混淆
 		}
 		if (ServerUIModule.ti != null) {
 			final Date d = ServerUIModule.ti.get();

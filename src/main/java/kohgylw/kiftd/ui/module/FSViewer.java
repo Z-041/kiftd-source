@@ -82,12 +82,12 @@ public class FSViewer extends KiftdDynamicWindow {
 		Container c = window.getContentPane();
 		JToolBar toolBar = new JToolBar();
 		toolBar.setFloatable(false);
-		homeBtn = new JButton("根目录[/Root]");
-		backToParentFolder = new JButton("上一级[^]");
-		importBtn = new JButton("导入[<-]");
-		exportBtn = new JButton("导出[->]");
-		deleteBtn = new JButton("删除[X]");
-		refreshBtn = new JButton("刷新[*]");
+		homeBtn = new JButton("根目录");
+		backToParentFolder = new JButton("上一级");
+		importBtn = new JButton("导入");
+		exportBtn = new JButton("导出");
+		deleteBtn = new JButton("删除");
+		refreshBtn = new JButton("刷新");
 		homeBtn.setPreferredSize(new Dimension((int) (120 * proportion), (int) (35 * proportion)));
 		homeBtn.setEnabled(false);
 		backToParentFolder.setPreferredSize(new Dimension((int) (120 * proportion), (int) (35 * proportion)));
@@ -196,10 +196,7 @@ public class FSViewer extends KiftdDynamicWindow {
 						type = null;
 					}
 					FSProgressDialog fsd = FSProgressDialog.getNewInstance(window);
-					Thread t = new Thread(() -> {
-						fsd.show();
-					});
-					t.start();
+					SwingUtilities.invokeLater(() -> fsd.show());
 					try {
 						FileSystemManager.getInstance().exportTo(folders, nodes, path, type);
 						SwingUtilities.invokeLater(() -> {
@@ -235,10 +232,7 @@ public class FSViewer extends KiftdDynamicWindow {
 						}
 					}
 					FSProgressDialog fsd = FSProgressDialog.getNewInstance(window);
-					Thread t = new Thread(() -> {
-						fsd.show();
-					});
-					t.start();
+					SwingUtilities.invokeLater(() -> fsd.show());
 					try {
 						FileSystemManager.getInstance().delete(selectedFolders.toArray(new String[0]),
 								selectedNodes.toArray(new String[0]));
@@ -330,10 +324,7 @@ public class FSViewer extends KiftdDynamicWindow {
 										if (!pfOld.isFile() || pfOld.delete()) {
 											// 将要预览的文件导出至此文件夹内
 											FSProgressDialog fsd = FSProgressDialog.getNewInstance(window);
-											Thread t = new Thread(() -> {
-												fsd.show();
-											});
-											t.start();
+											SwingUtilities.invokeLater(() -> fsd.show());
 											try {
 												boolean exportSuccess = FileSystemManager.getInstance().exportTo(
 														new String[0], new String[] { n.getFileId() }, previewFileDir,
@@ -477,7 +468,7 @@ public class FSViewer extends KiftdDynamicWindow {
 				refresh();
 			}
 			enableAllButtons();
-			window.setVisible(true);
+			SwingUtilities.invokeLater(() -> window.setVisible(true));
 		} catch (Exception e) {
 			Printer.instance.print(e.toString());
 			Printer.instance.print("错误：无法打开文件系统，该文件系统可能正在被另一个kiftd占用。");
@@ -496,7 +487,8 @@ public class FSViewer extends KiftdDynamicWindow {
 			}
 			if (currentView != null && currentView.getCurrent() != null) {
 				filesTable.updateValues(currentView.getFolders(), currentView.getFiles());
-				window.setTitle("kiftd-" + currentView.getCurrent().getFolderName());
+				final String folderName = currentView.getCurrent().getFolderName();
+				SwingUtilities.invokeLater(() -> window.setTitle("kiftd-" + folderName));
 			} else {
 				// 浏览一个不存在的文件夹时自动返回根目录
 				getFolderView("root");
@@ -576,6 +568,10 @@ public class FSViewer extends KiftdDynamicWindow {
 
 	// 锁定全部按钮避免重复操作
 	private void disableAllButtons() {
+		if (!SwingUtilities.isEventDispatchThread()) {
+			SwingUtilities.invokeLater(this::disableAllButtons);
+			return;
+		}
 		homeBtn.setEnabled(false);
 		backToParentFolder.setEnabled(false);
 		importBtn.setEnabled(false);
@@ -586,6 +582,10 @@ public class FSViewer extends KiftdDynamicWindow {
 
 	// 解锁可用按钮
 	private void enableAllButtons() {
+		if (!SwingUtilities.isEventDispatchThread()) {
+			SwingUtilities.invokeLater(this::enableAllButtons);
+			return;
+		}
 		// 针对一些常规按钮的解锁
 		refreshBtn.setEnabled(true);
 		importBtn.setEnabled(true);

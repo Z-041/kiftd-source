@@ -33,7 +33,8 @@ import ws.schild.jave.process.ffmpeg.FFMPEGProcess;
 @Component
 public class KiftdFFMPEGLocator implements ProcessLocator {
 
-	private boolean enableFFmpeg;
+	// 该标记由构造/编码线程与转码查询线程跨线程读写，须保证可见性
+	private volatile boolean enableFFmpeg;
 
 	private String suffix;
 

@@ -152,7 +152,10 @@ public class KiftdProperties {
 						delimitIndex = delimit1;
 					}
 					if (delimitIndex >= 0) {
-						setProperty(lineStr.substring(0, delimitIndex), lineStr.substring(delimitIndex + 1));// 保存为键值对
+						// 键值对保存前须还原标准 Properties 的转义序列（如 \= 表示字面等号），
+						// 否则由 java.util.Properties.store 写入的配置（如 PBKDF2 哈希中的 \=）会被污染
+						setProperty(unescape(lineStr.substring(0, delimitIndex)),
+								unescape(lineStr.substring(delimitIndex + 1)));// 保存为键值对
 					} else {
 						contexts.add(new LineContext(null, null, lineStr));// 保存为其他文本
 					}
@@ -184,7 +187,9 @@ public class KiftdProperties {
 			}
 			for (LineContext line : contexts) {
 				if (line.key != null) {
-					writer.write(line.key + "=" + line.value);
+					// 写出前须按标准 Properties 规则转义特殊字符（= : \ 控制字符 非ASCII），
+					// 与 load() 的转义还原对称，保证 java.util.Properties 与本类读写结果一致
+					writer.write(escape(line.key) + "=" + escape(line.value));
 					writer.newLine();
 				} else {
 					writer.write(line.text);
@@ -238,6 +243,96 @@ public class KiftdProperties {
 	public void clear() {
 		contexts.clear();
 		properties.clear();
+	}
+
+	// 按标准 java.util.Properties 规则转义键/值中的特殊字符，
+	// 保证通过本类写入的文件也可被标准 Properties 工具正确读取
+	private static String escape(String s) {
+		StringBuilder sb = new StringBuilder();
+		for (int i = 0; i < s.length(); i++) {
+			char c = s.charAt(i);
+			switch (c) {
+			case '\\':
+				sb.append("\\\\");
+				break;
+			case '=':
+				sb.append("\\=");
+				break;
+			case ':':
+				sb.append("\\:");
+				break;
+			case '#':
+				sb.append("\\#");
+				break;
+			case '!':
+				sb.append("\\!");
+				break;
+			case '\t':
+				sb.append("\\t");
+				break;
+			case '\n':
+				sb.append("\\n");
+				break;
+			case '\r':
+				sb.append("\\r");
+				break;
+			default:
+				// 非 ASCII 与控制字符转义为 uXXXX 形式，避免 ISO-8859-1 写出时被替换为乱码
+				if (c < 0x20 || c > 0x7E) {
+					sb.append('\\');
+					sb.append('u');
+					sb.append(String.format("%04x", (int) c));
+				} else {
+					sb.append(c);
+				}
+				break;
+			}
+		}
+		return sb.toString();
+	}
+
+	// 还原标准 Properties 的转义序列（\= \: \\ \t \n \r uXXXX 等）
+	private static String unescape(String s) {
+		StringBuilder sb = new StringBuilder();
+		for (int i = 0; i < s.length(); i++) {
+			char c = s.charAt(i);
+			if (c == '\\' && i + 1 < s.length()) {
+				char n = s.charAt(++i);
+				switch (n) {
+				case 't':
+					sb.append('\t');
+					break;
+				case 'n':
+					sb.append('\n');
+					break;
+				case 'r':
+					sb.append('\r');
+					break;
+				case 'f':
+					sb.append('\f');
+					break;
+				case 'u':
+					if (i + 4 < s.length()) {
+						try {
+							sb.append((char) Integer.parseInt(s.substring(i + 1, i + 5), 16));
+							i += 4;
+						} catch (NumberFormatException e) {
+							sb.append('u');
+						}
+					} else {
+						sb.append('u');
+					}
+					break;
+				default:
+					// \= 还原为 =、\: 还原为 :、\\ 还原为 \、\# 还原为 #、\! 还原为 !
+					sb.append(n);
+					break;
+				}
+			} else {
+				sb.append(c);
+			}
+		}
+		return sb.toString();
 	}
 
 }

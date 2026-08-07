@@ -34,6 +34,11 @@ public class ContentTypeMap {
 	 */
 	public String getContentType(String suffix) {
 
+		if (suffix == null) {
+			// 空后缀无法匹配任何类型，统一按二进制流处理，避免 switch 对 null 抛 NPE
+			return "application/octet-stream";
+		}
+
 		switch (suffix) {
 
 		case ".123":

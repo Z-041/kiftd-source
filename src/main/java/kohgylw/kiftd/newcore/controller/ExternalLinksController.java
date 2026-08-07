@@ -3,6 +3,7 @@ package kohgylw.kiftd.newcore.controller;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 import kohgylw.kiftd.newcore.service.ExternalDownloadService;
@@ -21,7 +22,7 @@ public class ExternalLinksController {
 		this.fcs = fcs;
 	}
 
-	@RequestMapping("/getDownloadKey.ajax")
+	@PostMapping("/getDownloadKey.ajax")
 	@ResponseBody
 	public String getDownloadKey(HttpServletRequest request) {
 		return eds.getDownloadKey(request);

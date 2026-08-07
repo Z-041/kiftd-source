@@ -29,7 +29,6 @@ public class VideoTranscodeThread {
 
 	private volatile String md5;
 	private volatile String progress;
-	private Encoder encoder;
 	private volatile String outputFileName;
 	// MD5 校验缓存：首次校验通过后记录源文件长度与最后修改时间，
 	// 后续轮询仅比较文件元数据即可判断源文件是否变化，避免反复全文件哈希
@@ -45,7 +44,8 @@ public class VideoTranscodeThread {
 		}
 		progress = "0.0";
 		MultimediaObject mo = new MultimediaObject(f,fl);
-		encoder = new Encoder(fl);
+		final Encoder encoder = new Encoder(fl);
+		// 转码为长耗时任务，置为 daemon 线程避免阻塞服务器正常关闭，并命名便于排查
 		Thread t = new Thread(() -> {
 			try {
 				outputFileName="video_"+UUID.randomUUID().toString()+".mp4";
@@ -68,7 +68,8 @@ public class VideoTranscodeThread {
 				progress = "ERROR";
 				Printer.instance.print("警告：在线转码功能出现意外错误。详细信息："+e.getMessage());
 			}
-		});
+		}, "kiftd-video-transcode");
+		t.setDaemon(true);
 		t.start();
 	}
 

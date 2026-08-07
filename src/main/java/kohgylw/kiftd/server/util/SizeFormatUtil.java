@@ -9,8 +9,6 @@ public final class SizeFormatUtil {
 	private static final long GB = 1073741824L;
 	private static final long TB = 1099511627776L;
 
-	private static final DecimalFormat FORMAT = new DecimalFormat("#.#");
-
 	private SizeFormatUtil() {
 	}
 
@@ -48,7 +46,7 @@ public final class SizeFormatUtil {
 			convertSize = ((double) size / (double) TB);
 			unit = "TB";
 		}
-		return FORMAT.format(convertSize) + " " + unit;
+		return new DecimalFormat("#.#").format(convertSize) + " " + unit;
 	}
 
 	public static long parseSizeString(String in) {
@@ -79,7 +77,14 @@ public final class SizeFormatUtil {
 			throw new IllegalArgumentException("empty size string");
 		}
 		if (trimmed.length() <= 1) {
-			long base = Long.parseLong(trimmed);
+			long base;
+			try {
+				base = Long.parseLong(trimmed);
+			} catch (NumberFormatException e) {
+				// NumberFormatException 是 RuntimeException，若直接抛出会绕过调用方的
+				// IllegalArgumentException 捕获逻辑，这里统一转为 IllegalArgumentException
+				throw new IllegalArgumentException("invalid size string: " + in, e);
+			}
 			return defaultIsKb ? base * KB : base;
 		}
 		String value;
@@ -99,7 +104,12 @@ public final class SizeFormatUtil {
 			unit = String.valueOf(last);
 			value = trimmed.substring(0, trimmed.length() - 1);
 		}
-		long base = Long.parseLong(value.trim());
+		long base;
+		try {
+			base = Long.parseLong(value.trim());
+		} catch (NumberFormatException e) {
+			throw new IllegalArgumentException("invalid size string: " + in, e);
+		}
 		switch (unit) {
 		case "k":
 			return base * KB;

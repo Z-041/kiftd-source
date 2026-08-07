@@ -113,8 +113,7 @@ public class PathsTable extends JTable {
 				}
 			}
 		};
-		Thread t = new Thread(() -> SwingUtilities.invokeLater(doUpdate));
-		t.start();
+		SwingUtilities.invokeLater(doUpdate);
 	}
 
 	public short getSelectFileSystemIndex() {

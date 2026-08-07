@@ -34,7 +34,9 @@ public class IpAddrGetter {
 	 * @return java.lang.String 请求来源IP地址 
 	 */
 	public String getIpAddr(HttpServletRequest request) {
-		if (ConfigurationManager.instance().isIpXFFAnalysis()) {
+		String remoteAddr = request.getRemoteAddr();
+		// 仅当请求直接来源于可信代理（回环或内网）时才采信转发头，防止攻击者直连时伪造 XFF 绕过 IP 访问规则
+		if (ConfigurationManager.instance().isIpXFFAnalysis() && isTrustedProxy(remoteAddr)) {
 			for (String ipAddrHeader : IP_ADDR_HEADERS) {
 				String ipAddress = request.getHeader(ipAddrHeader);
 				if (ipAddress != null && ipAddress.length() > 0 && !"unknown".equalsIgnoreCase(ipAddress)) {
@@ -49,7 +51,6 @@ public class IpAddrGetter {
 				}
 			}
 		}
-		String remoteAddr = request.getRemoteAddr();
 		if (remoteAddr != null) {
 			String trimmed = remoteAddr.trim();
 			if (isValidIp(trimmed)) {
@@ -57,6 +58,22 @@ public class IpAddrGetter {
 			}
 		}
 		return "获取失败";
+	}
+
+	/**
+	 * 判断请求的直接来源地址是否为受信代理：回环地址或内网/站点本地地址。
+	 * 只有这类地址才允许携带转发头（X-Forwarded-For 等）参与真实客户端 IP 解析。
+	 */
+	private boolean isTrustedProxy(String remoteAddr) {
+		if (remoteAddr == null || remoteAddr.isEmpty()) {
+			return false;
+		}
+		try {
+			InetAddress addr = InetAddress.getByName(remoteAddr);
+			return addr.isLoopbackAddress() || addr.isSiteLocalAddress();
+		} catch (UnknownHostException e) {
+			return false;
+		}
 	}
 
 	/**

@@ -4,6 +4,13 @@
 var tReq;
 var tTimer;
 var kplayerPingInt;
+// 播放器页面的统一提示：页面自带 #kiftdAlertModal，无需依赖主页脚本（home.min.js）
+if (typeof kiftdAlert === "undefined") {
+	function kiftdAlert(msg) {
+		$("#kiftdAlertText").text(msg);
+		$("#kiftdAlertModal").modal("show");
+	}
+}
 $(function() {
 	window.onresize = function() {
 		showCloseBtn();
@@ -53,12 +60,12 @@ $(function() {
 						doTranscode();
 					}
 				} else {
-					alert("错误：无法定位要预览的文件或该操作未被授权。");
+					kiftdAlert("错误：无法定位要预览的文件或该操作未被授权。");
 					reMainPage();
 				}
 			},
 			error: function() {
-				alert("错误：请求失败，请刷新重试。");
+				kiftdAlert("错误：请求失败，请刷新重试。");
 				reMainPage();
 			}
 		});
@@ -109,7 +116,7 @@ function doTranscode() {
 			if (result == "FIN") {
 				playVideo();
 			} else if (result == "ERROR") {
-				alert("错误：请求失败，请刷新重试。");
+				kiftdAlert("错误：请求失败，请刷新重试。");
 				reMainPage();
 			} else {
 				$("#transcodeProgress").text(result);
@@ -117,7 +124,7 @@ function doTranscode() {
 			}
 		},
 		error: function() {
-			alert("错误：请求失败，请刷新重试。");
+			kiftdAlert("错误：请求失败，请刷新重试。");
 			reMainPage();
 		}
 	});

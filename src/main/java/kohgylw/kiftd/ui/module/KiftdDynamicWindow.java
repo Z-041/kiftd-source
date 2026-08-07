@@ -83,8 +83,8 @@ public class KiftdDynamicWindow {
 		} catch (Exception e1) {
 			// 缩放设置文件损坏或不可读时回退程序计算的比例（下方 proportion 有兜底）
 		}
-		if (proportion < 1.0) {
-			proportion = 1.0; // 设置其最小限界，防止界面显示不全
+		if (proportion < 0.8) {
+			proportion = 0.8; // 允许小屏幕按比例缩小（下限 0.8），避免窗口超出屏幕显示不全
 		}
 		fileChooerSize = new Dimension((int) (570 * proportion), (int) (300 * proportion));
 	}
@@ -143,7 +143,9 @@ public class KiftdDynamicWindow {
 	 * @author 青阳龙野(kohgylw)
 	 */
 	protected void setUIFont() {
-		Font f = new Font("宋体", Font.PLAIN, (int) (13 * proportion));
+		// Windows 下使用微软雅黑以获得更现代的观感，其他系统回退宋体
+		String fontFamily = System.getProperty("os.name").toLowerCase().indexOf("window") >= 0 ? "微软雅黑" : "宋体";
+		Font f = new Font(fontFamily, Font.PLAIN, (int) (13 * proportion));
 		String names[] = { "Label", "CheckBox", "PopupMenu", "MenuItem", "CheckBoxMenuItem", "JRadioButtonMenuItem",
 				"ComboBox", "Button", "Tree", "ScrollPane", "TabbedPane", "EditorPane", "TitledBorder", "Menu",
 				"TextArea", "OptionPane", "MenuBar", "ToolBar", "ToggleButton", "ToolTip", "ProgressBar", "TableHeader",

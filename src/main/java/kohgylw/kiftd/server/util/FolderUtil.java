@@ -113,15 +113,16 @@ public class FolderUtil {
 	 * 
 	 * <h2>删除一个文件夹树</h2>
 	 * <p>
-	 * 该方法将会尝试删除一个文件夹内的所有文件和文件夹，最后也会删除传入文件夹本身。 它是线程执行的，因此不会阻塞原线程，也不会返回任何结果。
+	 * 该方法将会尝试删除一个文件夹内的所有文件和文件夹，最后也会删除传入文件夹本身。
+	 * 该方法在调用方事务内同步执行，删除顺序遵循"先删 DB 记录（可回滚）、后删磁盘块"的原则；
+	 * 任何失败将抛出 RuntimeException，交由调用方事务回滚，避免异步删除与事务回滚产生竞态导致数据不一致。
 	 * </p>
 	 * 
 	 * @author 青阳龙野(kohgylw)
 	 * @param folderId java.lang.String 要删除的文件夹树的ID，不能为null。
 	 */
 	public void deleteAllChildFolder(final String folderId) {
-		final Thread deleteChildFolderThread = new Thread(() -> this.iterationDeleteFolder(folderId));
-		deleteChildFolderThread.start();
+		this.iterationDeleteFolder(folderId);
 	}
 
 	private void iterationDeleteFolder(final String folderId) {
@@ -131,8 +132,11 @@ public class FolderUtil {
 		}
 		final List<Node> files = (List<Node>) this.fim.queryByParentFolderId(folderId);
 		for (final Node f2 : files) {
-			this.fbu.deleteNode(f2);
+			if (!this.fbu.deleteNode(f2)) {
+				throw new IllegalStateException("删除文件节点失败：" + f2.getFileId());
+			}
 		}
+		// 幂等删除：根文件夹可能已被调用方先行删除（deleteById 返回 0 属预期）
 		this.fm.deleteById(folderId);
 	}
 

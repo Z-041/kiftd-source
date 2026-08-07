@@ -8,10 +8,7 @@ import jakarta.servlet.FilterConfig;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
-import jakarta.servlet.annotation.WebFilter;
 import jakarta.servlet.http.HttpServletResponse;
-
-import org.springframework.core.annotation.Order;
 
 /**
  * <h2>安全响应头过滤器</h2>
@@ -20,8 +17,6 @@ import org.springframework.core.annotation.Order;
  * X-Frame-Options、X-Content-Type-Options、Referrer-Policy。
  * </p>
  */
-@WebFilter
-@Order(0)
 public class SecurityHeadersFilter implements Filter {
 
 	@Override

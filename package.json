@@ -1,0 +1,15 @@
+{
+  "name": "kiftd-web",
+  "version": "1.0.0",
+  "private": true,
+  "description": "kiftd 前端源码与构建（webContext）。构建脚本按顺序合并 src/js 下的模块并压缩为生产文件（*.min.js）。",
+  "scripts": {
+    "build": "node scripts/build-frontend.js"
+  },
+  "devDependencies": {
+    "bootstrap": "^5.3.8",
+    "bootstrap-icons": "^1.13.1",
+    "clean-css": "^5.3.3",
+    "terser": "^5.31.0"
+  }
+}

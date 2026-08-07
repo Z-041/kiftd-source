@@ -10,12 +10,9 @@ import jakarta.servlet.FilterConfig;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
-import jakarta.servlet.annotation.WebFilter;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-
-import org.springframework.core.annotation.Order;
 
 /**
  *
@@ -27,8 +24,6 @@ import org.springframework.core.annotation.Order;
  * Cookie 并将其放入 X-XSRF-TOKEN 请求头中。
  * </p>
  */
-@WebFilter
-@Order(1)
 public class CsrfFilter implements Filter {
 
 	private static final String CSRF_COOKIE_NAME = "XSRF-TOKEN";

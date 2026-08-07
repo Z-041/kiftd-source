@@ -3,6 +3,7 @@ package kohgylw.kiftd.newcore.controller;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 import kohgylw.kiftd.newcore.service.MediaService;
@@ -20,7 +21,7 @@ public class MediaController {
 		this.mediaService = mediaService;
 	}
 
-	@RequestMapping(value = { "/playVideo.ajax" }, produces = { CHARSET_BY_AJAX })
+	@PostMapping(value = { "/playVideo.ajax" }, produces = { CHARSET_BY_AJAX })
 	@ResponseBody
 	public String playVideo(final HttpServletRequest request, final HttpServletResponse response) {
 		return this.mediaService.getPlayVideoJson(request);

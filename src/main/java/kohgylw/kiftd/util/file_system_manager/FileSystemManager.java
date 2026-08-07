@@ -19,8 +19,10 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import kohgylw.kiftd.printer.Printer;
 import kohgylw.kiftd.server.exception.FilesTotalOutOfLimitException;
@@ -119,7 +121,7 @@ public class FileSystemManager {
 	 * @author 青阳龙野(kohgylw)
 	 * @return kohgylw.kiftd.util.file_system_manager.FileSystemManager 唯一实例
 	 */
-	public static FileSystemManager getInstance() {
+	public static synchronized FileSystemManager getInstance() {
 		if (fsm == null) {
 			fsm = new FileSystemManager();
 		}
@@ -139,7 +141,7 @@ public class FileSystemManager {
 	 * @return kohgylw.kiftd.util.file_system_manager.pojo.FileSystemFolderView 指定的文件夹视图
 	 * @throws SQLException 获取失败
 	 */
-	public FileSystemFolderView getFolderView(String folderId) throws SQLException {
+	public synchronized FileSystemFolderView getFolderView(String folderId) throws SQLException {
 		FolderTreeNode target = selectFolderById(folderId);
 		if (target != null) {
 			FileSystemFolderView fv = new FileSystemFolderView();
@@ -148,7 +150,7 @@ public class FileSystemManager {
 			fv.setFolders(getFoldersByParentId(folderId));
 			return fv;
 		} else {
-			throw new SQLException();
+			throw new SQLException("未找到文件夹：" + folderId);
 		}
 	}
 
@@ -165,7 +167,9 @@ public class FileSystemManager {
 	 * @return boolean 删除结果
 	 * @throws SQLException
 	 */
-	public boolean delete(String[] foldersId, String[] filesId) throws Exception {
+	// 所有公开方法均需串行访问共享的 PreparedStatement，避免跨窗口并发操作互相污染参数绑定；
+	// cancel() 仅翻转标志位，不能加锁（否则会与持锁的长任务互相等待）
+	public synchronized boolean delete(String[] foldersId, String[] filesId) throws Exception {
 		gono = true;
 		for (int i = 0; i < filesId.length && gono; i++) {
 			deleteFile(filesId[i]);
@@ -191,7 +195,8 @@ public class FileSystemManager {
 	 * @return boolean 是否全部导出成功
 	 * @throws Exception
 	 */
-	public boolean exportTo(String[] foldersId, String[] nodesId, File path, String type) throws Exception {
+	public synchronized boolean exportTo(String[] foldersId, String[] nodesId, File path, String type)
+			throws Exception {
 		gono = true;
 		for (int i = 0; i < nodesId.length && gono; i++) {
 			exportNode(nodesId[i], path, type);
@@ -216,14 +221,15 @@ public class FileSystemManager {
 	 * @return int 存在同名文件（或文件夹）的数量，当被检查的路径下不存在同名文件（或文件夹）时返回0
 	 * @throws SQLException
 	 */
-	public int hasExistsFilesOrFolders(File[] files, String folderId) throws SQLException {
+	public synchronized int hasExistsFilesOrFolders(File[] files, String folderId) throws SQLException {
 		int result = 0;
 		List<FolderTreeNode> folders = getFoldersByParentId(folderId);
 		List<Node> nodes = selectNodesByFolderId(folderId);
+		// 使用哈希集合将 O(n*m) 的流扫描降为 O(n+m)
+		Set<String> folderNames = folders.stream().map(FolderTreeNode::getFolderName).collect(Collectors.toSet());
+		Set<String> nodeNames = nodes.stream().map(Node::getFileName).collect(Collectors.toSet());
 		for (File f : files) {
-			if (f.isDirectory() && folders.stream().anyMatch((e) -> e.getFolderName().equals(f.getName()))) {
-				result++;
-			} else if (nodes.stream().anyMatch((e) -> e.getFileName().equals(f.getName()))) {
+			if (folderNames.contains(f.getName()) || nodeNames.contains(f.getName())) {
 				result++;
 			}
 		}
@@ -245,7 +251,8 @@ public class FileSystemManager {
 	 * @return int 存在同名文件（或文件夹）的数量，当被检查的路径下不存在同名文件（或文件夹）时返回0
 	 * @throws SQLException
 	 */
-	public int hasExistsFilesOrFolders(String[] foldersId, String[] filesId, File path) throws Exception {
+	public synchronized int hasExistsFilesOrFolders(String[] foldersId, String[] filesId, File path)
+			throws Exception {
 		if (path.isDirectory()) {
 			int c = 0;
 			List<FolderTreeNode> folders = new ArrayList<>();
@@ -264,10 +271,12 @@ public class FileSystemManager {
 			}
 			File[] listedFiles = path.listFiles();
 			if (listedFiles != null) {
+				// 使用哈希集合将 O(n*m) 的流扫描降为 O(n+m)
+				Set<String> folderNames = folders.stream().map(FolderTreeNode::getFolderName)
+						.collect(Collectors.toSet());
+				Set<String> nodeNames = nodes.stream().map(Node::getFileName).collect(Collectors.toSet());
 				for (File f : listedFiles) {
-					if (f.isDirectory() && folders.stream().anyMatch((e) -> e.getFolderName().equals(f.getName()))) {
-						c++;
-					} else if (nodes.stream().anyMatch((e) -> e.getFileName().equals(f.getName()))) {
+					if (folderNames.contains(f.getName()) || nodeNames.contains(f.getName())) {
 						c++;
 					}
 				}
@@ -292,7 +301,7 @@ public class FileSystemManager {
 	 * @return boolean 是否全部导入成功
 	 * @throws Exception
 	 */
-	public boolean importFrom(File[] files, String folderId, String type) throws Exception {
+	public synchronized boolean importFrom(File[] files, String folderId, String type) throws Exception {
 		gono = true;
 		for (int i = 0; i < files.length && gono; i++) {
 			if (files[i].isDirectory()) {
@@ -316,7 +325,7 @@ public class FileSystemManager {
 	 * @return java.util.List<FolderTreeNode> 文件夹对象列表，如果没有结果则长度为0
 	 * @throws SQLException 查询失败
 	 */
-	public List<FolderTreeNode> getFoldersByParentId(String folderId) throws SQLException {
+	public synchronized List<FolderTreeNode> getFoldersByParentId(String folderId) throws SQLException {
 		selectFoldersByParentFolderId.setString(1, folderId);
 		List<FolderTreeNode> folders = new ArrayList<>();
 		try (ResultSet r = selectFoldersByParentFolderId.executeQuery()) {
@@ -328,7 +337,7 @@ public class FileSystemManager {
 	}
 
 	// 根据ID查询文件夹对象，无符合对象则返回null
-	public FolderTreeNode selectFolderById(String folderId) throws SQLException {
+	public synchronized FolderTreeNode selectFolderById(String folderId) throws SQLException {
 		selectFolderById.setString(1, folderId);
 		try (ResultSet r = selectFolderById.executeQuery()) {
 			if (r.next()) {
@@ -350,7 +359,7 @@ public class FileSystemManager {
 	}
 
 	// 查询指定文件夹内的所有文件节点，如无符合则返回空List
-	public List<Node> selectNodesByFolderId(String folderId) throws SQLException {
+	public synchronized List<Node> selectNodesByFolderId(String folderId) throws SQLException {
 		List<Node> nodes = new ArrayList<>();
 		selectNodesByFolderId.setString(1, folderId);
 		try (ResultSet r = selectNodesByFolderId.executeQuery()) {
@@ -432,27 +441,24 @@ public class FileSystemManager {
 			per = 0;// 操作进度置0
 			message = "正在导入文件：" + name;// 初始化操作信息
 			long size = f.length();// 获得文件体积
-			// 检查目标文件夹内是否有重名文件？
-			List<Node> nodes = selectNodesByFolderId(folderId);
-			if (nodes.stream().anyMatch((e) -> e.getFileName().equals(name))) {
+			// 检查目标文件夹内是否有重名文件？（一次性建立名称索引，避免多次流扫描）
+			Map<String, Node> nodeByName = selectNodesByFolderId(folderId).stream()
+					.collect(Collectors.toMap(Node::getFileName, n -> n, (a, b) -> a));
+			Node existed = nodeByName.get(name);
+			if (existed != null) {
 				// 有？那么是覆盖还是保留两者？
 				switch (type) {
 				case COVER:
 					// 覆盖
-					Node node = nodes.stream().filter((e) -> e.getFileName().equals(f.getName())).findFirst()
-							.orElse(null);
-					if (node == null) {
-						break;
-					}
-					deleteFile(node.getFileId());
-					if (selectNodeById(node.getFileId()) != null) {
+					deleteFile(existed.getFileId());
+					if (selectNodeById(existed.getFileId()) != null) {
 						// 测试是否删除成功
 						throw new IOException();
 					}
 					break;
 				case BOTH:
 					// 保留两者（计数命名法 foo.bar -> foo (1).bar）
-					newName = FileNodeUtil.getNewNodeName(name, nodes);
+					newName = FileNodeUtil.getNewNodeName(name, new ArrayList<>(nodeByName.values()));
 					break;
 				default:
 					// 意外情况，比如跳过，则直接视为操作完成。
@@ -516,18 +522,18 @@ public class FileSystemManager {
 			per = 0;
 			message = "正在导入文件夹：" + name;
 			FolderTreeNode parent = selectFolderById(folderId);
-			List<FolderTreeNode> folders = getFoldersByParentId(folderId);
+			// 一次性建立名称索引，避免多次流扫描
+			Map<String, FolderTreeNode> folderByName = getFoldersByParentId(folderId).stream()
+					.collect(Collectors.toMap(FolderTreeNode::getFolderName, e -> e, (a, b) -> a));
 			FolderTreeNode folder = null;
-			if (folders.stream().anyMatch((e) -> e.getFolderName().equals(name))) {
+			FolderTreeNode existedFolder = folderByName.get(name);
+			if (existedFolder != null) {
 				switch (type) {
 				case COVER:
-					folder = folders.stream().filter((e) -> e.getFolderName().equals(name)).findFirst().orElse(null);
-					if (folder == null) {
-						return;
-					}
+					folder = existedFolder;
 					break;
 				case BOTH:
-					newName = FileNodeUtil.getNewFolderName(name, folders);
+					newName = FileNodeUtil.getNewFolderName(name, new ArrayList<>(folderByName.values()));
 					break;
 				default:
 					return;
@@ -619,11 +625,11 @@ public class FileSystemManager {
 	// 删除一个文件夹
 	private void deleteFolder(String folderId) throws Exception {
 		FolderTreeNode f = selectFolderById(folderId);
-		List<Node> nodes = selectNodesByFolderId(folderId);
-		int size = nodes.size();
 		if (f == null) {
 			return;
 		}
+		List<Node> nodes = selectNodesByFolderId(folderId);
+		int size = nodes.size();
 		per = 0;
 		message = "正在删除文件夹：" + f.getFolderName();
 		// 删除该文件夹内的所有文件
@@ -963,7 +969,7 @@ public class FileSystemManager {
 	 * @return long 统计数目
 	 * @throws SQLException 各种统计失败的原因
 	 */
-	public long getFilesTotalNumByFoldersId(String pfId) throws SQLException {
+	public synchronized long getFilesTotalNumByFoldersId(String pfId) throws SQLException {
 		if (pfId != null) {
 			countNodesByFolderId.setString(1, pfId);
 			try (ResultSet rs = countNodesByFolderId.executeQuery()) {
@@ -987,7 +993,7 @@ public class FileSystemManager {
 	 * @return long 统计数目
 	 * @throws SQLException 各种统计失败的原因
 	 */
-	public long getFoldersTotalNumByFoldersId(String pfId) throws SQLException {
+	public synchronized long getFoldersTotalNumByFoldersId(String pfId) throws SQLException {
 		if (pfId != null) {
 			countFoldersByParentFolderId.setString(1, pfId);
 			try (ResultSet rs = countFoldersByParentFolderId.executeQuery()) {
@@ -1014,7 +1020,7 @@ public class FileSystemManager {
 	 * @throws IOException  各种移动失败的原因
 	 *
 	 */
-	public boolean transferExtendStore(short index, File reservePath) throws SQLException, IOException {
+	public synchronized boolean transferExtendStore(short index, File reservePath) throws SQLException, IOException {
 		final List<Node> nodes = selectNodesByExtendStoreIndex(index);
 		int total = nodes.size();
 		if (reservePath != null && reservePath.isDirectory()) {
@@ -1063,14 +1069,14 @@ public class FileSystemManager {
 	 * @throws SQLException 统计时发生错误
 	 *
 	 */
-	public long getTotalOfNodesAtExtendStore(short index) throws SQLException {
+	public synchronized long getTotalOfNodesAtExtendStore(short index) throws SQLException {
 		return countNodesByExtendStoreIndex(index);
 	}
 
 	private long countNodesByExtendStoreIndex(short index) throws SQLException {
 		countNodesByExtendStoreIndex.setString(1, index + "\\_%");
 		try (ResultSet rs = countNodesByExtendStoreIndex.executeQuery()) {
-			if (rs.first()) {
+			if (rs.next()) {
 				return rs.getLong(1);
 			}
 		}

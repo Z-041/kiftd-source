@@ -48,7 +48,7 @@ public class FileNodeUtil {
 	 * 
 	 * @author 青阳龙野(kohgylw)
 	 */
-	public static void initNodeTableToDataBase() {
+	public static synchronized void initNodeTableToDataBase() {
 		Printer.instance.print("初始化文件节点...");
 		try {
 			if (conn == null) {

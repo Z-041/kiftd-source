@@ -30,6 +30,10 @@ webContext/quickview/src/
 # 日志文件
 *.log
 
+# 前端构建依赖
+node_modules/
+package-lock.json
+
 # 运行时日志目录（LogUtil 生成的按日日志）
 logs/
 

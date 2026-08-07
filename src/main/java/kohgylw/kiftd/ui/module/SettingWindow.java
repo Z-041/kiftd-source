@@ -3,9 +3,12 @@ package kohgylw.kiftd.ui.module;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
-import java.awt.GridLayout;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.KeyEvent;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
@@ -14,10 +17,13 @@ import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
+import javax.swing.JComponent;
 import javax.swing.JDialog;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
+import javax.swing.SwingUtilities;
 import javax.swing.border.EmptyBorder;
 
 import kohgylw.kiftd.printer.Printer;
@@ -80,99 +86,70 @@ public class SettingWindow extends KiftdDynamicWindow {
 		final JPanel titlebox = new JPanel(new FlowLayout(1));
 		titlebox.setBorder(new EmptyBorder((int) (10 * proportion), 0, (int) (5 * proportion), 0));
 		final JLabel title = new JLabel("服务器设置 Server Setting");
-		title.setFont(new Font("宋体", 1, (int) (20 * proportion)));
+		title.setFont(new Font("微软雅黑", 1, (int) (20 * proportion)));
 		titlebox.add(title);
 		SettingWindow.window.add(titlebox);
-		// 窗口组件排布
-		final JPanel settingbox = new JPanel(new GridLayout(8, 1, 0, (int) (3 * proportion)));
+		// 窗口组件排布（表单式布局：标签右对齐、控件左对齐，消除各行居中参差）
+		final JPanel settingbox = new JPanel(new GridBagLayout());
 		settingbox.setBorder(BorderFactory.createTitledBorder("服务器配置"));
-		final int interval = 0;
+		GridBagConstraints gbc = new GridBagConstraints();
+		gbc.insets = new Insets((int) (3 * proportion), (int) (8 * proportion), (int) (3 * proportion),
+				(int) (8 * proportion));
+		gbc.gridy = 0;
+		// 端口号输入框
+		final JLabel porttitle = new JLabel("端口(port)：");
+		(SettingWindow.portinput = new JTextField())
+				.setPreferredSize(new Dimension((int) (170 * proportion), (int) (25 * proportion)));
+		addSettingRow(settingbox, gbc, porttitle, SettingWindow.portinput, null);
 		// 必须登入下拉框
-		final JPanel mlbox = new JPanel(new FlowLayout(1));
-		mlbox.setBorder(new EmptyBorder(interval, (int) (5 * proportion), 0, 0));
 		final JLabel mltitle = new JLabel("必须登入(must login)：");
 		(SettingWindow.mlinput = new JComboBox<String>()).addItem(ML_OPEN);
 		SettingWindow.mlinput.addItem(ML_CLOSE);
-		SettingWindow.mlinput.setPreferredSize(new Dimension((int) (170 * proportion), (int) (20 * proportion)));
-		mlbox.add(mltitle);
-		mlbox.add(SettingWindow.mlinput);
+		SettingWindow.mlinput.setPreferredSize(new Dimension((int) (170 * proportion), (int) (22 * proportion)));
+		addSettingRow(settingbox, gbc, mltitle, SettingWindow.mlinput, null);
 		// 登录验证码下拉框
-		final JPanel vcbox = new JPanel(new FlowLayout(1));
-		vcbox.setBorder(new EmptyBorder(interval, (int) (5 * proportion), 0, 0));
 		final JLabel vctitle = new JLabel("登录验证码(VC type)：");
 		(SettingWindow.vcinput = new JComboBox<>()).addItem(VC_STANDARD);
 		SettingWindow.vcinput.addItem(VC_SIMP);
 		SettingWindow.vcinput.addItem(VC_CLOSE);
-		SettingWindow.vcinput.setPreferredSize(new Dimension((int) (170 * proportion), (int) (20 * proportion)));
-		vcbox.add(vctitle);
-		vcbox.add(SettingWindow.vcinput);
-		// 端口号输入框
-		final JPanel portbox = new JPanel(new FlowLayout(1));
-		portbox.setBorder(new EmptyBorder(interval, (int) (5 * proportion), 0, 0));
-		final JLabel porttitle = new JLabel("端口(port)：");
-		(SettingWindow.portinput = new JTextField())
-				.setPreferredSize(new Dimension((int) (150 * proportion), (int) (25 * proportion)));
-		portbox.add(porttitle);
-		portbox.add(SettingWindow.portinput);
+		SettingWindow.vcinput.setPreferredSize(new Dimension((int) (170 * proportion), (int) (22 * proportion)));
+		addSettingRow(settingbox, gbc, vctitle, SettingWindow.vcinput, null);
 		// 缓存大小输入框
-		final JPanel bufferbox = new JPanel(new FlowLayout(1));
-		bufferbox.setBorder(new EmptyBorder(interval, (int) (5 * proportion), 0, 0));
 		final JLabel buffertitle = new JLabel("缓存大小(buffer)：");
 		(SettingWindow.bufferinput = new JTextField())
-				.setPreferredSize(new Dimension((int) (150 * proportion), (int) (25 * proportion)));
+				.setPreferredSize(new Dimension((int) (170 * proportion), (int) (25 * proportion)));
 		final JLabel bufferUnit = new JLabel("KB");
-		bufferbox.add(buffertitle);
-		bufferbox.add(SettingWindow.bufferinput);
-		bufferbox.add(bufferUnit);
+		addSettingRow(settingbox, gbc, buffertitle, SettingWindow.bufferinput, bufferUnit);
 		// 日志等级选择框
-		final JPanel logbox = new JPanel(new FlowLayout(1));
-		logbox.setBorder(new EmptyBorder(interval, (int) (5 * proportion), 0, 0));
 		final JLabel logtitle = new JLabel("日志等级(log level)：");
 		(SettingWindow.logLevelinput = new JComboBox<String>()).addItem("记录全部(ALL)");
 		SettingWindow.logLevelinput.addItem("仅异常(EXCEPTION)");
 		SettingWindow.logLevelinput.addItem("不记录(NONE)");
-		SettingWindow.logLevelinput.setPreferredSize(new Dimension((int) (170 * proportion), (int) (20 * proportion)));
-		logbox.add(logtitle);
-		logbox.add(SettingWindow.logLevelinput);
+		SettingWindow.logLevelinput.setPreferredSize(new Dimension((int) (170 * proportion), (int) (22 * proportion)));
+		addSettingRow(settingbox, gbc, logtitle, SettingWindow.logLevelinput, null);
 		// 用户修改密码选择框
-		final JPanel cpbox = new JPanel(new FlowLayout(1));
-		cpbox.setBorder(new EmptyBorder(interval, (int) (5 * proportion), 0, 0));
 		final JLabel cptitle = new JLabel("用户修改密码(change password)：");
 		(SettingWindow.changePwdinput = new JComboBox<String>()).addItem(CHANGE_PWD_CLOSE);
 		SettingWindow.changePwdinput.addItem(CHANGE_PWD_OPEN);
-		SettingWindow.changePwdinput.setPreferredSize(new Dimension((int) (170 * proportion), (int) (20 * proportion)));
-		cpbox.add(cptitle);
-		cpbox.add(SettingWindow.changePwdinput);
+		SettingWindow.changePwdinput.setPreferredSize(new Dimension((int) (170 * proportion), (int) (22 * proportion)));
+		addSettingRow(settingbox, gbc, cptitle, SettingWindow.changePwdinput, null);
 		// 永久资源链接选择框
-		final JPanel scbox = new JPanel(new FlowLayout(1));
-		scbox.setBorder(new EmptyBorder(interval, (int) (5 * proportion), 0, 0));
 		final JLabel sctitle = new JLabel("永久资源链接(file chain)：");
 		(SettingWindow.showChaininput = new JComboBox<String>()).addItem(SHOW_CHAIN_CLOSE);
 		SettingWindow.showChaininput.addItem(SHOW_CHAIN_OPEN);
-		SettingWindow.showChaininput.setPreferredSize(new Dimension((int) (170 * proportion), (int) (20 * proportion)));
-		scbox.add(sctitle);
-		scbox.add(SettingWindow.showChaininput);
+		SettingWindow.showChaininput.setPreferredSize(new Dimension((int) (170 * proportion), (int) (22 * proportion)));
+		addSettingRow(settingbox, gbc, sctitle, SettingWindow.showChaininput, null);
 		// 文件系统管理按钮
-		final JPanel filePathBox = new JPanel(new FlowLayout(1));
-		filePathBox.setBorder(new EmptyBorder(interval, (int) (5 * proportion), 0, 0));
 		final JLabel filePathtitle = new JLabel("文件系统路径(file system path)：");
 		SettingWindow.changeFileSystemPath = new JButton("管理(Manage)");
-		changeFileSystemPath.setPreferredSize(new Dimension((int) (150 * proportion), (int) (30 * proportion)));
-		filePathBox.add(filePathtitle);
-		filePathBox.add(SettingWindow.changeFileSystemPath);
-		// 界面布局顺序
-		settingbox.add(portbox);
-		settingbox.add(mlbox);
-		settingbox.add(vcbox);
-		settingbox.add(bufferbox);
-		settingbox.add(logbox);
-		settingbox.add(cpbox);
-		settingbox.add(scbox);
-		settingbox.add(filePathBox);
+		changeFileSystemPath.setPreferredSize(new Dimension((int) (170 * proportion), (int) (30 * proportion)));
+		changeFileSystemPath.setMnemonic(KeyEvent.VK_M);
+		addSettingRow(settingbox, gbc, filePathtitle, SettingWindow.changeFileSystemPath, null);
 		SettingWindow.window.add(settingbox);
 		final JPanel buttonbox = new JPanel(new FlowLayout(1));
 		buttonbox.setBorder(new EmptyBorder((int) (8 * proportion), 0, (int) (5 * proportion), 0));
 		SettingWindow.update = new JButton("应用(Update)");
+		SettingWindow.update.setMnemonic(KeyEvent.VK_U);
 		SettingWindow.cancel = new JButton("取消(Cancel)");
 		update.setPreferredSize(new Dimension((int) (140 * proportion), (int) (32 * proportion)));
 		cancel.setPreferredSize(new Dimension((int) (140 * proportion), (int) (32 * proportion)));
@@ -192,97 +169,118 @@ public class SettingWindow extends KiftdDynamicWindow {
 				// 仅在服务器停止时才可以进行修改
 				if (st.getServerStatus()) {
 					getServerStatus();
-				} else {
-					Thread t = new Thread(() -> {
-						if (us != null) {
-							try {
-								ServerSetting ss = new ServerSetting();
-								ss.setPort(Integer.parseInt(portinput.getText()));
-								ss.setBuffSize(Integer.parseInt(bufferinput.getText()) * 1024);
-								ss.setFsPath(chooserPath.getAbsolutePath());
-								List<ExtendStores> ess = new ArrayList<>();
-								for (FileSystemPath fsp : extendStores) {
-									ExtendStores es = new ExtendStores();
-									es.setIndex(fsp.getIndex());
-									es.setPath(fsp.getPath());
-									ess.add(es);
-								}
-								ss.setExtendStores(ess);
-								switch (logLevelinput.getSelectedIndex()) {
-								case 0:
-									ss.setLog(LogLevel.Event);
-									break;
-								case 1:
-									ss.setLog(LogLevel.Runtime_Exception);
-									break;
-								case 2:
-									ss.setLog(LogLevel.None);
-									break;
-
-								default:
-									// 注意，当选择未知的日志等级时，不做任何操作
-									break;
-								}
-								switch (mlinput.getSelectedIndex()) {
-								case 0:
-									ss.setMustLogin(true);
-									break;
-								case 1:
-									ss.setMustLogin(false);
-									break;
-								default:
-									break;
-								}
-								switch (changePwdinput.getSelectedIndex()) {
-								case 0:
-									ss.setChangePassword(false);
-									break;
-								case 1:
-									ss.setChangePassword(true);
-									break;
-								default:
-									break;
-								}
-								switch (showChaininput.getSelectedIndex()) {
-								case 0:
-									ss.setFileChain(false);
-									break;
-								case 1:
-									ss.setFileChain(true);
-									break;
-								default:
-									break;
-								}
-								switch (vcinput.getSelectedIndex()) {
-								case 0: {
-									ss.setVc(VCLevel.Standard);
-									break;
-								}
-								case 1: {
-									ss.setVc(VCLevel.Simplified);
-									break;
-								}
-								case 2: {
-									ss.setVc(VCLevel.Close);
-									break;
-								}
-								default:
-									break;
-								}
-								if (us.update(ss)) {
-									ServerUIModule.getInsatnce().updateServerStatus();
-									window.setVisible(false);
-								}
-							} catch (Exception exc) {
-								Printer.instance.print(exc.getMessage());
-								Printer.instance.print("错误：无法更新服务器设置");
-							}
-						} else {
-							window.setVisible(false);
-						}
-					});
-					t.start();
+					return;
 				}
+				// 在 EDT 上读取输入值，避免工作线程操作 Swing 组件
+				final String portText = portinput.getText();
+				final String bufferText = bufferinput.getText();
+				final int logIndex = logLevelinput.getSelectedIndex();
+				final int mlIndex = mlinput.getSelectedIndex();
+				final int cpIndex = changePwdinput.getSelectedIndex();
+				final int scIndex = showChaininput.getSelectedIndex();
+				final int vcIndex = vcinput.getSelectedIndex();
+				Thread t = new Thread(() -> {
+					if (us == null) {
+						SwingUtilities.invokeLater(() -> window.setVisible(false));
+						return;
+					}
+					final int port;
+					final int buffer;
+					try {
+						port = Integer.parseInt(portText);
+						buffer = Integer.parseInt(bufferText) * 1024;
+					} catch (NumberFormatException nfe) {
+						// 非法输入：弹窗提示并保持窗口打开
+						SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(window,
+								"端口号与缓存大小必须为有效数字，请检查后重试。", "错误", JOptionPane.ERROR_MESSAGE));
+						return;
+					}
+					try {
+						ServerSetting ss = new ServerSetting();
+						ss.setPort(port);
+						ss.setBuffSize(buffer);
+						ss.setFsPath(chooserPath.getAbsolutePath());
+						List<ExtendStores> ess = new ArrayList<>();
+						for (FileSystemPath fsp : extendStores) {
+							ExtendStores es = new ExtendStores();
+							es.setIndex(fsp.getIndex());
+							es.setPath(fsp.getPath());
+							ess.add(es);
+						}
+						ss.setExtendStores(ess);
+						switch (logIndex) {
+						case 0:
+							ss.setLog(LogLevel.Event);
+							break;
+						case 1:
+							ss.setLog(LogLevel.Runtime_Exception);
+							break;
+						case 2:
+							ss.setLog(LogLevel.None);
+							break;
+
+						default:
+							// 注意，当选择未知的日志等级时，不做任何操作
+							break;
+						}
+						switch (mlIndex) {
+						case 0:
+							ss.setMustLogin(true);
+							break;
+						case 1:
+							ss.setMustLogin(false);
+							break;
+						default:
+							break;
+						}
+						switch (cpIndex) {
+						case 0:
+							ss.setChangePassword(false);
+							break;
+						case 1:
+							ss.setChangePassword(true);
+							break;
+						default:
+							break;
+						}
+						switch (scIndex) {
+						case 0:
+							ss.setFileChain(false);
+							break;
+						case 1:
+							ss.setFileChain(true);
+							break;
+						default:
+							break;
+						}
+						switch (vcIndex) {
+						case 0: {
+							ss.setVc(VCLevel.Standard);
+							break;
+						}
+						case 1: {
+							ss.setVc(VCLevel.Simplified);
+							break;
+						}
+						case 2: {
+							ss.setVc(VCLevel.Close);
+							break;
+						}
+						default:
+							break;
+						}
+						if (us.update(ss)) {
+							ServerUIModule.getInsatnce().updateServerStatus();
+							SwingUtilities.invokeLater(() -> window.setVisible(false));
+						}
+					} catch (Exception exc) {
+						Printer.instance.print(exc.getMessage());
+						Printer.instance.print("错误：无法更新服务器设置");
+						SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(window,
+								"无法更新服务器设置：" + exc.getMessage(), "错误", JOptionPane.ERROR_MESSAGE));
+					}
+				});
+				t.start();
 			}
 		});
 		SettingWindow.changeFileSystemPath.addActionListener(new ActionListener() {
@@ -296,14 +294,37 @@ public class SettingWindow extends KiftdDynamicWindow {
 		modifyComponentSize(window);
 	}
 
+	// 向表单容器中添加一行：标签（右对齐）+ 控件（左对齐）+ 可选附加组件
+	private static void addSettingRow(JPanel box, GridBagConstraints gbc, JComponent label, JComponent control,
+			JComponent extra) {
+		gbc.gridx = 0;
+		gbc.anchor = GridBagConstraints.EAST;
+		gbc.fill = GridBagConstraints.NONE;
+		gbc.weightx = 0;
+		box.add(label, gbc);
+		gbc.gridx = 1;
+		gbc.anchor = GridBagConstraints.WEST;
+		gbc.weightx = 1;
+		box.add(control, gbc);
+		if (extra != null) {
+			gbc.gridx = 2;
+			gbc.weightx = 0;
+			box.add(extra, gbc);
+		}
+		gbc.gridy++;
+	}
+
 	protected void show() {
 		this.getServerStatus();
 		SettingWindow.window.setVisible(true);
 	}
 
 	private void getServerStatus() {
-		final Thread t = new Thread(() -> {
-			if (SettingWindow.st != null) {
+		// 配置读取开销极小，直接在 EDT 上刷新各输入框
+		SwingUtilities.invokeLater(() -> {
+			if (SettingWindow.st == null) {
+				return;
+			}
 				SettingWindow.bufferinput
 						.setText(SettingWindow.st.getBufferSize() == 0 ? SettingWindow.st.getInitBufferSize()
 								: SettingWindow.st.getBufferSize() / 1024 + "");
@@ -392,10 +413,7 @@ public class SettingWindow extends KiftdDynamicWindow {
 					}
 					}
 				}
-			}
-			return;
 		});
-		t.start();
 	}
 
 	protected static SettingWindow getInstance() {

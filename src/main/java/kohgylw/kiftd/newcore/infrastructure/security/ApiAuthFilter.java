@@ -8,14 +8,11 @@ import jakarta.servlet.FilterConfig;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
-import jakarta.servlet.annotation.WebFilter;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 
 import com.google.gson.Gson;
-
-import org.springframework.core.annotation.Order;
 
 import kohgylw.kiftd.newcore.domain.ApiResponse;
 import kohgylw.kiftd.newcore.domain.ResultCode;
@@ -35,8 +32,6 @@ import kohgylw.kiftd.server.util.ConfigurationManager;
  * @author 技术债治理迭代
  * @version 1.0
  */
-@WebFilter(urlPatterns = "/api/*")
-@Order(1)
 public class ApiAuthFilter implements Filter {
 
 	private static final String SESSION_ACCOUNT_ATTR = "ACCOUNT";

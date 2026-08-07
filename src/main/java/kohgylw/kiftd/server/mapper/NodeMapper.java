@@ -13,10 +13,10 @@ public interface NodeMapper extends BaseMapper<Node> {
 	@Select("SELECT * FROM FILE WHERE file_parent_folder = #{pfid} LIMIT 0,2147483647")
 	List<Node> queryByParentFolderId(@Param("pfid") final String pfid);
 
-	@Select("<script>SELECT * FROM FILE WHERE file_parent_folder IN <foreach item='pfid' index='index' collection='pfids' open='(' separator=',' close=')'>#{pfid}</foreach> LIMIT 0,2147483647</script>")
+	@Select("<script>SELECT * FROM FILE WHERE <choose><when test='pfids != null and pfids.size() > 0'>file_parent_folder IN <foreach item='pfid' index='index' collection='pfids' open='(' separator=',' close=')'>#{pfid}</foreach></when><otherwise>1 = 0</otherwise></choose> LIMIT 0,2147483647</script>")
 	List<Node> queryByParentFolderIds(@Param("pfids") List<String> pfids);
 
-	@Select("<script>SELECT * FROM FILE WHERE file_parent_folder IN <foreach item='pfid' index='index' collection='pfids' open='(' separator=',' close=')'>#{pfid}</foreach> LIMIT #{limit}</script>")
+	@Select("<script>SELECT * FROM FILE WHERE <choose><when test='pfids != null and pfids.size() > 0'>file_parent_folder IN <foreach item='pfid' index='index' collection='pfids' open='(' separator=',' close=')'>#{pfid}</foreach></when><otherwise>1 = 0</otherwise></choose> LIMIT #{limit}</script>")
 	List<Node> queryByParentFolderIdsLimit(@Param("pfids") List<String> pfids, @Param("limit") int limit);
 
 	@Select("SELECT * FROM FILE WHERE file_parent_folder = #{pfid} LIMIT #{offset},#{rows}")

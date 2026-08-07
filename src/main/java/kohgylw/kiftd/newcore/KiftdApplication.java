@@ -5,6 +5,7 @@ import com.zaxxer.hikari.HikariDataSource;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.ApplicationContext;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import kohgylw.kiftd.newcore.config.DataSourceConfig;
 import kohgylw.kiftd.newcore.config.UndertowServerConfig;
@@ -15,7 +16,7 @@ import kohgylw.kiftd.server.util.ConfigurationManager;
 
 
 @SpringBootApplication
-@Import({ WebMvcConfig.class, DataSourceConfig.class, ConfigurationManager.class, UndertowServerConfig.class })
+@Import({ WebMvcConfig.class, DataSourceConfig.class, UndertowServerConfig.class })
 public class KiftdApplication {
 
 	private static volatile ApplicationContext context;
@@ -24,6 +25,16 @@ public class KiftdApplication {
 
 	static {
 		System.setProperty("logging.level.root", "ERROR");
+	}
+
+	/**
+	 * 复用静态单例注入：若仍通过 @Import 直接实例化 ConfigurationManager，
+	 * 会与 start() 中先行创建的静态实例并存并相互覆盖，导致账户/IP 热更新与业务鉴权
+	 * 分别绑定在不同实例上（配置热更新失效）。此处保证 Spring 容器持有的是同一个单例。
+	 */
+	@Bean
+	public ConfigurationManager configurationManager() {
+		return ConfigurationManager.instance();
 	}
 
 	public synchronized boolean start() {

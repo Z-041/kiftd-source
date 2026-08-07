@@ -21,6 +21,7 @@ public class FSProgressDialog extends KiftdDynamicWindow {
 	private static JProgressBar pBar;// 进度条
 	private static JButton cancel;// 取消按钮
 	private static boolean listen;// 是否继续监听
+	private javax.swing.Timer refreshTimer;// 进度刷新定时器（在 EDT 上执行）
 
 	private FSProgressDialog(JDialog parentWindow) {
 		setUIFont();// 自动设置字体大小
@@ -93,21 +94,35 @@ public class FSProgressDialog extends KiftdDynamicWindow {
 		listen = true;
 		pBar.setValue(0);
 		message.setText("请稍候...");
-		// 启动监听线程用于监听进度，该线程结束后会自动关闭窗口。
-		Thread lt = new Thread(() -> {
-			while (listen) {
-				pBar.setValue(FileSystemManager.per);
-				message.setText(FileSystemManager.message);
-				try {
-					Thread.sleep(16);
-				} catch (InterruptedException e) {
-					listen = false;
-				}
+		// 使用 Swing Timer 在 EDT 上轮询进度，避免工作线程直接操作组件；
+		// 操作边界（0/100）以不确定进度条呈现，真实传输期间显示百分比。
+		refreshTimer = new javax.swing.Timer(100, (e) -> {
+			if (!listen) {
+				((javax.swing.Timer) e.getSource()).stop();
+				window.dispose();
+				return;
 			}
-			window.dispose();
+			int per = FileSystemManager.per;
+			if (per > 0 && per < 100) {
+				if (pBar.isIndeterminate()) {
+					pBar.setIndeterminate(false);
+				}
+				if (per != pBar.getValue()) {
+					pBar.setValue(per);
+				}
+			} else if (!pBar.isIndeterminate()) {
+				pBar.setIndeterminate(true);
+			}
+			String msg = FileSystemManager.message;
+			if (msg == null || msg.trim().isEmpty()) {
+				msg = "请稍候...";
+			}
+			if (!msg.equals(message.getText())) {
+				message.setText(msg);
+			}
 		});
-		lt.start();
-		window.setVisible(true);// 必须先开启监听，否则将阻塞线程
+		refreshTimer.start();
+		window.setVisible(true);// 模态，需在 EDT 上调用（调用方已通过 invokeLater 确保）
 	}
 
 	/**
@@ -126,6 +141,10 @@ public class FSProgressDialog extends KiftdDynamicWindow {
 	// 终止当前操作
 	private void cancel() {
 		if (JOptionPane.showConfirmDialog(window, "操作仍在进行中，确认要立即终止？", "警告", JOptionPane.YES_NO_OPTION) == 0) {
+			listen = false;
+			if (refreshTimer != null) {
+				refreshTimer.stop();
+			}
 			FileSystemManager.getInstance().cancel();
 			window.dispose();
 		}

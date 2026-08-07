@@ -53,6 +53,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
 	@Override
 	public void addResourceHandlers(final ResourceHandlerRegistry registry) {
+		// Web 端仅保留用户文件系统（webContext 目录），系统级管理统一收敛至桌面端 GUI
 		final String webContextPath = "file:///" + ConfigurationManager.instance().getBasePath().replace(File.separatorChar, '/')
 				+ "/webContext/";
 		registry.addResourceHandler("/**").addResourceLocations(webContextPath);

@@ -8,12 +8,10 @@ import jakarta.servlet.FilterConfig;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
-import jakarta.servlet.annotation.WebFilter;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 import org.springframework.context.ApplicationContext;
-import org.springframework.core.annotation.Order;
 import org.springframework.web.context.support.WebApplicationContextUtils;
 
 import kohgylw.kiftd.server.util.ConfigurationManager;
@@ -31,8 +29,6 @@ import kohgylw.kiftd.server.util.IpAddrGetter;
  * @author 青阳龙野(kohgylw)
  * @version 1.0
  */
-@WebFilter
-@Order(1)
 public class IPFilter implements Filter {
 
 	private IpAddrGetter idg;

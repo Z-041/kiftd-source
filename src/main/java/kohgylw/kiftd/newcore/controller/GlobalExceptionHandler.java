@@ -1,5 +1,6 @@
 package kohgylw.kiftd.newcore.controller;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -7,8 +8,15 @@ import java.util.concurrent.atomic.AtomicLong;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import com.google.gson.Gson;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 import kohgylw.kiftd.newcore.domain.ApiResponse;
@@ -52,9 +60,20 @@ public class GlobalExceptionHandler {
 			ResponseStatusException rse = (ResponseStatusException) e;
 			int status = rse.getStatusCode().value();
 			if (isApiRequest) {
-				writeJsonError(response, status, ResultCode.FORBIDDEN, rse.getReason());
+				writeJsonError(response, status, statusCodeOf(status), rse.getReason());
 			} else {
 				sendErrorSafe(response, status, rse.getReason());
+			}
+			return;
+		}
+
+		// 按异常类型映射合适的 HTTP 状态码（400/404/413/405），避免统一降级为 500
+		int mappedStatus = mapExceptionStatus(e);
+		if (mappedStatus > 0) {
+			if (isApiRequest) {
+				writeJsonError(response, mappedStatus, statusCodeOf(mappedStatus));
+			} else {
+				sendErrorSafe(response, mappedStatus, null);
 			}
 			return;
 		}
@@ -76,6 +95,49 @@ public class GlobalExceptionHandler {
 		totalExceptionCount.incrementAndGet();
 		String exceptionType = e.getClass().getName();
 		exceptionTypeCount.computeIfAbsent(exceptionType, k -> new AtomicLong(0)).incrementAndGet();
+	}
+
+	/**
+	 * 将常见异常类型映射为合适的 HTTP 状态码；无法归类的异常返回 -1（交由默认 500 处理）
+	 */
+	private int mapExceptionStatus(Exception e) {
+		if (e instanceof IllegalArgumentException || e instanceof HttpMessageNotReadableException
+				|| e instanceof MissingServletRequestParameterException || e instanceof MethodArgumentNotValidException
+				|| e instanceof MethodArgumentTypeMismatchException) {
+			return HttpServletResponse.SC_BAD_REQUEST;
+		}
+		if (e instanceof MaxUploadSizeExceededException || e instanceof MultipartException) {
+			return HttpServletResponse.SC_REQUEST_ENTITY_TOO_LARGE;
+		}
+		if (e instanceof FileNotFoundException) {
+			return HttpServletResponse.SC_NOT_FOUND;
+		}
+		if (e instanceof HttpRequestMethodNotSupportedException) {
+			return HttpServletResponse.SC_METHOD_NOT_ALLOWED;
+		}
+		return -1;
+	}
+
+	/**
+	 * 将 HTTP 状态码映射为语义一致的 ResultCode，避免响应体的 code 与状态码冲突
+	 */
+	private ResultCode statusCodeOf(int status) {
+		switch (status) {
+		case HttpServletResponse.SC_BAD_REQUEST:
+			return ResultCode.BAD_REQUEST;
+		case HttpServletResponse.SC_UNAUTHORIZED:
+			return ResultCode.UNAUTHORIZED;
+		case HttpServletResponse.SC_FORBIDDEN:
+			return ResultCode.FORBIDDEN;
+		case HttpServletResponse.SC_NOT_FOUND:
+			return ResultCode.NOT_FOUND;
+		case HttpServletResponse.SC_METHOD_NOT_ALLOWED:
+			return ResultCode.METHOD_NOT_ALLOWED;
+		case HttpServletResponse.SC_REQUEST_ENTITY_TOO_LARGE:
+			return ResultCode.PAYLOAD_TOO_LARGE;
+		default:
+			return ResultCode.INTERNAL_SERVER_ERROR;
+		}
 	}
 
 	private void sendErrorSafe(HttpServletResponse response, int statusCode, String message) {

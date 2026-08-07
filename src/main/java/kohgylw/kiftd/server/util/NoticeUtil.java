@@ -78,12 +78,15 @@ public class NoticeUtil {
 								new OutputStreamWriter(fos, StandardCharsets.UTF_8))) {
 					Parser parser = Parser.builder(options).build();
 					HtmlRenderer renderer = HtmlRenderer.builder(options).build();
+					// 必须整文本解析：markdown 的跨行语法（围栏代码块、表格、多行列表等）依赖完整文档上下文，
+					// 逐行 parse 会被拆散成独立片段导致渲染结果错误
+					StringBuilder content = new StringBuilder();
 					String line = null;
 					while ((line = reader.readLine()) != null) {
-						String html = renderer.render(parser.parse(line));
-						writer.write(html);
-						writer.newLine();
+						content.append(line).append("\n");
 					}
+					String html = renderer.render(parser.parse(content.toString()));
+					writer.write(html);
 					writer.flush();
 				}
 				try (FileInputStream fis3 = new FileInputStream(noticeMD)) {

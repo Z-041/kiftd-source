@@ -72,15 +72,17 @@ public class VariableSpeedBufferedOutputStream extends BufferedOutputStream {
 				synchronized (session) {
 					if (writtenLength >= maxRate) {
 						// 本秒预算已用尽：等待窗口重置（wait 期间释放监视器，其它任务可继续竞争）
-						long consumeTime = System.currentTimeMillis() - startTime;
-						long remain = 1000 - consumeTime;
-						if (remain > 0) {
+						long remain = 1000 - (System.currentTimeMillis() - startTime);
+						// wait 可能被同一会话其它任务的 notifyAll 提前唤醒（或发生伪唤醒），
+						// 循环重算剩余等待时间，确保窗口真正到期后才重置预算，避免限速失真
+						while (remain > 0) {
 							try {
 								session.wait(remain);
 							} catch (InterruptedException e) {
 								// 如果收到中断指令，那么就响应中断
 								Thread.currentThread().interrupt();
 							}
+							remain = 1000 - (System.currentTimeMillis() - startTime);
 						}
 						// 唤醒同会话等待窗口重置的其它下载任务，避免它们被迫等待满一个完整窗口
 						session.notifyAll();

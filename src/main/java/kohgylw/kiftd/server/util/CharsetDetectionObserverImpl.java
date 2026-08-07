@@ -11,7 +11,8 @@ import org.mozilla.intl.chardet.nsICharsetDetectionObserver;
  */
 public class CharsetDetectionObserverImpl implements nsICharsetDetectionObserver{
 	
-	private String charset;
+	// Notify 由检测线程调用，getCharset 由主线程读取，跨线程可见性用 volatile 保证
+	private volatile String charset;
 
 	@Override
 	public void Notify(String arg0) {

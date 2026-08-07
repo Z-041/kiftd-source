@@ -238,10 +238,7 @@ public class FileSystemPathViewer extends KiftdDynamicWindow {
 										File transferDir = transferDirChooer.getSelectedFile();
 										worker.execute(() -> {
 											FSProgressDialog fsd = FSProgressDialog.getNewInstance(window);
-											Thread t = new Thread(() -> {
-												fsd.show();
-											});
-											t.start();
+											SwingUtilities.invokeLater(() -> fsd.show());
 											try {
 												boolean r = FileSystemManager.getInstance().transferExtendStore(index,
 														transferDir);
@@ -358,7 +355,7 @@ public class FileSystemPathViewer extends KiftdDynamicWindow {
 			Printer.instance.print("错误：无法获取文件系统设置，请手动检查配置文件并重启应用。");
 		} else {
 			enableAllButtons();
-			window.setVisible(true);
+			SwingUtilities.invokeLater(() -> window.setVisible(true));
 		}
 	}
 

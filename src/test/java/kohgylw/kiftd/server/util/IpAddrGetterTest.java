@@ -60,6 +60,8 @@ class IpAddrGetterTest {
 
             HttpServletRequest request = mock(HttpServletRequest.class);
             when(request.getHeader("Proxy-Client-IP")).thenReturn("10.0.0.100");
+            // 仅当请求来源为受信代理（回环/内网）时才采信转发头
+            when(request.getRemoteAddr()).thenReturn("127.0.0.1");
 
             String ip = getter.getIpAddr(request);
             assertEquals("10.0.0.100", ip);

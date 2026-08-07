@@ -10,7 +10,6 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
-import jakarta.servlet.annotation.WebFilter;
 import jakarta.servlet.http.HttpServletRequest;
 
 import kohgylw.kiftd.printer.Printer;
@@ -19,7 +18,6 @@ import kohgylw.kiftd.printer.Printer;
  * API 请求性能监控过滤器
  * 仅对 /api/ 路径下的请求进行耗时统计
  */
-@WebFilter(filterName = "ApiPerformanceFilter", urlPatterns = "/api/*")
 public class ApiPerformanceFilter implements Filter {
 
 	private static final String START_TIME_ATTR = "api_start_time";
