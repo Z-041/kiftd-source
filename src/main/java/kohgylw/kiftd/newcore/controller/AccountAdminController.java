@@ -40,7 +40,6 @@ import kohgylw.kiftd.server.util.ConfigurationManager;
 public class AccountAdminController {
 
 	private static final String AUTH_CHARS = "cudrml";
-	private static final String BUILT_IN_ADMIN = "admin";
 	private static final String SESSION_ACCOUNT_ATTR = "ACCOUNT";
 	// 与注册通道（AuthServiceImpl）保持一致：账户名 3-32 位字母/数字/下划线/点/连字符，密码 3-32 位非空白
 	private static final Pattern ACCOUNT_NAME_PATTERN = Pattern.compile("^[A-Za-z0-9_.\\-]{3,32}$");
@@ -106,11 +105,12 @@ public class AccountAdminController {
 
 	@DeleteMapping("/accounts/{account}")
 	public ApiResponse<Void> deleteAccount(@PathVariable String account, HttpServletRequest request) {
-		if (BUILT_IN_ADMIN.equals(account)) {
-			return ApiResponse.failure(ResultCode.FORBIDDEN.getCode(), "内置 admin 账户不可删除");
+		// 超级管理员账户（仅 account.properties 中 privilege=S 配置的账户，无内置超管）
+		// 一律不可删除，防止部署了多个超管时互相删除导致失去管理能力。
+		if (configurationManager.isSuperAdmin(account)) {
+			return ApiResponse.failure(ResultCode.FORBIDDEN.getCode(), "超级管理员账户不可删除");
 		}
-		HttpSession session = request.getSession(false);
-		String currentAccount = session == null ? null : (String) session.getAttribute(SESSION_ACCOUNT_ATTR);
+		String currentAccount = currentAccount(request);
 		if (account.equals(currentAccount)) {
 			return ApiResponse.failure(ResultCode.FORBIDDEN.getCode(), "不能删除当前登录的账户");
 		}
@@ -125,9 +125,15 @@ public class AccountAdminController {
 	}
 
 	@PutMapping("/accounts/{account}/password")
-	public ApiResponse<Void> resetPassword(@PathVariable String account, @RequestBody PasswordRequest request) {
+	public ApiResponse<Void> resetPassword(@PathVariable String account, @RequestBody PasswordRequest request,
+			HttpServletRequest httpRequest) {
 		if (request.password() == null || !PASSWORD_PATTERN.matcher(request.password()).matches()) {
 			return ApiResponse.failure(ResultCode.BAD_REQUEST.getCode(), "新密码须为 3-32 位非空白字符");
+		}
+		// 超管账户（仅 privilege=S 配置的账户，无内置超管）的密码仅本人可重置，
+		// 防止任一超管劫持其他超管账户。
+		if (configurationManager.isSuperAdmin(account) && !account.equals(currentAccount(httpRequest))) {
+			return ApiResponse.failure(ResultCode.FORBIDDEN.getCode(), "超级管理员账户密码仅本人可重置");
 		}
 		try {
 			if (!configurationManager.resetPassword(account, request.password())) {
@@ -144,6 +150,10 @@ public class AccountAdminController {
 		String auth = request.auth() == null ? "" : request.auth();
 		if (!isValidAuth(auth)) {
 			return ApiResponse.failure(ResultCode.BAD_REQUEST.getCode(), "权限只能包含 c/u/d/r/m/l 字符且不超过 6 位");
+		}
+		// 超管账户的权限修改会被 isSuperAdmin 一律放行，修改其权限无实际意义且易造成混淆，直接禁止。
+		if (configurationManager.isSuperAdmin(account)) {
+			return ApiResponse.failure(ResultCode.FORBIDDEN.getCode(), "超级管理员账户权限不可修改");
 		}
 		try {
 			if (!configurationManager.updateAccountAuth(account, auth)) {
@@ -165,6 +175,11 @@ public class AccountAdminController {
 			}
 		}
 		return true;
+	}
+
+	private String currentAccount(HttpServletRequest request) {
+		HttpSession session = request.getSession(false);
+		return session == null ? null : (String) session.getAttribute(SESSION_ACCOUNT_ATTR);
 	}
 
 	// ==================== 请求体 DTO ====================

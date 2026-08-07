@@ -354,9 +354,9 @@ public class ConfigurationManager {
 
 	private boolean hasSuperAuth(String account) {
 		if (account != null) {
-			// 内置 admin 账户即为系统管理员；同时支持部署者在 account.properties 中
-			// 显式配置“账户名.privilege=S”将其他账户提升为超级管理员。
-			return "admin".equals(account) || "S".equals(accountp.getProperty(account + ".privilege"));
+			// 仅通过 account.properties 中显式配置“账户名.privilege=S”授予超级管理员身份，
+			// 不存在内置超管（admin 也需显式配置）。
+			return "S".equals(accountp.getProperty(account + ".privilege"));
 		}
 		return false;
 	}
@@ -1301,6 +1301,8 @@ public class ConfigurationManager {
 		// 默认密码同样以 PBKDF2 哈希存储，避免配置文件明文泄露
 		dap.setProperty("admin.pwd", PasswordUtil.hashPassword("000000"));
 		dap.setProperty("admin.auth", "cudrm");
+		// 超管身份必须显式配置（无内置超管），初始部署将默认 admin 配置为超管
+		dap.setProperty("admin.privilege", "S");
 		dap.setProperty("authOverall", "l");
 		try (FileOutputStream accountSettingOut = new FileOutputStream(this.confDir + "account.properties")) {
 			dap.store(accountSettingOut, "<This is the default kiftd account setting file. >");

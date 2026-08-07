@@ -115,6 +115,8 @@ class AccountAdminControllerTest {
 
 	@Test
 	void testDeleteAccount_builtInAdmin_forbidden() throws Exception {
+		when(configurationManager.isSuperAdmin("admin")).thenReturn(true);
+
 		ApiResponse<Void> response = controller.deleteAccount("admin", request);
 
 		assertFalse(response.isSuccess());
@@ -124,8 +126,19 @@ class AccountAdminControllerTest {
 
 	@Test
 	void testDeleteAccount_currentSessionAccount_forbidden() throws Exception {
-		// 当前登录账户为 root 时，删除自身应被拒绝
+		// 当前登录账户为 root 时，删除自身应被拒绝（root 非超管，命中当前账户保护分支）
 		when(session.getAttribute("ACCOUNT")).thenReturn("root");
+
+		ApiResponse<Void> response = controller.deleteAccount("root", request);
+
+		assertFalse(response.isSuccess());
+		assertEquals("FORBIDDEN", response.getCode());
+		verify(configurationManager, never()).deleteAccount(anyString());
+	}
+
+	@Test
+	void testDeleteAccount_superAdmin_forbidden() throws Exception {
+		when(configurationManager.isSuperAdmin("root")).thenReturn(true);
 
 		ApiResponse<Void> response = controller.deleteAccount("root", request);
 
@@ -159,14 +172,38 @@ class AccountAdminControllerTest {
 	void testResetPassword_success() throws Exception {
 		when(configurationManager.resetPassword("user1", "newpass")).thenReturn(true);
 
-		ApiResponse<Void> response = controller.resetPassword("user1", new PasswordRequest("newpass"));
+		ApiResponse<Void> response = controller.resetPassword("user1", new PasswordRequest("newpass"), request);
+
+		assertTrue(response.isSuccess());
+	}
+
+	@Test
+	void testResetPassword_superAdminByOther_forbidden() throws Exception {
+		// 当前登录 admin，尝试重置另一超管 root 的密码应被拒绝
+		when(configurationManager.isSuperAdmin("root")).thenReturn(true);
+
+		ApiResponse<Void> response = controller.resetPassword("root", new PasswordRequest("newpass"), request);
+
+		assertFalse(response.isSuccess());
+		assertEquals("FORBIDDEN", response.getCode());
+		verify(configurationManager, never()).resetPassword(anyString(), anyString());
+	}
+
+	@Test
+	void testResetPassword_selfSuperAdmin_success() throws Exception {
+		// 超管本人重置自己的密码允许
+		when(session.getAttribute("ACCOUNT")).thenReturn("root");
+		when(configurationManager.isSuperAdmin("root")).thenReturn(true);
+		when(configurationManager.resetPassword("root", "newpass")).thenReturn(true);
+
+		ApiResponse<Void> response = controller.resetPassword("root", new PasswordRequest("newpass"), request);
 
 		assertTrue(response.isSuccess());
 	}
 
 	@Test
 	void testResetPassword_emptyPassword_returnsBadRequest() throws Exception {
-		ApiResponse<Void> response = controller.resetPassword("user1", new PasswordRequest(""));
+		ApiResponse<Void> response = controller.resetPassword("user1", new PasswordRequest(""), request);
 
 		assertFalse(response.isSuccess());
 		assertEquals("BAD_REQUEST", response.getCode());
@@ -180,6 +217,17 @@ class AccountAdminControllerTest {
 		ApiResponse<Void> response = controller.updateAuth("user1", new AuthRequest("cudrml"));
 
 		assertTrue(response.isSuccess());
+	}
+
+	@Test
+	void testUpdateAuth_superAdmin_forbidden() throws Exception {
+		when(configurationManager.isSuperAdmin("root")).thenReturn(true);
+
+		ApiResponse<Void> response = controller.updateAuth("root", new AuthRequest("cudrml"));
+
+		assertFalse(response.isSuccess());
+		assertEquals("FORBIDDEN", response.getCode());
+		verify(configurationManager, never()).updateAccountAuth(anyString(), anyString());
 	}
 
 	@Test

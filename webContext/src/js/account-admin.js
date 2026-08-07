@@ -115,11 +115,16 @@ function loadAccountList() {
 					'l': '下'
 				}[c] || c;
 			}).join(" ") : "无";
-			var delBtn;
-			if (a.account === "admin") {
-				delBtn = "<span class='text-muted'>内置</span>";
+			var opBtns;
+			if (a.superAdmin) {
+				// 超管账户（仅 account.properties 中 privilege=S 配置，无内置超管）不可修改/删除
+				opBtns = "<span class='text-muted'>系统管理员</span>";
 			} else {
-				delBtn = "<button type='button' class='btn btn-danger btn-xs' onclick='deleteAccountByAdmin(\""
+				opBtns = "<button type='button' class='btn btn-default btn-xs' onclick='resetPasswordByAdmin(\""
+					+ html2Escape(a.account) + "\")'>重置密码</button> "
+					+ "<button type='button' class='btn btn-default btn-xs' onclick='changeAuthByAdmin(\""
+					+ html2Escape(a.account) + "\")'>权限</button> "
+					+ "<button type='button' class='btn btn-danger btn-xs' onclick='deleteAccountByAdmin(\""
 					+ html2Escape(a.account) + "\")'>删除</button>";
 			}
 			html += "<tr>"
@@ -129,13 +134,7 @@ function loadAccountList() {
 				+ "<td>" + (a.superAdmin ? "是" : "否") + "</td>"
 				+ "<td>" + formatAccountSize(a.uploadMaxSize) + "</td>"
 				+ "<td>" + formatAccountRate(a.downloadMaxRate) + "</td>"
-				+ "<td>"
-				+ "<button type='button' class='btn btn-default btn-xs' onclick='resetPasswordByAdmin(\""
-				+ html2Escape(a.account) + "\")'>重置密码</button> "
-				+ "<button type='button' class='btn btn-default btn-xs' onclick='changeAuthByAdmin(\""
-				+ html2Escape(a.account) + "\")'>权限</button> "
-				+ delBtn
-				+ "</td>"
+				+ "<td>" + opBtns + "</td>"
 				+ "</tr>";
 		}
 		$("#accountManageTbody").html(html);
